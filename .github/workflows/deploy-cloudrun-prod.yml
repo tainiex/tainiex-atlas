@@ -1,0 +1,95 @@
+
+name: Build and Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  CLOUD_RUN_REGION: us-central1
+  CLOUD_RUN_SERVICE_NAME: tainiex-atlas
+  REPO_NAME: tainiex-atlas
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+      packages: 'write'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      # Authentication via Service Account Key JSON
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # Setup Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'yarn'
+
+      # Install Dependencies and Build
+      - name: Install and Build
+        run: |
+          yarn install --frozen-lockfile
+          yarn run build
+
+      # Configure Docker to use gcloud command-line tool as a credential helper
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker
+
+      # Build and Push Container
+      - name: Build and Push Container
+        id: build-image
+        run: |
+          # Define image tag for GCR
+          IMAGE_TAG=gcr.io/${{ env.PROJECT_ID }}/${{ env.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }}
+          
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
+          
+          # Set the image tag as an output for the next step
+          echo "image=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+      # Deploy to Cloud Run
+      - name: Deploy to Cloud Run
+        run: |
+          # Create env.yaml for atomic environment variable replacement
+          cat <<EOF > env.yaml
+          NODE_ENV: "production"
+          LOG_LEVEL: "info"
+          API_PREFIX: "api"
+          VERTEX_LOCATION: "us-central1"
+          VERTEX_MODEL: "gemini-3-pro-preview"
+          DB_SSL: "true"
+          CORS_ORIGIN: "https://*.tainiex.com"
+          VERTEX_PROJECT_ID: "${{ secrets.GCP_PROJECT_ID }}"
+          JWT_SECRET: "${{ secrets.JWT_SECRET }}"
+          JWT_REFRESH_SECRET: "${{ secrets.JWT_REFRESH_SECRET }}"
+          DB_HOST: "${{ secrets.DB_HOST }}"
+          DB_PORT: "${{ secrets.DB_PORT }}"
+          DB_USERNAME: "${{ secrets.DB_USERNAME }}"
+          DB_PASSWORD: "${{ secrets.DB_PASSWORD }}"
+          DB_NAME: "${{ secrets.DB_NAME }}"
+          GOOGLE_CLIENT_ID: "${{ secrets.GOOGLE_CLIENT_ID }}"
+          GOOGLE_CLIENT_SECRET: "${{ secrets.GOOGLE_CLIENT_SECRET }}"
+          COOKIE_DOMAIN: ".tainiex.com"
+          GCS_BUCKET_NAME: "tainiex-atlas"
+          GCS_SERVICE_ACCOUNT: "${{ secrets.CLOUD_RUN_GCP_SERVICE_ACCOUNT }}"
+          EOF
+
+          # Deploy using --env-vars-file which replaces all existing env vars
+          gcloud run deploy ${{ env.CLOUD_RUN_SERVICE_NAME }} \
+            --region ${{ env.CLOUD_RUN_REGION }} \
+            --image ${{ steps.build-image.outputs.image }} \
+            --service-account ${{ secrets.CLOUD_RUN_GCP_SERVICE_ACCOUNT }} \
+            --env-vars-file env.yaml
