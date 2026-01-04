@@ -5,7 +5,8 @@ import {
     WebSocketServer,
     ConnectedSocket,
     OnGatewayConnection,
-    OnGatewayDisconnect
+    OnGatewayDisconnect,
+    OnGatewayInit
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
@@ -27,7 +28,7 @@ interface AuthenticatedSocket extends Socket {
     },
     namespace: '/chat'
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
 
@@ -37,6 +38,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         private readonly jwtService: JwtService,
         private readonly chatService: ChatService
     ) { }
+
+    afterInit(server: Server) {
+        this.logger.log('WebSocket Gateway initialized successfully');
+    }
 
     async handleConnection(client: AuthenticatedSocket) {
         try {

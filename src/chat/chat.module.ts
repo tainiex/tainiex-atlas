@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
@@ -14,6 +15,7 @@ import { TokenWindowContextManager } from './context/token-window.manager';
     imports: [
         TypeOrmModule.forFeature([ChatSession, ChatMessage]),
         LlmModule, // Import LlmModule to use LlmService
+        JwtModule.register({}), // Import JwtModule for ChatGateway
     ],
     controllers: [ChatController],
     providers: [
