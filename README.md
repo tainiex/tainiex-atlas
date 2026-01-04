@@ -273,7 +273,7 @@ npm run format
 | GET | `/chat/sessions/:id/messages` | JWT | Get messages for a session |
 | GET | `/chat/models` | JWT | List supported AI models |
 
-### WebSocket (`wss://domain.com/chat`)
+### WebSocket (`wss://domain.com/api/chat`)
 
 **Real-time Chat Streaming** - Provides true streaming without buffering issues.
 
@@ -289,7 +289,7 @@ npm run format
 ```typescript
 import io from 'socket.io-client';
 
-const socket = io('wss://your-domain.com/chat', {
+const socket = io('wss://your-domain.com/api/chat', {
   auth: { token: yourJwtToken }
 });
 

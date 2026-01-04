@@ -26,7 +26,7 @@ interface AuthenticatedSocket extends Socket {
         origin: process.env.CORS_ORIGIN?.split(',') || '*',
         credentials: true
     },
-    namespace: '/chat'
+    namespace: '/api/chat'
 })
 export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
