@@ -21,30 +21,11 @@ interface AuthenticatedSocket extends Socket {
     };
 }
 
-
-// Process CORS origins with wildcard support
-const corsOriginEnv = process.env.CORS_ORIGIN;
-let corsOrigins: string | (string | RegExp)[] = '*';
-
-if (corsOriginEnv) {
-    corsOrigins = corsOriginEnv.split(',').map((origin) => {
-        const trimmed = origin.trim();
-        if (trimmed === '*') return trimmed;
-        // If containing wildcard but not just '*', convert to Regex
-        if (trimmed.includes('*')) {
-            const regexString =
-                '^' +
-                trimmed.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') +
-                '$';
-            return new RegExp(regexString);
-        }
-        return trimmed;
-    });
-}
-
 @WebSocketGateway({
     cors: {
-        origin: corsOrigins,
+        // In development: allow all origins
+        // In production: reverse proxy (Cloud Run/Nginx) handles CORS
+        origin: process.env.NODE_ENV === 'production' ? false : '*',
         credentials: true
     },
     namespace: '/api/chat'
