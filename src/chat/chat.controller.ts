@@ -94,6 +94,9 @@ export class ChatController {
         res.setHeader('Content-Encoding', 'identity');
         res.setHeader('Transfer-Encoding', 'chunked');
 
+        // CRITICAL: Remove Content-Length to force streaming (chunked) mode
+        res.removeHeader('Content-Length');
+
         // Flush headers immediately
         res.flushHeaders();
 
@@ -126,16 +129,29 @@ export class ChatController {
                 payload.model // Optional model param
             );
 
+            let isClosed = false;
+            req.on('close', () => {
+                isClosed = true;
+                console.log('[ChatController] Connection closed by client');
+            });
+
             console.log('[ChatController] Starting stream loop...');
             let chunkIdx = 0;
             for await (const chunk of stream) {
+                if (isClosed) break;
+
                 chunkIdx++;
                 const now = new Date();
                 const ms = now.getMilliseconds().toString().padStart(3, '0');
                 const timestamp = `${now.toLocaleTimeString()}.${ms}`;
                 console.log(`[ChatController] [${timestamp}] Sending chunk ${chunkIdx} (length: ${chunk.length})`);
+
                 // Ensure chunk is valid JSON string or text; LLM service returns string
-                res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                // Append 1KB of whitespace to bypass stubborn per-chunk proxy buffers
+                const data = JSON.stringify({ text: chunk });
+                const padding = ' '.repeat(1024);
+                res.write(`data: ${data}${padding}\n\n`);
+
                 if ((res as any).flush) {
                     (res as any).flush();
                 }
