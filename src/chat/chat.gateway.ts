@@ -10,6 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import { ChatService } from './chat.service';
 import { ChatRole } from '@shared/index';
 import type { ChatSendPayload, ChatStreamEvent } from '@shared/index';
@@ -21,32 +22,7 @@ interface AuthenticatedSocket extends Socket {
     };
 }
 
-
-// Process CORS origins with wildcard support
-const corsOriginEnv = process.env.CORS_ORIGIN;
-let corsOrigins: string | (string | RegExp)[] = '*';
-
-if (corsOriginEnv) {
-    corsOrigins = corsOriginEnv.split(',').map((origin) => {
-        const trimmed = origin.trim();
-        if (trimmed === '*') return trimmed;
-        // If containing wildcard but not just '*', convert to Regex
-        if (trimmed.includes('*')) {
-            const regexString =
-                '^' +
-                trimmed.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') +
-                '$';
-            return new RegExp(regexString);
-        }
-        return trimmed;
-    });
-}
-
 @WebSocketGateway({
-    cors: {
-        origin: corsOrigins,
-        credentials: true
-    },
     namespace: '/api/chat'
 })
 export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
@@ -57,10 +33,35 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
     constructor(
         private readonly jwtService: JwtService,
-        private readonly chatService: ChatService
+        private readonly chatService: ChatService,
+        private readonly configService: ConfigService
     ) { }
 
     afterInit(server: Server) {
+        // Configure CORS dynamically after .env is loaded
+        const corsOriginEnv = this.configService.get<string>('CORS_ORIGIN');
+
+        if (corsOriginEnv) {
+            const origins = corsOriginEnv.split(',').map((origin) => {
+                const trimmed = origin.trim();
+                if (trimmed === '*') return trimmed;
+                if (trimmed.includes('*')) {
+                    const regexString =
+                        '^' +
+                        trimmed.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') +
+                        '$';
+                    return new RegExp(regexString);
+                }
+                return trimmed;
+            });
+
+            // Update CORS settings
+            server.engine.opts.cors = {
+                origin: origins,
+                credentials: true
+            };
+        }
+
         this.logger.log('WebSocket Gateway initialized successfully');
     }
 
