@@ -1,10 +1,11 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
 import { LlmService } from '../llm/llm.service';
 import { ChatRole } from '@shared/index';
+import type { IContextManager } from './context/context-manager.interface';
 
 @Injectable()
 export class ChatService {
@@ -14,6 +15,8 @@ export class ChatService {
         @InjectRepository(ChatMessage)
         private chatMessageRepository: Repository<ChatMessage>,
         private llmService: LlmService,
+        @Inject('IContextManager')
+        private contextManager: IContextManager,
     ) { }
 
     async createSession(userId: string): Promise<ChatSession> {
@@ -28,6 +31,9 @@ export class ChatService {
         });
     }
 
+    async getSupportedModels() {
+        return this.llmService.listModels();
+    }
 
     async getSessionMessages(
         sessionId: string,
@@ -101,7 +107,7 @@ export class ChatService {
     }
 
     // New Streaming Method
-    async *streamMessage(sessionId: string, userId: string, content: string, role: ChatRole): AsyncGenerator<string> {
+    async *streamMessage(sessionId: string, userId: string, content: string, role: ChatRole, model?: string): AsyncGenerator<string> {
         console.log('[ChatService] streamMessage called:', { sessionId, userId, content, role });
         // 1. Verify session
         const session = await this.chatSessionRepository.findOne({ where: { id: sessionId, userId } });
@@ -132,10 +138,8 @@ export class ChatService {
 
         console.log('[ChatService] Preparing to call LLM service...');
         // 4. Stream AI Response
-        const history = await this.chatMessageRepository.find({
-            where: { sessionId },
-            order: { createdAt: 'ASC' },
-        });
+        // Use context manager to get sliding window history
+        const history = await this.contextManager.getContext(sessionId);
 
         // Exclude the message we just added? wait, we just saved it.
         // History includes it now. LlmService.streamChat usually takes (history, newMessage).
@@ -148,7 +152,8 @@ export class ChatService {
             console.log('[ChatService] Calling llmService.streamChat with', previousMessages.length, 'previous messages');
             const stream = this.llmService.streamChat(
                 previousMessages.map(m => ({ role: m.role, message: m.content })),
-                content
+                content,
+                model
             );
 
             console.log('[ChatService] Stream obtained, starting iteration...');
@@ -176,10 +181,7 @@ export class ChatService {
 
     private async generateAiResponse(sessionId: string, session: ChatSession) {
         try {
-            const history = await this.chatMessageRepository.find({
-                where: { sessionId },
-                order: { createdAt: 'ASC' },
-            });
+            const history = await this.contextManager.getContext(sessionId);
             const previousMessages = history.slice(0, -1);
             const lastMessage = history[history.length - 1];
 

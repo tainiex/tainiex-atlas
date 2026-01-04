@@ -1,4 +1,5 @@
-import { Controller, Post, Get, Body, Param, UseGuards, Request, Res, Query } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { Controller, Post, Get, Body, Param, UseGuards, Request, Res, Query, NotFoundException } from '@nestjs/common';
 import { UserThrottlerGuard } from '../common/guards/user-throttler.guard';
 import type { Response } from 'express';
 import { ChatService } from './chat.service';
@@ -8,7 +9,10 @@ import { ChatRole, AddMessageDto } from '@shared/index';
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
 export class ChatController {
-    constructor(private chatService: ChatService) { }
+    constructor(
+        private chatService: ChatService,
+        private configService: ConfigService
+    ) { }
 
     @Post('sessions')
     async createSession(@Request() req: any) {
@@ -16,8 +20,16 @@ export class ChatController {
     }
 
     @Get('sessions')
-    async getSessions(@Request() req: any) {
+    async getUserSessions(@Request() req: any) {
         return this.chatService.getUserSessions(req.user.id);
+    }
+
+    @Get('models')
+    async getModels() {
+        if (this.configService.get('NODE_ENV') !== 'development') {
+            throw new NotFoundException();
+        }
+        return this.chatService.getSupportedModels();
     }
 
     @Get('sessions/:id/messages')
@@ -65,13 +77,22 @@ export class ChatController {
                 sessionId,
                 req.user.id,
                 payload.content,
-                payload.role || ChatRole.USER
+                payload.role || ChatRole.USER,
+                payload.model // Optional model param
             );
 
+            console.log('[ChatController] Starting stream loop...');
+            let chunkIdx = 0;
             for await (const chunk of stream) {
+                chunkIdx++;
+                console.log(`[ChatController] Sending chunk ${chunkIdx} (length: ${chunk.length})`);
                 // Ensure chunk is valid JSON string or text; LLM service returns string
                 res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+                if ((res as any).flush) {
+                    (res as any).flush();
+                }
             }
+            console.log(`[ChatController] Stream loop finished. Total chunks: ${chunkIdx}`);
 
             res.write('data: [DONE]\n\n');
             res.end();

@@ -65,6 +65,11 @@ export interface AddMessageDto {
      * Defaults to 'user' if not specified. 
      */
     role?: ChatRole;
+    /**
+     * Optional model to use for generating response.
+     * If not provided, defaults to the system default model.
+     */
+    model?: string;
 }
 
 // Response DTOs

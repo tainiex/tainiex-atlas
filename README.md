@@ -266,8 +266,8 @@ npm run format
 | Method | Endpoint | Auth Required | Description |
 |--------|----------|---------------|-------------|
 | POST | `/llm/chat` | JWT | Send message to AI with conversation history |
-| POST | `/llm/chat/stream` | JWT | Send message to AI and receive streaming response (SSE) |
-| GET | `/llm/models` | JWT | List available AI models |
+| POST | `/chat/sessions/:id/messages` | JWT | Send message & Stream (Body: `{content, model?}`) |
+| GET | `/chat/models` | JWT | List supported AI models (Development Only) |
 
 ## Project Structure
 

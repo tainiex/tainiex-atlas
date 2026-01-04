@@ -89,6 +89,10 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@shared/(.*)$": "<rootDir>/../shared-lib/src/$1",
+      "^@tainiex/shared$": "<rootDir>/../shared-lib/src/index"
+    }
   }
 }

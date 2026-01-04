@@ -34,4 +34,29 @@ export class ModelClassifier {
             ? 'Preview model (v1beta1 API)'
             : 'GA model (VertexAI SDK)';
     }
+    private static readonly SUPPORTED_MODELS = [
+        'gemini-2.5-pro',
+        'gemini-2.5-flash',
+        'gemini-3-flash-preview',
+        'gemini-3-pro-preview',
+    ];
+
+    private static readonly DEFAULT_MODEL = 'gemini-2.5-flash';
+
+    /**
+     * 获取所有支持的模型列表
+     */
+    static getSupportedModels(): string[] {
+        return this.SUPPORTED_MODELS;
+    }
+
+    /**
+     * 验证模型名称，如果无效则返回默认模型
+     */
+    static validateModel(modelName?: string): string {
+        if (!modelName || !this.SUPPORTED_MODELS.includes(modelName)) {
+            return this.DEFAULT_MODEL;
+        }
+        return modelName;
+    }
 }

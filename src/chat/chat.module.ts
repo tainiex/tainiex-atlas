@@ -5,6 +5,9 @@ import { ChatService } from './chat.service';
 import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
 import { LlmModule } from '../llm/llm.module';
+import { TokenWindowContextManager } from './context/token-window.manager';
+
+
 
 @Module({
     imports: [
@@ -12,7 +15,14 @@ import { LlmModule } from '../llm/llm.module';
         LlmModule, // Import LlmModule to use LlmService
     ],
     controllers: [ChatController],
-    providers: [ChatService],
+    providers: [
+        ChatService,
+        TokenWindowContextManager,
+        {
+            provide: 'IContextManager',
+            useClass: TokenWindowContextManager,
+        },
+    ],
     exports: [ChatService],
 })
 export class ChatModule { }

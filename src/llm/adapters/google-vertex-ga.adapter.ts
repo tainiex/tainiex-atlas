@@ -118,12 +118,18 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
 
                     const result = await chat.sendMessageStream(message);
 
+                    let chunkCount = 0;
                     for await (const chunk of result.stream) {
-                        const text = chunk.candidates?.[0].content.parts[0].text;
+                        chunkCount++;
+                        const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
                         if (text) {
+                            console.log(`[GoogleVertexGaAdapter] Yielding chunk ${chunkCount}: "${text.substring(0, 20)}..."`);
                             yield text;
+                        } else {
+                            console.log(`[GoogleVertexGaAdapter] Chunk ${chunkCount} has no text`);
                         }
                     }
+                    console.log(`[GoogleVertexGaAdapter] Stream finished with ${chunkCount} chunks`);
                     return; // Success, exit loop
                 } catch (error: any) {
                     // Check for maxOutputTokens error and if we haven't downgraded yet
