@@ -23,9 +23,12 @@ interface AuthenticatedSocket extends Socket {
 
 @WebSocketGateway({
     cors: {
-        // In development: allow all origins
-        // In production: reverse proxy (Cloud Run/Nginx) handles CORS
-        origin: process.env.NODE_ENV === 'production' ? false : '*',
+        origin: (origin, callback) => {
+            // Reflect the request origin to satisfy the 'credentials: true' requirement.
+            // When credentials are included, Access-Control-Allow-Origin cannot be '*'.
+            // Returning true tells Socket.io/cors to echo back the request's origin.
+            callback(null, true);
+        },
         credentials: true
     },
     namespace: '/api/chat'
