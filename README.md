@@ -261,46 +261,48 @@ npm run format
 |--------|----------|---------------|-------------|
 | GET | `/profile` | JWT | Get user profile with signed avatar URL |
 
-### AI Chat (`/api/llm`)
+### AI Chat (`/api/chat`)
 
 | Method | Endpoint | Auth Required | Description |
 |--------|----------|---------------|-------------|
-| POST | `/llm/chat` | JWT | Send message to AI with conversation history (Body: `{content, model?}`) |
 | GET | `/chat/sessions` | JWT | Get user chat sessions |
-| GET | `/chat/sessions/:id` | JWT | Get single session details (title, etc.) |
-| DELETE | `/chat/sessions/:id` | JWT | Delete a session |
-| PATCH | `/chat/sessions/:id` | JWT | Update session (Body: `{ title }`) |
+| POST | `/chat/sessions` | JWT | Create a new chat session |
+| GET | `/chat/sessions/:id` | JWT | Get single session details |
+| DELETE | `/chat/sessions/:id` | JWT | Delete a session (Soft Delete) |
+| PATCH | `/chat/sessions/:id` | JWT | Update session title |
 | GET | `/chat/sessions/:id/messages` | JWT | Get messages for a session |
 | GET | `/chat/models` | JWT | List supported AI models |
 
 ### WebSocket (`wss://domain.com/api/chat`)
 
-**Real-time Chat Streaming** - Provides true streaming without buffering issues.
+**Real-time Chat Streaming** - High-performance bi-directional streaming for AI responses.
 
 | Event | Direction | Auth Required | Description |
 |-------|-----------|---------------|-------------|
-| `connect` | Client→Server | JWT (handshake) | Establish WebSocket connection with JWT token |
-| `chat:send` | Client→Server | Yes | Send message (Payload: `{sessionId, content, model?}`) |
-| `chat:stream` | Server→Client | - | Receive streaming chunks (Event: `{type:'chunk', data}`) |
+| `connect` | Client→Server | Yes | Establish connection (Supports JWT `auth` or HttpOnly cookies) |
+| `chat:send` | Client→Server | Yes | Send message (Payload: `{sessionId, content, model?, role?}`) |
+| `chat:stream` | Server→Client | - | Incremental chunks (Event: `{type:'chunk', data: '...'}`) |
 | `chat:stream` | Server→Client | - | Stream completion (Event: `{type:'done'}`) |
-| `chat:stream` | Server→Client | - | Stream error (Event: `{type:'error', error}`) |
+| `chat:stream` | Server→Client | - | Stream error (Event: `{type:'error', error: '...'}`) |
 
-**Example (Socket.IO Client)**:
+**Connection Configuration**:
+For the best experience and to bypass potential proxy buffering issues, we recommend forcing the `websocket` transport:
+
 ```typescript
 import io from 'socket.io-client';
 
 const socket = io('wss://your-domain.com/api/chat', {
-  auth: { token: yourJwtToken }
-});
-
-socket.on('connect', () => {
-  socket.emit('chat:send', { sessionId: 'xxx', content: 'Hello' });
+  auth: { token: yourJwtToken }, // Optional if using cookies
+  withCredentials: true,         // Required for httpOnly cookies
+  transports: ['websocket']      // Highly recommended
 });
 
 socket.on('chat:stream', (event) => {
-  if (event.type === 'chunk') console.log(event.data);
-  else if (event.type === 'done') console.log('Complete');
+  if (event.type === 'chunk') processChunk(event.data);
+  else if (event.type === 'done') finalize();
 });
+
+socket.emit('chat:send', { sessionId: 'xxx', content: 'Hello' });
 ```
 
 

@@ -24,8 +24,8 @@ The application follows a modular architecture. Each major feature has its own d
 - **`src/app.module.ts`**: Root module, aggregates all feature modules.
 - **`src/auth/`**: Authentication logic (Local & Google OAuth).
 - **`src/users/`**: User management and persistence.
-- **`src/chat/`**: Chat sessions, message history, and conversation logic.
-- **`src/llm/`**: Integration with Google Vertex AI (Gemini).
+- **src/chat/**: Chat sessions, message history, conversation logic, and **WebSocket Gateway**.
+- **src/llm/**: Integration with Google Vertex AI (Gemini).
 - **`src/invitation/`**: Invitation code generation and validation system.
 - **`shared-lib/`**: Shared interfaces and DTOs (e.g., `IUser`).
   - Request parameter structs (DTOs)
@@ -51,6 +51,9 @@ The application follows a modular architecture. Each major feature has its own d
 - **Tokens**:
     - `access_token`: Short-lived (15m).
     - `refresh_token`: Long-lived (7d), hashed and stored in DB (`hashed_refresh_token`).
+- **WebSocket Authentication**: 
+    - Supports both manual `auth.token` and browser-based `httpOnly` cookies (`access_token`).
+    - The gateway parses the `Cookie` header from the handshake if no token is provided in `auth`.
 - **Google OAuth**:
     - **Login**: `POST /auth/google` with `{ code }`.
     - **New User Flow**:
@@ -69,7 +72,12 @@ The application follows a modular architecture. Each major feature has its own d
 ### 3.2. Chat System
 - **Sessions**: Stored in `chat_sessions`. Contains a `title` and link to `User`.
 - **Messages**: Stored in `chat_messages`. Linked to `ChatSession`.
+- **Real-time Streaming**: Implemented via `ChatGateway` using Socket.io. Supports character-by-character streaming to bypass Cloud Run/Proxy buffering.
 - **Auto-Title**: Upon the **first message** of a session, the system calls `LlmService` to generate a summary title (< 15 chars) and updates the session title.
+
+### 3.4. Global JWT Configuration
+- **Standardization**: `JwtModule` is registered as a **global module** in `AuthModule` via `registerAsync`.
+- **Consistency**: All feature modules (like `ChatModule`) must NOT re-register `JwtModule` to ensure they use the same Secret Key and Service instance.
 
 ### 3.3. LLM Integration
 - **Provider**: Google Vertex AI (Gemini Models).
@@ -80,7 +88,8 @@ The application follows a modular architecture. Each major feature has its own d
 1.  **Code Style**: Follow standard Prettier/ESLint rules.
 2.  **DTOs/Interfaces**: Define shared interfaces in `shared-lib` when applicable to potential frontend sharing.
 3.  **Environment Variables**: All sensitive config (DB creds, API keys) must come from `ConfigService`.
-4.  **No Direct SQL**: Prefer TypeORM repositories for data access, unless performing bulk seed/maintenance operations in scripts.
+4.  **WebSocket CORS**: Uses a dynamic origin function in `ChatGateway` to support `credentials: true` with wildcard origins (mirrors request origin).
+5.  **No Direct SQL**: Prefer TypeORM repositories for data access, unless performing bulk seed/maintenance operations in scripts.
     - When modifying DB schema, always update **both** the Entity file AND `script/create_schema.sql`.
     - When adding new modules, remember to register them in `AppModule`.
     - **Separation of Concerns**: Keep `ChatModule` (Domain/Stateful) and `LlmModule` (Infrastructure/Stateless) separate. `Chat` consumes `Llm`.
