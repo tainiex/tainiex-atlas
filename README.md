@@ -273,6 +273,37 @@ npm run format
 | GET | `/chat/sessions/:id/messages` | JWT | Get messages for a session |
 | GET | `/chat/models` | JWT | List supported AI models |
 
+### WebSocket (`wss://domain.com/chat`)
+
+**Real-time Chat Streaming** - Provides true streaming without buffering issues.
+
+| Event | Direction | Auth Required | Description |
+|-------|-----------|---------------|-------------|
+| `connect` | Client→Server | JWT (handshake) | Establish WebSocket connection with JWT token |
+| `chat:send` | Client→Server | Yes | Send message (Payload: `{sessionId, content, model?}`) |
+| `chat:stream` | Server→Client | - | Receive streaming chunks (Event: `{type:'chunk', data}`) |
+| `chat:stream` | Server→Client | - | Stream completion (Event: `{type:'done'}`) |
+| `chat:stream` | Server→Client | - | Stream error (Event: `{type:'error', error}`) |
+
+**Example (Socket.IO Client)**:
+```typescript
+import io from 'socket.io-client';
+
+const socket = io('wss://your-domain.com/chat', {
+  auth: { token: yourJwtToken }
+});
+
+socket.on('connect', () => {
+  socket.emit('chat:send', { sessionId: 'xxx', content: 'Hello' });
+});
+
+socket.on('chat:stream', (event) => {
+  if (event.type === 'chunk') console.log(event.data);
+  else if (event.type === 'done') console.log('Complete');
+});
+```
+
+
 ## Project Structure
 
 ```

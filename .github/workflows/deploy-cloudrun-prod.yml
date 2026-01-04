@@ -92,4 +92,7 @@ jobs:
             --region ${{ env.CLOUD_RUN_REGION }} \
             --image ${{ steps.build-image.outputs.image }} \
             --service-account ${{ secrets.CLOUD_RUN_GCP_SERVICE_ACCOUNT }} \
-            --env-vars-file env.yaml
+            --env-vars-file env.yaml \
+            --timeout=3600 \
+            --no-cpu-throttling \
+            --session-affinity

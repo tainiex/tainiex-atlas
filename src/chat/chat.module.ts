@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ChatController } from './chat.controller';
 import { ChatService } from './chat.service';
+import { ChatGateway } from './chat.gateway';
 import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
 import { LlmModule } from '../llm/llm.module';
@@ -17,6 +18,7 @@ import { TokenWindowContextManager } from './context/token-window.manager';
     controllers: [ChatController],
     providers: [
         ChatService,
+        ChatGateway,
         TokenWindowContextManager,
         {
             provide: 'IContextManager',

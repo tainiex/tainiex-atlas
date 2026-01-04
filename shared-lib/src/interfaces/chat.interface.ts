@@ -85,3 +85,32 @@ export interface ChatSessionResponse extends IChatSession { }
  * Match of IChatMessage for now.
  */
 export interface ChatMessageResponse extends IChatMessage { }
+
+// WebSocket Event DTOs
+
+/**
+ * Payload for sending a message via WebSocket.
+ */
+export interface ChatSendPayload {
+    /** Session ID to send the message to. */
+    sessionId: string;
+    /** Message content. */
+    content: string;
+    /** Optional role (defaults to USER). */
+    role?: ChatRole;
+    /** Optional model to use for response generation. */
+    model?: string;
+}
+
+/**
+ * Stream event from server to client.
+ */
+export interface ChatStreamEvent {
+    /** Event type: chunk (data), done (completion), or error. */
+    type: 'chunk' | 'done' | 'error';
+    /** Text data for chunk events. */
+    data?: string;
+    /** Error message for error events. */
+    error?: string;
+}
+
