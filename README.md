@@ -271,7 +271,7 @@ npm run format
 | DELETE | `/chat/sessions/:id` | JWT | Delete a session |
 | PATCH | `/chat/sessions/:id` | JWT | Update session (Body: `{ title }`) |
 | GET | `/chat/sessions/:id/messages` | JWT | Get messages for a session |
-| GET | `/chat/models` | JWT | List supported AI models (Development Only) |
+| GET | `/chat/models` | JWT | List supported AI models |
 
 ## Project Structure
 

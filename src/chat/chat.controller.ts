@@ -47,9 +47,6 @@ export class ChatController {
 
     @Get('models')
     async getModels() {
-        if (this.configService.get('NODE_ENV') !== 'development') {
-            throw new NotFoundException();
-        }
         return this.chatService.getSupportedModels();
     }
 
