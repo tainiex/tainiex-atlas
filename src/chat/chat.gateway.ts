@@ -50,10 +50,22 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
     async handleConnection(client: AuthenticatedSocket) {
         try {
-            // Extract token from handshake auth
-            const token = client.handshake.auth.token;
+            // 1. Try to get token from handshake auth (standard socket.io)
+            let token = client.handshake.auth.token;
+
+            // 2. Fallback: Parse token from cookies (for browser-based clients)
+            if (!token && client.handshake.headers.cookie) {
+                const cookies = client.handshake.headers.cookie.split(';').reduce((acc, curr) => {
+                    const [name, value] = curr.trim().split('=');
+                    acc[name] = value;
+                    return acc;
+                }, {} as Record<string, string>);
+
+                token = cookies['access_token'];
+            }
+
             if (!token) {
-                this.logger.warn('Connection rejected: No token provided');
+                this.logger.warn('Connection rejected: No token provided in auth or cookies');
                 client.disconnect();
                 return;
             }
@@ -62,7 +74,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             const payload = await this.jwtService.verifyAsync(token);
             client.data.user = payload;
 
-            this.logger.log(`Client connected: ${client.id}, User: ${payload.id}`);
+            this.logger.log(`Client connected: ${client.id}, User: ${payload.id} (Via ${client.handshake.auth.token ? 'auth' : 'cookie'})`);
         } catch (error) {
             this.logger.error('Authentication failed:', error.message);
             client.disconnect();
