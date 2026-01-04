@@ -87,8 +87,25 @@ export class ChatController {
 
         // SSE Headers
         res.setHeader('Content-Type', 'text/event-stream');
-        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
         res.setHeader('Connection', 'keep-alive');
+        // Disable buffering in Nginx or GFE
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+
+        // Flush headers immediately to start the stream
+        res.flushHeaders();
+
+        // Send a preamble/comment to help some proxies avoid buffering
+        res.write(': preamble\n\n');
+
+        // Optional: Heartbeat interval could keep connection alive
+        const heartbeat = setInterval(() => {
+            if (!res.writableEnded) {
+                res.write(': heartbeat\n\n');
+                if ((res as any).flush) (res as any).flush();
+            }
+        }, 15000);
 
         try {
             const stream = this.chatService.streamMessage(
@@ -103,7 +120,10 @@ export class ChatController {
             let chunkIdx = 0;
             for await (const chunk of stream) {
                 chunkIdx++;
-                console.log(`[ChatController] Sending chunk ${chunkIdx} (length: ${chunk.length})`);
+                const now = new Date();
+                const ms = now.getMilliseconds().toString().padStart(3, '0');
+                const timestamp = `${now.toLocaleTimeString()}.${ms}`;
+                console.log(`[ChatController] [${timestamp}] Sending chunk ${chunkIdx} (length: ${chunk.length})`);
                 // Ensure chunk is valid JSON string or text; LLM service returns string
                 res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
                 if ((res as any).flush) {
@@ -119,6 +139,8 @@ export class ChatController {
             // If header was already sent, this might just append data, ensuring client sees error event
             res.write(`data: ${JSON.stringify({ error: 'Stream failed' })}\n\n`);
             res.end();
+        } finally {
+            clearInterval(heartbeat);
         }
     }
 }
