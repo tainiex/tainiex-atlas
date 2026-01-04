@@ -15,7 +15,6 @@ import { TokenWindowContextManager } from './context/token-window.manager';
     imports: [
         TypeOrmModule.forFeature([ChatSession, ChatMessage]),
         LlmModule, // Import LlmModule to use LlmService
-        JwtModule.register({}), // Import JwtModule for ChatGateway
     ],
     controllers: [ChatController],
     providers: [

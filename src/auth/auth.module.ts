@@ -16,6 +16,7 @@ import { AuthController } from './auth.controller';
         PassportModule,
         ConfigModule,
         JwtModule.registerAsync({
+            global: true,
             imports: [ConfigModule],
             useFactory: async (configService: ConfigService) => ({
                 secret: configService.get<string>('JWT_SECRET') || 'secretKey',
