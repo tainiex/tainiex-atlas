@@ -89,23 +89,33 @@ export class ChatController {
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache, no-transform');
         res.setHeader('Connection', 'keep-alive');
-        // Disable buffering in Nginx or GFE
         res.setHeader('X-Accel-Buffering', 'no');
         res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Encoding', 'identity');
+        res.setHeader('Transfer-Encoding', 'chunked');
 
-        // Flush headers immediately to start the stream
+        // Flush headers immediately
         res.flushHeaders();
 
-        // Send a preamble/comment to help some proxies avoid buffering
-        res.write(': preamble\n\n');
+        // Send a large preamble (2KB) of spaces to bypass GFE/Nginx buffer minimums
+        // Many proxies buffer until 512b or 1kb or 2kb.
+        const preamble = ': ' + ' '.repeat(2048) + '\n\n';
+        res.write(preamble);
 
         // Optional: Heartbeat interval could keep connection alive
         const heartbeat = setInterval(() => {
             if (!res.writableEnded) {
                 res.write(': heartbeat\n\n');
-                if ((res as any).flush) (res as any).flush();
+                if ((res as any).flush) {
+                    (res as any).flush();
+                } else if ((res as any).socket && (res as any).socket.setNoDelay) {
+                    // Try to disable Nagle's algorithm if flush is missing
+                    (res as any).socket.setNoDelay(true);
+                }
             }
         }, 15000);
+
+        console.log(`[ChatController] Stream started. Flush available: ${!!(res as any).flush}`);
 
         try {
             const stream = this.chatService.streamMessage(
