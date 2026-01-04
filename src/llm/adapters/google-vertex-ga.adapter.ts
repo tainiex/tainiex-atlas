@@ -46,16 +46,49 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         this.logger.info(`[GoogleVertexGaAdapter] Initialized model: ${this.modelName}`);
     }
 
-    async generateContent(prompt: string): Promise<string> {
-        try {
-            const result = await this.model.generateContent(prompt);
-            const response = result.response;
-            const text = response.candidates?.[0].content.parts[0].text;
-            return text || '';
-        } catch (error) {
-            this.logger.error('[GoogleVertexGaAdapter] generateContent failed:', error);
-            throw error;
+    /**
+     * Generic retry wrapper for network operations
+     */
+    private async withRetry<T>(operation: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+        let lastError: any;
+
+        for (let i = 0; i < retries; i++) {
+            try {
+                return await operation();
+            } catch (error: any) {
+                lastError = error;
+                const isNetworkError =
+                    error.message?.includes('fetch failed') ||
+                    error.message?.includes('ConnectTimeoutError') ||
+                    error.message?.includes('socket hang up') ||
+                    error.message?.includes('exception posting request') ||
+                    error.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+                    error.code === 'ETIMEDOUT';
+
+                if (isNetworkError && i < retries - 1) {
+                    const waitTime = delay * Math.pow(2, i); // Exponential backoff
+                    this.logger.warn(`[GoogleVertexGaAdapter] Network error: ${error.message}. Retrying in ${waitTime}ms... (${i + 1}/${retries})`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    continue;
+                }
+                throw error;
+            }
         }
+        throw lastError;
+    }
+
+    async generateContent(prompt: string): Promise<string> {
+        return this.withRetry(async () => {
+            try {
+                const result = await this.model.generateContent(prompt);
+                const response = result.response;
+                const text = response.candidates?.[0].content.parts[0].text;
+                return text || '';
+            } catch (error) {
+                this.logger.error('[GoogleVertexGaAdapter] generateContent failed:', error);
+                throw error;
+            }
+        });
     }
 
     async chat(history: ChatMessage[], message: string): Promise<string> {
@@ -65,30 +98,47 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         }));
 
         const runChat = async (maxOutputTokens: number): Promise<string> => {
-            try {
-                const chat = this.model.startChat({
-                    history: formattedHistory,
-                    generationConfig: {
-                        maxOutputTokens, // Dynamic
-                        temperature: 0.9,
-                        topP: 0.95,
-                        topK: 40,
-                    },
-                });
+            return this.withRetry(async () => {
+                try {
+                    const chat = this.model.startChat({
+                        history: formattedHistory,
+                        generationConfig: {
+                            maxOutputTokens, // Dynamic
+                            temperature: 0.9,
+                            topP: 0.95,
+                            topK: 40,
+                        },
+                    });
 
-                const result = await chat.sendMessage(message);
-                const response = result.response;
-                const text = response.candidates?.[0].content.parts[0].text;
-                return text || '';
-            } catch (error: any) {
-                // Check for maxOutputTokens error (400 INVALID_ARGUMENT)
-                if (maxOutputTokens > 8192 && error.message?.includes('maxOutputTokens')) {
-                    this.logger.warn(`[GoogleVertexGaAdapter] chat failed with ${maxOutputTokens} tokens. Retrying with 8192...`);
-                    return runChat(8192); // Recursive retry with safe limit
+                    const result = await chat.sendMessage(message);
+                    const response = result.response;
+                    const text = response.candidates?.[0].content.parts[0].text;
+                    return text || '';
+                } catch (error: any) {
+                    // Check for maxOutputTokens error (400 INVALID_ARGUMENT)
+                    if (maxOutputTokens > 8192 && error.message?.includes('maxOutputTokens')) {
+                        this.logger.warn(`[GoogleVertexGaAdapter] chat failed with ${maxOutputTokens} tokens. Retrying with 8192...`);
+                        return runChat(8192); // Recursive retry with safe limit
+                    }
+                    // For logic/token errors, we might not want to generic-retry, but for network we do.
+                    // withRetry wraps this, so if it throws network error, withRetry catches it.
+                    // If it's maxOutputTokens, we handle it recursively here.
+                    // Ideally recursion happens outside withRetry? Or inside?
+                    // If we're inside withRetry, and we call runChat again, it creates nested withRetry. That's fine.
+
+                    // Actually, if we throw here, withRetry catches it.
+                    // If it's a network error, withRetry retries.
+                    // If it's maxOutputTokens, withRetry might treat it as non-retriable unless we filter?
+                    // My isNetworkError check filters specific errors.
+                    // So maxOutputTokens error will bubble up from withRetry if not caught.
+                    // So we must catch it inside withRetry callback or let withRetry bubble it.
+                    // Wait, standard try/catch inside operation... catch(err) -> check maxTokens -> recurse.
+                    // If recurse, return runChat() -> returns Promise from new withRetry.
+                    // That works.
+                    this.logger.error('[GoogleVertexGaAdapter] chat failed:', error);
+                    throw error;
                 }
-                this.logger.error('[GoogleVertexGaAdapter] chat failed:', error);
-                throw error;
-            }
+            });
         };
 
         // Initial attempt with high capacity (Optimistic)
@@ -102,48 +152,81 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         }));
 
         let currentMaxTokens = 65536; // Initial optimistic limit
+        // We wrap the *connection* part in retry.
+        // Once stream starts, we yield. If stream breaks mid-way, manual retry isn't easy without re-generating partial.
 
-        try {
-            while (true) {
-                try {
-                    const chat = this.model.startChat({
-                        history: formattedHistory,
-                        generationConfig: {
-                            maxOutputTokens: currentMaxTokens,
-                            temperature: 0.9,
-                            topP: 0.95,
-                            topK: 40,
-                        },
-                    });
+        while (true) {
+            try {
+                const chat = this.model.startChat({
+                    history: formattedHistory,
+                    generationConfig: {
+                        maxOutputTokens: currentMaxTokens,
+                        temperature: 0.9,
+                        topP: 0.95,
+                        topK: 40,
+                    },
+                });
 
-                    const result = await chat.sendMessageStream(message);
+                // Wrap the initial network request (sendMessageStream) with retry
+                const result = await this.withRetry(async () => {
+                    return await chat.sendMessageStream(message);
+                });
 
-                    let chunkCount = 0;
-                    for await (const chunk of result.stream) {
-                        chunkCount++;
-                        const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
-                        if (text) {
-                            console.log(`[GoogleVertexGaAdapter] Yielding chunk ${chunkCount}: "${text.substring(0, 20)}..."`);
-                            yield text;
-                        } else {
-                            console.log(`[GoogleVertexGaAdapter] Chunk ${chunkCount} has no text`);
-                        }
+                let chunkCount = 0;
+                for await (const chunk of result.stream) {
+                    chunkCount++;
+                    const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (text) {
+                        console.log(`[GoogleVertexGaAdapter] Yielding chunk ${chunkCount}: "${text.substring(0, 20)}..."`);
+                        yield text;
                     }
-                    console.log(`[GoogleVertexGaAdapter] Stream finished with ${chunkCount} chunks`);
-                    return; // Success, exit loop
-                } catch (error: any) {
-                    // Check for maxOutputTokens error and if we haven't downgraded yet
+                }
+                console.log(`[GoogleVertexGaAdapter] Stream finished with ${chunkCount} chunks`);
+                return; // Success, exit loop
+            } catch (error: any) {
+                // Network errors during streaming iteration will end up here too?
+                // Yes, `for await` throws if stream errors.
+                // We should retry network errors here too?
+                // If we are halfway through, we might duplicate text if we restart?
+                // User requirement: "Increase robustnes, max 3 retries" likely implies connection retries.
+                // If mid-stream fails, simple restart duplicates content.
+                // BUT, withRetry only wraps sendMessageStream.
+                // If `for await` fails, it's outside withRetry.
+                // Let's catch `for await` errors here.
+
+                const isNetworkError =
+                    error.message?.includes('fetch failed') ||
+                    error.message?.includes('ConnectTimeoutError') ||
+                    error.message?.includes('exception posting request') ||
+                    error.code === 'UND_ERR_CONNECT_TIMEOUT';
+
+                if (isNetworkError) {
+                    // Ideally we should check if we yielded anything.
+                    // If we haven't yielded yet, we can retry safe.
+                    // If we yielded, restarting might be messy but better than crash?
+                    // Let's just log and throw for now, relying on withRetry for the INITIAL connection which is the main issue.
+                    // Wait, if I want to support retrying the connection establishment, existing withRetry does that.
+                    // If the stream breaks, proper resumption is hard.
+                    // Let's assume the user's issue is INITIAL connection timeout.
+                    this.logger.error('[GoogleVertexGaAdapter] streamChat error:', error);
+
+                    // Check for maxOutputTokens error
                     if (currentMaxTokens > 8192 && error.message?.includes('maxOutputTokens')) {
                         this.logger.warn(`[GoogleVertexGaAdapter] streamChat failed with ${currentMaxTokens} tokens. Retrying with 8192...`);
                         currentMaxTokens = 8192;
                         continue; // Retry loop with new limit
                     }
-                    throw error; // Other errors or already downgraded
                 }
+
+                // If we are here, either maxToken retry or fatal error.
+                // If it's a network error that happened *during* stream (rare but possible),
+                // we probably shouldn't auto-retry unless we track state.
+                // For now, let's bubble up non-maxToken errors.
+                // But wait, my withRetry catches initial connection errors.
+                // So if sendMessageStream fails, `withRetry` handles it.
+                // If `for await` fails, it falls through to here.
+                throw error;
             }
-        } catch (error) {
-            this.logger.error('[GoogleVertexGaAdapter] streamChat failed:', error);
-            throw error;
         }
     }
 }

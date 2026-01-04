@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { Controller, Post, Get, Body, Param, UseGuards, Request, Res, Query, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Patch, Body, Param, UseGuards, Request, Res, Query, NotFoundException } from '@nestjs/common';
 import { UserThrottlerGuard } from '../common/guards/user-throttler.guard';
 import type { Response } from 'express';
 import { ChatService } from './chat.service';
@@ -22,6 +22,27 @@ export class ChatController {
     @Get('sessions')
     async getUserSessions(@Request() req: any) {
         return this.chatService.getUserSessions(req.user.id);
+    }
+
+    @Get('sessions/:id')
+    async getSession(@Request() req: any, @Param('id') sessionId: string) {
+        return this.chatService.getSession(sessionId, req.user.id);
+    }
+
+    @Delete('sessions/:id')
+    async deleteSession(@Request() req: any, @Param('id') sessionId: string) {
+        await this.chatService.deleteSession(sessionId, req.user.id);
+        return { success: true };
+    }
+
+    @Patch('sessions/:id')
+    async updateSession(
+        @Request() req: any,
+        @Param('id') sessionId: string,
+        @Body() body: { title: string }
+    ) {
+        if (!body.title) throw new NotFoundException('Title is required');
+        return this.chatService.updateSession(sessionId, req.user.id, body.title);
     }
 
     @Get('models')

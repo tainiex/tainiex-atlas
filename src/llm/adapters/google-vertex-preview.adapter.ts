@@ -26,6 +26,37 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
         this.logger.info(`[GoogleVertexPreviewAdapter] Initialized model: ${this.modelName}`);
     }
 
+    /**
+     * Generic retry wrapper for network operations
+     */
+    private async withRetry<T>(operation: () => Promise<T>, retries = 3, delay = 1000): Promise<T> {
+        let lastError: any;
+
+        for (let i = 0; i < retries; i++) {
+            try {
+                return await operation();
+            } catch (error: any) {
+                lastError = error;
+                const isNetworkError =
+                    error.message?.includes('fetch failed') ||
+                    error.message?.includes('ConnectTimeoutError') ||
+                    error.message?.includes('socket hang up') ||
+                    error.message?.includes('exception posting request') ||
+                    error.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+                    error.code === 'ETIMEDOUT';
+
+                if (isNetworkError && i < retries - 1) {
+                    const waitTime = delay * Math.pow(2, i); // Exponential backoff
+                    this.logger.warn(`[GoogleVertexPreviewAdapter] Network error: ${error.message}. Retrying in ${waitTime}ms... (${i + 1}/${retries})`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                    continue;
+                }
+                throw error;
+            }
+        }
+        throw lastError;
+    }
+
     async generateContent(prompt: string): Promise<string> {
         const projectId = this.configService.get<string>('VERTEX_PROJECT_ID');
         const location = this.configService.get<string>('VERTEX_LOCATION', 'us-central1');
@@ -40,13 +71,15 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
             const client = await this.auth.getClient();
             const token = await client.getAccessToken();
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token.token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(requestBody)
+            const response = await this.withRetry(async () => {
+                return fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token.token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(requestBody)
+                });
             });
 
             if (!response.ok) {
@@ -94,13 +127,15 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
                 const client = await this.auth.getClient();
                 const token = await client.getAccessToken();
 
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token.token}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(requestBody)
+                const response = await this.withRetry(async () => {
+                    return fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token.token}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(requestBody)
+                    });
                 });
 
                 if (!response.ok) {
@@ -166,13 +201,15 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
                     const client = await this.auth.getClient();
                     const token = await client.getAccessToken();
 
-                    const response = await fetch(url, {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token.token}`,
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify(requestBody)
+                    const response = await this.withRetry(async () => {
+                        return fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token.token}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify(requestBody)
+                        });
                     });
 
                     if (!response.ok) {

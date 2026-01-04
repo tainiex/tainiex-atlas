@@ -26,9 +26,38 @@ export class ChatService {
 
     async getUserSessions(userId: string): Promise<ChatSession[]> {
         return this.chatSessionRepository.find({
-            where: { userId },
+            where: { userId, isDeleted: false },
             order: { updatedAt: 'DESC' },
         });
+    }
+
+    async getSession(sessionId: string, userId: string): Promise<ChatSession> {
+        const session = await this.chatSessionRepository.findOne({
+            where: { id: sessionId, userId, isDeleted: false }
+        });
+        if (!session) {
+            throw new Error('Session not found or access denied');
+        }
+        return session;
+    }
+
+    async deleteSession(sessionId: string, userId: string): Promise<void> {
+        const session = await this.chatSessionRepository.findOne({
+            where: { id: sessionId, userId, isDeleted: false }
+        });
+
+        if (!session) {
+            throw new Error('Session not found or access denied');
+        }
+
+        session.isDeleted = true;
+        await this.chatSessionRepository.save(session);
+    }
+
+    async updateSession(sessionId: string, userId: string, title: string): Promise<ChatSession> {
+        const session = await this.getSession(sessionId, userId);
+        session.title = title;
+        return this.chatSessionRepository.save(session);
     }
 
     async getSupportedModels() {

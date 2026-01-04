@@ -265,8 +265,12 @@ npm run format
 
 | Method | Endpoint | Auth Required | Description |
 |--------|----------|---------------|-------------|
-| POST | `/llm/chat` | JWT | Send message to AI with conversation history |
-| POST | `/chat/sessions/:id/messages` | JWT | Send message & Stream (Body: `{content, model?}`) |
+| POST | `/llm/chat` | JWT | Send message to AI with conversation history (Body: `{content, model?}`) |
+| GET | `/chat/sessions` | JWT | Get user chat sessions |
+| GET | `/chat/sessions/:id` | JWT | Get single session details (title, etc.) |
+| DELETE | `/chat/sessions/:id` | JWT | Delete a session |
+| PATCH | `/chat/sessions/:id` | JWT | Update session (Body: `{ title }`) |
+| GET | `/chat/sessions/:id/messages` | JWT | Get messages for a session |
 | GET | `/chat/models` | JWT | List supported AI models (Development Only) |
 
 ## Project Structure
