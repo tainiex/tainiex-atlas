@@ -29,9 +29,21 @@ interface AuthenticatedSocket extends Socket {
         origin: (requestOrigin, callback) => {
             // Strict CORS check: Only allow origins defined in environment variables
             // This prevents CSRF and WebSocket Hijacking attacks
+            // Parse allowed origins and convert wildcards to regex
             const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim());
 
-            if (!requestOrigin || allowedOrigins.includes(requestOrigin)) {
+            const isAllowed = allowedOrigins.some(origin => {
+                // Exact match
+                if (origin === requestOrigin) return true;
+                // Wildcard match (simple implementation: convert * to .*)
+                if (origin.includes('*')) {
+                    const regex = new RegExp(`^${origin.replace(/\./g, '\\.').replace(/\*/g, '.*')}$`);
+                    return regex.test(requestOrigin);
+                }
+                return false;
+            });
+
+            if (!requestOrigin || isAllowed) {
                 callback(null, true);
             } else {
                 callback(new Error('Not allowed by CORS'));
