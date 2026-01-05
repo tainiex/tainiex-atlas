@@ -84,11 +84,17 @@ The application follows a modular architecture. Each major feature has its own d
 - **Service**: `LlmService` handles API calls to Vertex AI (both standard `generateContent` and streaming `streamChat`).
 - **Configuration**: Credentials loaded via `GSA_KEY_FILE` or explicit Project/Location env vars.
 
+### 3.5. Rate Limiting
+- **Strategy**: Distributed Rate Limiting via PostgreSQL (Atomic Upsert).
+- **Storage**: `rate_limits` table.
+- **Optimization**: Uses in-memory `blockedCache` to reject repetitive spam without hitting DB when a user is already blocked.
+- **Implementation**: `RateLimitService` uses raw SQL for atomic operations to handle concurrency correctly.
+
 ## 4. Constraints & Conventions
 1.  **Code Style**: Follow standard Prettier/ESLint rules.
 2.  **DTOs/Interfaces**: Define shared interfaces in `shared-lib` when applicable to potential frontend sharing.
 3.  **Environment Variables**: All sensitive config (DB creds, API keys) must come from `ConfigService`.
-4.  **WebSocket CORS**: Uses a dynamic origin function in `ChatGateway` to support `credentials: true` with wildcard origins (mirrors request origin).
+4.  **WebSocket CORS**: Uses a dynamic origin function in `ChatGateway` that strictly verifies the origin against `CORS_ORIGIN` env var to support `credentials: true`.
 5.  **No Direct SQL**: Prefer TypeORM repositories for data access, unless performing bulk seed/maintenance operations in scripts.
     - When modifying DB schema, always update **both** the Entity file AND `script/create_schema.sql`.
     - When adding new modules, remember to register them in `AppModule`.

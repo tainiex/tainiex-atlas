@@ -3,12 +3,16 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshAuthGuard } from './jwt-refresh-auth.guard';
+import { RateLimit } from '../rate-limit/rate-limit.decorator';
+import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
 
 @Controller('auth')
+@UseGuards(RateLimitGuard) // Apply global guard for this controller (or globally in AppModule)
 export class AuthController {
     constructor(private authService: AuthService) { }
 
     @Post('login')
+    @RateLimit(5, 60) // Limit: 5 requests per 60 seconds
     async login(@Body() req, @Res({ passthrough: true }) res: Response) {
         const user = await this.authService.validateUser(req.username, req.password);
         if (!user) {

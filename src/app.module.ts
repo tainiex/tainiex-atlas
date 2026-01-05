@@ -14,6 +14,8 @@ import { ChatSession } from './chat/chat-session.entity';
 import { ChatMessage } from './chat/chat-message.entity';
 import { LoggerModule } from './common/logger/logger.module';
 import { ThrottlerModule } from '@nestjs/throttler';
+import { RateLimitEntry } from './rate-limit/rate-limit.entity';
+import { RateLimitModule } from './rate-limit/rate-limit.module';
 
 @Module({
   imports: [
@@ -36,8 +38,8 @@ import { ThrottlerModule } from '@nestjs/throttler';
           username: configService.get<string>('DB_USERNAME', 'postgres'),
           password: configService.get<string>('DB_PASSWORD', 'postgres'),
           database: configService.get<string>('DB_NAME', 'tainiex_core'),
-          entities: [User, InvitationCode, ChatSession, ChatMessage],
-          synchronize: true, // Auto-create tables (dev only)
+          entities: [User, InvitationCode, ChatSession, ChatMessage, RateLimitEntry],
+          synchronize: !isProd, // Auto-create tables (dev only)
           ssl: enableSsl ? { rejectUnauthorized: false } : false,
         };
       },
@@ -52,6 +54,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
     LlmModule,
     InvitationModule,
     ChatModule,
+    RateLimitModule,
   ],
   controllers: [AppController],
   providers: [AppService],

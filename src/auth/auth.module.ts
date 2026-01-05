@@ -5,6 +5,7 @@ import { InvitationModule } from '../invitation/invitation.module';
 import { PassportModule } from '@nestjs/passport';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { RateLimitModule } from '../rate-limit/rate-limit.module';
 import { JwtStrategy } from './jwt.strategy';
 import { JwtRefreshStrategy } from './jwt-refresh.strategy';
 import { AuthController } from './auth.controller';
@@ -15,6 +16,7 @@ import { AuthController } from './auth.controller';
         InvitationModule,
         PassportModule,
         ConfigModule,
+        RateLimitModule,
         JwtModule.registerAsync({
             global: true,
             imports: [ConfigModule],

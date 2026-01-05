@@ -1,3 +1,4 @@
+
 import {
     WebSocketGateway,
     SubscribeMessage,
@@ -13,7 +14,9 @@ import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { ChatRole } from '@shared/index';
 import type { ChatSendPayload, ChatStreamEvent, ChatErrorPayload } from '@shared/index';
-import { Logger } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
+import { ChatSendDto } from './dto/chat.dto';
+import { RateLimitService } from '../rate-limit/rate-limit.service';
 
 interface AuthenticatedSocket extends Socket {
     data: {
@@ -44,27 +47,30 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
     private readonly logger = new Logger(ChatGateway.name);
 
-    private connectionCounts = new Map<string, number[]>();
-
     constructor(
         private readonly jwtService: JwtService,
-        private readonly chatService: ChatService
+        private readonly chatService: ChatService,
+        private readonly rateLimitService: RateLimitService
     ) { }
 
     afterInit(server: Server) {
         this.logger.log('WebSocket Gateway initialized successfully');
-
-        // Clean up connection counts periodically to prevent memory leak
-        setInterval(() => {
-            this.cleanupConnectionCounts();
-        }, 60000); // Every minute
     }
+
+    // Constants for Rate Limiting
+    private static readonly RATE_LIMIT_POINTS = 10; // Max requests
+    private static readonly RATE_LIMIT_DURATION = 60; // Window in seconds
 
     async handleConnection(client: AuthenticatedSocket) {
         try {
-            // 0. Rate Limiting Check
+            // 0. Rate Limiting Check (Database)
             const ip = client.handshake.address;
-            if (this.isRateLimited(ip)) {
+            const isAllowed = await this.rateLimitService.isAllowed(
+                ip,
+                ChatGateway.RATE_LIMIT_POINTS,
+                ChatGateway.RATE_LIMIT_DURATION
+            );
+            if (!isAllowed) {
                 this.logger.warn(`Connection rejected: Rate limit exceeded for IP ${ip}`);
                 client.disconnect(true);
                 return;
@@ -109,45 +115,15 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
         }
     }
 
-    private isRateLimited(ip: string): boolean {
-        const now = Date.now();
-        const windowMs = 60 * 1000; // 1 minute
-        const limit = 10; // Max connections per minute
-
-        let timestamps = this.connectionCounts.get(ip) || [];
-        // Filter out old timestamps
-        timestamps = timestamps.filter(time => now - time < windowMs);
-
-        if (timestamps.length >= limit) {
-            return true;
-        }
-
-        timestamps.push(now);
-        this.connectionCounts.set(ip, timestamps);
-        return false;
-    }
-
-    private cleanupConnectionCounts() {
-        const now = Date.now();
-        const windowMs = 60 * 1000;
-        for (const [ip, timestamps] of this.connectionCounts.entries()) {
-            const validTimestamps = timestamps.filter(time => now - time < windowMs);
-            if (validTimestamps.length === 0) {
-                this.connectionCounts.delete(ip);
-            } else {
-                this.connectionCounts.set(ip, validTimestamps);
-            }
-        }
-    }
-
     handleDisconnect(client: AuthenticatedSocket) {
         this.logger.log(`Client disconnected: ${client.id}`);
     }
 
+    @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))
     @SubscribeMessage('chat:send')
     async handleChatMessage(
         @ConnectedSocket() client: AuthenticatedSocket,
-        @MessageBody() payload: ChatSendPayload
+        @MessageBody() payload: ChatSendDto
     ) {
         try {
             const user = client.data.user;
@@ -158,10 +134,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
             const { sessionId, content, role, model } = payload;
 
-            if (!content || !sessionId) {
-                client.emit('chat:error', { error: 'Missing required fields' });
-                return;
-            }
+            // DTO validation handles content/sessionId checks now, but double check doesn't hurt logic flow
+            // Actually DTO ensures they are present and valid if ValidationPipe works.
 
             this.logger.log(`Processing message for session ${sessionId}`);
 

@@ -3,7 +3,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ChatGateway } from './chat.gateway';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
-import { ConfigService } from '@nestjs/config';
+import { RateLimitService } from '../rate-limit/rate-limit.service';
 
 describe('ChatGateway', () => {
     let gateway: ChatGateway;
@@ -17,9 +17,9 @@ describe('ChatGateway', () => {
         streamMessage: jest.fn(),
     };
 
-    // ChatGateway does not inject ConfigService in constructor but uses environment variables in @WebSocketGateway decorator.
-    // However, the CORS origin check logic we added is inside the decorator factory which is hard to test via unit test of the class instance.
-    // Instead, we will test the handleConnection logic.
+    const mockRateLimitService = {
+        isAllowed: jest.fn().mockResolvedValue(true),
+    };
 
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
@@ -27,10 +27,12 @@ describe('ChatGateway', () => {
                 ChatGateway,
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: ChatService, useValue: mockChatService },
+                { provide: RateLimitService, useValue: mockRateLimitService },
             ],
         }).compile();
 
         gateway = module.get<ChatGateway>(ChatGateway);
+        jwtService = module.get<JwtService>(JwtService);
     });
 
     it('should be defined', () => {
@@ -78,6 +80,16 @@ describe('ChatGateway', () => {
             await gateway.handleConnection(client);
             expect(client.data.user).toBeDefined();
             expect(client.data.user.id).toBe('user_1');
+        });
+
+        it('should reject if rate limit exceeded', async () => {
+            mockRateLimitService.isAllowed.mockResolvedValueOnce(false);
+            const client: any = {
+                handshake: { auth: { token: 'valid_token' }, headers: {}, address: '127.0.0.1' },
+                disconnect: jest.fn(),
+            };
+            await gateway.handleConnection(client);
+            expect(client.disconnect).toHaveBeenCalledWith(true);
         });
     });
 });

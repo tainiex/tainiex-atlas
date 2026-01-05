@@ -49,3 +49,11 @@ SELECT
     upper(substring(md5(random()::text) from 1 for 8)),
     NOW() + INTERVAL '14 days'
 FROM generate_series(1, 100);
+
+-- Rate Limiting Table
+DROP TABLE IF EXISTS rate_limits;
+CREATE TABLE rate_limits (
+    "key" VARCHAR NOT NULL PRIMARY KEY,
+    points INT DEFAULT 0,
+    "expiresAt" TIMESTAMP NOT NULL
+);
