@@ -12,7 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { ChatRole } from '@shared/index';
-import type { ChatSendPayload, ChatStreamEvent } from '@shared/index';
+import type { ChatSendPayload, ChatStreamEvent, ChatErrorPayload } from '@shared/index';
 import { Logger } from '@nestjs/common';
 
 interface AuthenticatedSocket extends Socket {

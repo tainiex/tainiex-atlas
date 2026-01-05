@@ -168,9 +168,12 @@ export class AuthService {
     }
 
     async googleSignup(invitationCode: string, signupToken: string): Promise<any> {
+        console.log(`[GoogleSignup] Attempting signup with code: ${invitationCode}`);
+
         // Validate invitation code first
         const isValid = await this.invitationService.validateCode(invitationCode);
         if (!isValid) {
+            console.error(`[GoogleSignup] Invalid invitation code: ${invitationCode}`);
             throw new UnauthorizedException('Invalid or expired invitation code');
         }
 
@@ -181,18 +184,22 @@ export class AuthService {
                 secret: this.configService.get<string>('JWT_SECRET'),
             });
         } catch (e) {
+            console.error(`[GoogleSignup] Token verification failed:`, e.message);
             throw new UnauthorizedException('Invalid or expired signup token');
         }
 
         if (payload.type !== 'google_signup_init' || !payload.email) {
+            console.error(`[GoogleSignup] Invalid payload type or email missing`, payload);
             throw new UnauthorizedException('Invalid signup token payload');
         }
 
         const { email, picture } = payload;
+        console.log(`[GoogleSignup] Token verified for email: ${email}`);
 
         // Double check if user exists
         let user = await this.usersService.findOneByEmail(email);
         if (user) {
+            console.log(`[GoogleSignup] User already exists, logging in: ${user.id}`);
             const tokens = await this.generateTokens(user);
             await this.updateRefreshToken(user.id, tokens.refresh_token);
 

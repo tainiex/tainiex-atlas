@@ -1,7 +1,8 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { IChatSession } from '@shared/index';
 
 @Entity('chat_sessions')
-export class ChatSession {
+export class ChatSession implements IChatSession {
     @PrimaryGeneratedColumn('uuid')
     id: string;
 

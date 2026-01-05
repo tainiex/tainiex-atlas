@@ -44,9 +44,18 @@ export class InvitationService implements OnModuleInit {
 
     async validateCode(code: string): Promise<boolean> {
         const invitation = await this.invitationRepository.findOne({ where: { code } });
-        if (!invitation) return false;
-        if (invitation.isUsed) return false;
-        if (new Date() > invitation.expiresAt) return false;
+        if (!invitation) {
+            console.log(`[InvitationService] Code not found: ${code}`);
+            return false;
+        }
+        if (invitation.isUsed) {
+            console.log(`[InvitationService] Code already used: ${code}`);
+            return false;
+        }
+        if (new Date() > invitation.expiresAt) {
+            console.log(`[InvitationService] Code expired: ${code}, expiresAt: ${invitation.expiresAt}`);
+            return false;
+        }
         return true;
     }
 
