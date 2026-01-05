@@ -94,6 +94,12 @@ The application follows a modular architecture. Each major feature has its own d
     - When adding new modules, remember to register them in `AppModule`.
     - **Separation of Concerns**: Keep `ChatModule` (Domain/Stateful) and `LlmModule` (Infrastructure/Stateless) separate. `Chat` consumes `Llm`.
     - **LLM Interaction Constraint**: Direct LLM chat interaction is forbidden. All chat interactions MUST be scoped to a `ChatSession` and managed via `ChatModule`.
+6.  **Security**:
+    -   **CORS**: NEVER use dynamic callbacks that reflect the origin (`callback(null, true)`). Always check against `CORS_ORIGIN`.
+    -   **Race Conditions**: Use atomic database operations (e.g., `update` with `where`) for state transitions like claiming codes.
+7.  **Testing**:
+    -   All business logic (Services/Gateways) MUST have unit tests (`.spec.ts`).
+    -   Use `jest` for testing.
 
 ## 5. Development Workflow
 - **Start Dev**: `yarn run start:dev`

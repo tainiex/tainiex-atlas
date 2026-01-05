@@ -23,11 +23,16 @@ interface AuthenticatedSocket extends Socket {
 
 @WebSocketGateway({
     cors: {
-        origin: (origin, callback) => {
-            // Reflect the request origin to satisfy the 'credentials: true' requirement.
-            // When credentials are included, Access-Control-Allow-Origin cannot be '*'.
-            // Returning true tells Socket.io/cors to echo back the request's origin.
-            callback(null, true);
+        origin: (requestOrigin, callback) => {
+            // Strict CORS check: Only allow origins defined in environment variables
+            // This prevents CSRF and WebSocket Hijacking attacks
+            const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim());
+
+            if (!requestOrigin || allowedOrigins.includes(requestOrigin)) {
+                callback(null, true);
+            } else {
+                callback(new Error('Not allowed by CORS'));
+            }
         },
         credentials: true
     },
@@ -39,6 +44,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
     private readonly logger = new Logger(ChatGateway.name);
 
+    private connectionCounts = new Map<string, number[]>();
+
     constructor(
         private readonly jwtService: JwtService,
         private readonly chatService: ChatService
@@ -46,10 +53,23 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
     afterInit(server: Server) {
         this.logger.log('WebSocket Gateway initialized successfully');
+
+        // Clean up connection counts periodically to prevent memory leak
+        setInterval(() => {
+            this.cleanupConnectionCounts();
+        }, 60000); // Every minute
     }
 
     async handleConnection(client: AuthenticatedSocket) {
         try {
+            // 0. Rate Limiting Check
+            const ip = client.handshake.address;
+            if (this.isRateLimited(ip)) {
+                this.logger.warn(`Connection rejected: Rate limit exceeded for IP ${ip}`);
+                client.disconnect(true);
+                return;
+            }
+
             // 1. Try to get token from handshake auth (standard socket.io)
             let token = client.handshake.auth.token;
 
@@ -72,12 +92,51 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
             // Verify JWT
             const payload = await this.jwtService.verifyAsync(token);
+
+            // Strict ID Check
+            const userId = payload.sub || payload.id; // Support both but prefer sub
+            if (!userId) {
+                throw new Error('Invalid token payload: User ID missing');
+            }
+
+            payload.id = userId; // Ensure .id is available for legacy code if needed
             client.data.user = payload;
 
-            this.logger.log(`Client connected: ${client.id}, User: ${payload.id} (Via ${client.handshake.auth.token ? 'auth' : 'cookie'})`);
+            this.logger.log(`Client connected: ${client.id}, User: ${userId} (Via ${client.handshake.auth.token ? 'auth' : 'cookie'})`);
         } catch (error) {
             this.logger.error('Authentication failed:', error.message);
             client.disconnect();
+        }
+    }
+
+    private isRateLimited(ip: string): boolean {
+        const now = Date.now();
+        const windowMs = 60 * 1000; // 1 minute
+        const limit = 10; // Max connections per minute
+
+        let timestamps = this.connectionCounts.get(ip) || [];
+        // Filter out old timestamps
+        timestamps = timestamps.filter(time => now - time < windowMs);
+
+        if (timestamps.length >= limit) {
+            return true;
+        }
+
+        timestamps.push(now);
+        this.connectionCounts.set(ip, timestamps);
+        return false;
+    }
+
+    private cleanupConnectionCounts() {
+        const now = Date.now();
+        const windowMs = 60 * 1000;
+        for (const [ip, timestamps] of this.connectionCounts.entries()) {
+            const validTimestamps = timestamps.filter(time => now - time < windowMs);
+            if (validTimestamps.length === 0) {
+                this.connectionCounts.delete(ip);
+            } else {
+                this.connectionCounts.set(ip, validTimestamps);
+            }
         }
     }
 

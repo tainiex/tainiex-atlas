@@ -225,8 +225,14 @@ export class AuthService {
             avatar: avatarUrl || undefined,
         });
 
-        // Mark code as used
-        await this.invitationService.markAsUsed(invitationCode, user);
+        // Mark code as used (Atomic check)
+        const consumed = await this.invitationService.consumeCode(invitationCode, user);
+        if (!consumed) {
+            // Rollback user creation if code consumption failed (Race Condition)
+            await this.usersService.delete(user.id); // Assuming hard delete or soft delete handling
+            console.error(`[GoogleSignup] Race Condition: Code ${invitationCode} failed to consume for user ${user.id}`);
+            throw new UnauthorizedException('Invitation code is no longer valid');
+        }
 
         const tokens = await this.generateTokens(user);
         await this.updateRefreshToken(user.id, tokens.refresh_token);
@@ -264,8 +270,13 @@ export class AuthService {
             email,
         });
 
-        // Mark code as used
-        await this.invitationService.markAsUsed(invitationCode, user);
+        // Mark code as used (Atomic check)
+        const consumed = await this.invitationService.consumeCode(invitationCode, user);
+        if (!consumed) {
+            // Rollback user creation
+            await this.usersService.delete(user.id);
+            throw new UnauthorizedException('Invitation code is no longer valid');
+        }
 
         const { password, ...result } = user;
         return result;

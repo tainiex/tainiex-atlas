@@ -286,6 +286,8 @@ npm run format
 | `chat:stream` | Server→Client | - | Stream error (Event: `{type:'error', error: '...'}`) |
 
 **Connection Configuration**:
+> **Note**: To prevent abuse, connections are rate-limited to 10 connections per minute per IP address.
+
 For the best experience and to bypass potential proxy buffering issues, we recommend forcing the `websocket` transport:
 
 ```typescript
@@ -429,10 +431,10 @@ Then attach your debugger to port 9229.
 - [ ] Enable HTTPS and update cookie settings
 - [ ] Disable TypeORM `synchronize` and use migrations
 - [ ] Secure Google Service Account key file (never commit to git)
-- [ ] Configure CORS for your frontend domain
-- [ ] Set up proper database backups
+- [x] Configure CORS for your frontend domain (Enforced strict checking in ChatGateway)
+- [x] Set up proper database backups
 - [ ] Use environment variables management service (e.g., GCP Secret Manager)
-- [ ] Review and configure rate limiting
+- [x] Review and configure rate limiting (Basic IP limiting implemented)
 - [ ] Set up proper logging and monitoring
 
 ### Environment Variables

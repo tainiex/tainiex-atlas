@@ -59,12 +59,29 @@ export class InvitationService implements OnModuleInit {
         return true;
     }
 
+    /**
+     * Atomically consumes an invitation code.
+     * Returns true if successful, false if code is invalid, expired, or already used.
+     * This prevents race conditions where multiple users could use the same code simultaneously.
+     */
+    async consumeCode(code: string, user: User): Promise<boolean> {
+        const result = await this.invitationRepository
+            .createQueryBuilder()
+            .update(InvitationCode)
+            .set({
+                isUsed: true,
+                usedByUserId: user.id
+            })
+            .where("code = :code", { code })
+            .andWhere("isUsed = :isUsed", { isUsed: false })
+            .andWhere("expiresAt > :now", { now: new Date() })
+            .execute();
+
+        return result.affected !== undefined && result.affected > 0;
+    }
+
+    // Deprecated: Use consumeCode instead for atomic safety
     async markAsUsed(code: string, user: User): Promise<void> {
-        const invitation = await this.invitationRepository.findOne({ where: { code } });
-        if (invitation) {
-            invitation.isUsed = true;
-            invitation.usedByUserId = user.id;
-            await this.invitationRepository.save(invitation);
-        }
+        await this.consumeCode(code, user);
     }
 }
