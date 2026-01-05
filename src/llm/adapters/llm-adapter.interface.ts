@@ -1,5 +1,7 @@
+export type LlmRole = 'user' | 'assistant' | 'system';
+
 export interface ChatMessage {
-    role: string;
+    role: LlmRole;
     message?: string;
     text?: string;
 }

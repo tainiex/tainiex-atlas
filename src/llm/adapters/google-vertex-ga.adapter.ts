@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { VertexAI, GenerativeModel, Content } from '@google-cloud/vertexai';
 import { GoogleAuth } from 'google-auth-library';
-import { ILlmAdapter, ChatMessage } from './llm-adapter.interface';
+import { ILlmAdapter, ChatMessage, LlmRole } from './llm-adapter.interface';
 import { LoggerService } from '../../common/logger/logger.service';
 
 /**
@@ -91,9 +91,29 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         });
     }
 
+    private mapRoleToVertex(role: LlmRole): string {
+        switch (role) {
+            case 'user':
+                return 'user';
+            case 'assistant':
+                return 'model';
+            case 'system':
+                // Vertex doesn't support system role in history directly for gemini-pro (sometimes), 
+                // but usually it's treated as user or prepended. 
+                // For safety, let's map to user or just exclude if not needed? 
+                // Standard practice: map 'system' to 'user' for some models, or 'system' content if supported.
+                // But the user constraint is simple: assistant->model, user->user.
+                // Let's assume system -> user for now to avoid errors, or 'user' with a prefix.
+                return 'user';
+            default:
+                this.logger.warn(`[GoogleVertexGaAdapter] Unknown role encountered: ${role}. Defaulting to 'user'.`);
+                return 'user';
+        }
+    }
+
     async chat(history: ChatMessage[], message: string): Promise<string> {
         const formattedHistory: Content[] = history.map(h => ({
-            role: h.role === 'algo' ? 'model' : 'user',
+            role: this.mapRoleToVertex(h.role),
             parts: [{ text: h.message || h.text || '' }]
         }));
 
@@ -147,7 +167,7 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
 
     async *streamChat(history: ChatMessage[], message: string): AsyncGenerator<string> {
         const formattedHistory: Content[] = history.map(h => ({
-            role: h.role === 'algo' ? 'model' : 'user',
+            role: this.mapRoleToVertex(h.role),
             parts: [{ text: h.message || h.text || '' }]
         }));
 

@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuth } from 'google-auth-library';
-import { ILlmAdapter, ChatMessage } from './llm-adapter.interface';
+import { ILlmAdapter, ChatMessage, LlmRole } from './llm-adapter.interface';
 import { LoggerService } from '../../common/logger/logger.service';
 
 /**
@@ -96,6 +96,20 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
         }
     }
 
+    private mapRoleToVertex(role: LlmRole): string {
+        switch (role) {
+            case 'user':
+                return 'user';
+            case 'assistant':
+                return 'model';
+            case 'system':
+                return 'user'; // Fallback
+            default:
+                this.logger.warn(`[GoogleVertexPreviewAdapter] Unknown role encountered: ${role}. Defaulting to 'user'.`);
+                return 'user';
+        }
+    }
+
     async chat(history: ChatMessage[], message: string): Promise<string> {
         const projectId = this.configService.get<string>('VERTEX_PROJECT_ID');
         const location = this.configService.get<string>('VERTEX_LOCATION', 'us-central1');
@@ -105,7 +119,7 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
         const requestBodyBase = {
             contents: [
                 ...history.map(h => ({
-                    role: h.role === 'algo' ? 'model' : 'user',
+                    role: this.mapRoleToVertex(h.role),
                     parts: [{ text: h.message || h.text || '' }]
                 })),
                 { role: 'user', parts: [{ text: message }] }
@@ -188,7 +202,7 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
                     },
                     contents: [
                         ...history.map(h => ({
-                            role: h.role === 'algo' ? 'model' : 'user',
+                            role: this.mapRoleToVertex(h.role),
                             parts: [{ text: h.message || h.text || '' }]
                         })),
                         { role: 'user', parts: [{ text: message }] }
