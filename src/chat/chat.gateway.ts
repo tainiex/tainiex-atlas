@@ -30,13 +30,16 @@ interface AuthenticatedSocket extends Socket {
             // Strict CORS check: Only allow origins defined in environment variables
             // This prevents CSRF and WebSocket Hijacking attacks
             // Parse allowed origins and convert wildcards to regex
-            const allowedOrigins = (process.env.CORS_ORIGIN || '').split(',').map(o => o.trim());
+            const rawConfig = process.env.CORS_ORIGIN || '';
+            // Robust parsing: split by comma, trim spaces, AND remove surrounding quotes if any
+            const allowedOrigins = rawConfig.split(',').map(o => o.trim().replace(/^['"]|['"]$/g, ''));
 
             const isAllowed = allowedOrigins.some(origin => {
                 // Exact match
                 if (origin === requestOrigin) return true;
                 // Wildcard match (simple implementation: convert * to .*)
                 if (origin.includes('*')) {
+                    // Normalize origin for regex (escape dots, convert * to .*)
                     const regex = new RegExp(`^${origin.replace(/\./g, '\\.').replace(/\*/g, '.*')}$`);
                     return regex.test(requestOrigin);
                 }
@@ -46,6 +49,7 @@ interface AuthenticatedSocket extends Socket {
             if (!requestOrigin || isAllowed) {
                 callback(null, true);
             } else {
+                console.warn(`[CORS] Rejected Origin: ${requestOrigin}. Configured: ${rawConfig}`); // Use console.warn for immediate visibility in standard logs
                 callback(new Error('Not allowed by CORS'));
             }
         },
