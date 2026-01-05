@@ -2,6 +2,11 @@
  * 模型分类器
  * 根据模型名称判断应使用哪种适配器
  */
+export interface ModelMetadata {
+    maxOutputTokens: number;
+    description: string;
+}
+
 export class ModelClassifier {
     /**
      * 判断是否为 Preview 模型
@@ -34,12 +39,31 @@ export class ModelClassifier {
             ? 'Preview model (v1beta1 API)'
             : 'GA model (VertexAI SDK)';
     }
-    private static readonly SUPPORTED_MODELS = [
-        'gemini-2.5-pro',
-        'gemini-2.5-flash',
-        'gemini-3-flash-preview',
-        'gemini-3-pro-preview',
+
+    // Unified Model Configuration
+    private static readonly _MODELS = [
+        { name: 'gemini-2.5-pro', maxOutputTokens: 5734 },
+        { name: 'gemini-2.5-flash', maxOutputTokens: 5734 },
+        { name: 'gemini-3-flash-preview', maxOutputTokens: 45875 },
+        { name: 'gemini-3-pro-preview', maxOutputTokens: 45875 },
     ];
+
+    /**
+     * 获取模型元数据
+     * Get model metadata including token limits
+     */
+    static getMetadata(modelName: string): ModelMetadata {
+        const validatedName = this.validateModel(modelName);
+        const description = this.getModelDescription(validatedName);
+
+        const modelDef = this._MODELS.find(m => m.name === validatedName);
+        const maxOutputTokens = modelDef?.maxOutputTokens || 5734;
+
+        return {
+            maxOutputTokens,
+            description
+        };
+    }
 
     private static readonly DEFAULT_MODEL = 'gemini-2.5-flash';
 
@@ -47,14 +71,15 @@ export class ModelClassifier {
      * 获取所有支持的模型列表
      */
     static getSupportedModels(): string[] {
-        return this.SUPPORTED_MODELS;
+        return this._MODELS.map(m => m.name);
     }
 
     /**
      * 验证模型名称，如果无效则返回默认模型
      */
     static validateModel(modelName?: string): string {
-        if (!modelName || !this.SUPPORTED_MODELS.includes(modelName)) {
+        const supported = this.getSupportedModels();
+        if (!modelName || !supported.includes(modelName)) {
             return this.DEFAULT_MODEL;
         }
         return modelName;

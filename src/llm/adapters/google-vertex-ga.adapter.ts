@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { VertexAI, GenerativeModel, Content } from '@google-cloud/vertexai';
 import { GoogleAuth } from 'google-auth-library';
 import { ILlmAdapter, ChatMessage, LlmRole } from './llm-adapter.interface';
+import { ModelClassifier } from './model-classifier';
 import { LoggerService } from '../../common/logger/logger.service';
 
 /**
@@ -117,13 +118,16 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
             parts: [{ text: h.message || h.text || '' }]
         }));
 
-        const runChat = async (maxOutputTokens: number): Promise<string> => {
+        const metadata = ModelClassifier.getMetadata(this.modelName);
+        const maxOutputTokens = metadata.maxOutputTokens;
+
+        const runChat = async (): Promise<string> => {
             return this.withRetry(async () => {
                 try {
                     const chat = this.model.startChat({
                         history: formattedHistory,
                         generationConfig: {
-                            maxOutputTokens, // Dynamic
+                            maxOutputTokens,
                             temperature: 0.9,
                             topP: 0.95,
                             topK: 40,
@@ -135,34 +139,13 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
                     const text = response.candidates?.[0].content.parts[0].text;
                     return text || '';
                 } catch (error: any) {
-                    // Check for maxOutputTokens error (400 INVALID_ARGUMENT)
-                    if (maxOutputTokens > 8192 && error.message?.includes('maxOutputTokens')) {
-                        this.logger.warn(`[GoogleVertexGaAdapter] chat failed with ${maxOutputTokens} tokens. Retrying with 8192...`);
-                        return runChat(8192); // Recursive retry with safe limit
-                    }
-                    // For logic/token errors, we might not want to generic-retry, but for network we do.
-                    // withRetry wraps this, so if it throws network error, withRetry catches it.
-                    // If it's maxOutputTokens, we handle it recursively here.
-                    // Ideally recursion happens outside withRetry? Or inside?
-                    // If we're inside withRetry, and we call runChat again, it creates nested withRetry. That's fine.
-
-                    // Actually, if we throw here, withRetry catches it.
-                    // If it's a network error, withRetry retries.
-                    // If it's maxOutputTokens, withRetry might treat it as non-retriable unless we filter?
-                    // My isNetworkError check filters specific errors.
-                    // So maxOutputTokens error will bubble up from withRetry if not caught.
-                    // So we must catch it inside withRetry callback or let withRetry bubble it.
-                    // Wait, standard try/catch inside operation... catch(err) -> check maxTokens -> recurse.
-                    // If recurse, return runChat() -> returns Promise from new withRetry.
-                    // That works.
                     this.logger.error('[GoogleVertexGaAdapter] chat failed:', error);
                     throw error;
                 }
             });
         };
 
-        // Initial attempt with high capacity (Optimistic)
-        return runChat(65536);
+        return runChat();
     }
 
     async *streamChat(history: ChatMessage[], message: string): AsyncGenerator<string> {
@@ -171,9 +154,8 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
             parts: [{ text: h.message || h.text || '' }]
         }));
 
-        let currentMaxTokens = 65536; // Initial optimistic limit
-        // We wrap the *connection* part in retry.
-        // Once stream starts, we yield. If stream breaks mid-way, manual retry isn't easy without re-generating partial.
+        const metadata = ModelClassifier.getMetadata(this.modelName);
+        const currentMaxTokens = metadata.maxOutputTokens;
 
         while (true) {
             try {
@@ -231,11 +213,10 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
                     this.logger.error('[GoogleVertexGaAdapter] streamChat error:', error);
 
                     // Check for maxOutputTokens error
-                    if (currentMaxTokens > 8192 && error.message?.includes('maxOutputTokens')) {
-                        this.logger.warn(`[GoogleVertexGaAdapter] streamChat failed with ${currentMaxTokens} tokens. Retrying with 8192...`);
-                        currentMaxTokens = 8192;
-                        continue; // Retry loop with new limit
-                    }
+                    // With authoritative metadata, we rely on the classifier, but if it fails we might still want safety?
+                    // User directive is to remove blind retry. 
+                    // Since we use the same metadata logic, we shouldn't dynamically retry tokens anymore.
+                    throw error;
                 }
 
                 // If we are here, either maxToken retry or fatal error.
