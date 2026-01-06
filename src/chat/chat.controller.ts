@@ -184,6 +184,104 @@ export class ChatController {
         }
     }
 
+    @UseGuards(UserThrottlerGuard)
+    @Post('sessions/:sessionId/messages/:messageId/regenerate')
+    async regenerateMessage(
+        @Request() req: any,
+        @Param('sessionId') sessionId: string,
+        @Param('messageId') messageId: string,
+        @Body() body: { content: string; model?: string },
+        @Res() res: Response
+    ) {
+        console.log('[ChatController] regenerateMessage called');
+        console.log('SessionId:', sessionId, 'MessageId:', messageId);
+        console.log('Body:', body);
+
+        if (!body || !body.content) {
+            console.error('[ChatController] Missing body or content');
+            return res.status(400).json({ error: 'Message content is required' });
+        }
+
+        // SSE Headers (same as sendMessage)
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        res.setHeader('Content-Encoding', 'identity');
+        res.setHeader('Transfer-Encoding', 'chunked');
+
+        // Remove Content-Length to force streaming
+        res.removeHeader('Content-Length');
+
+        // Flush headers immediately
+        res.flushHeaders();
+
+        // Send preamble to bypass proxy buffers
+        const preamble = ': ' + ' '.repeat(2048) + '\n\n';
+        res.write(preamble);
+
+        // Heartbeat interval
+        const heartbeat = setInterval(() => {
+            if (!res.writableEnded) {
+                res.write(': heartbeat\n\n');
+                if ((res as any).flush) {
+                    (res as any).flush();
+                } else if ((res as any).socket && (res as any).socket.setNoDelay) {
+                    (res as any).socket.setNoDelay(true);
+                }
+            }
+        }, 15000);
+
+        console.log(`[ChatController] Regenerate stream started`);
+
+        try {
+            const stream = this.chatService.updateMessageAndRegenerate(
+                sessionId,
+                req.user.id,
+                messageId,
+                body.content,
+                body.model
+            );
+
+            let isClosed = false;
+            req.on('close', () => {
+                isClosed = true;
+                console.log('[ChatController] Connection closed by client');
+            });
+
+            console.log('[ChatController] Starting regenerate stream loop...');
+            let chunkIdx = 0;
+            for await (const chunk of stream) {
+                if (isClosed) break;
+
+                chunkIdx++;
+                const now = new Date();
+                const ms = now.getMilliseconds().toString().padStart(3, '0');
+                const timestamp = `${now.toLocaleTimeString()}.${ms}`;
+                console.log(`[ChatController] [${timestamp}] Sending chunk ${chunkIdx} (length: ${chunk.length})`);
+
+                const data = JSON.stringify({ text: chunk });
+                const padding = ' '.repeat(1024);
+                res.write(`data: ${data}${padding}\n\n`);
+
+                if ((res as any).flush) {
+                    (res as any).flush();
+                }
+            }
+            console.log(`[ChatController] Regenerate stream loop finished. Total chunks: ${chunkIdx}`);
+
+            res.write('data: [DONE]\n\n');
+            res.end();
+        } catch (error) {
+            console.error('Chat regenerate stream failed:', error);
+            res.write(`data: ${JSON.stringify({ error: error.message || 'Regenerate failed' })}\n\n`);
+            res.end();
+        } finally {
+            clearInterval(heartbeat);
+        }
+    }
+
     @Patch('sessions/:sessionId/messages/:messageId')
     async updateMessage(
         @Request() req: any,

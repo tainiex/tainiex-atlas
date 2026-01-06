@@ -161,11 +161,6 @@ export class ChatService {
         // 2. Determine Parent ID
         let actualParentId = parentId;
         if (!actualParentId) {
-            // Fallback: Find the last message (leaf) created in this session?
-            // Or should we demand explicit parentId?
-            // For backward compatibility / ease, allow null -> means new root?
-            // Plan says: "Assign parent_id. If it's the first message, 'ROOT'. If replying to lastMessage..."
-            // If user didn't specify, we try to attach to the latest message.
             const lastMessage = await this.chatMessageRepository.findOne({
                 where: { sessionId },
                 order: { createdAt: 'DESC' }
@@ -182,25 +177,20 @@ export class ChatService {
         });
         await this.chatMessageRepository.save(userMessage);
 
-        // 3. Update Session
+        // 4. Update Session
         session.updatedAt = new Date();
         await this.chatSessionRepository.save(session);
 
         // Smart Delay Strategy for Title Generation
         const messageCount = await this.chatMessageRepository.count({ where: { sessionId } });
-        // Note: messageCount includes the message we just saved.
-        // So for the first message, count is 1.
 
         let shouldUpdateTitle = false;
         if (session.title === 'New Chat') {
-            // Relaxed Logic: Always update if title is "New Chat", regardless of turns
-            // But still check length for first message to avoid "Hi" titles
             if (messageCount === 1) {
                 if (content.length > 20) {
                     shouldUpdateTitle = true;
                 }
             } else {
-                // messageCount >= 2: Always update if still default
                 shouldUpdateTitle = true;
             }
         }
@@ -219,14 +209,8 @@ export class ChatService {
         }
 
         console.log('[ChatService] Preparing to call LLM service...');
-        // 4. Stream AI Response
-        // Use context manager to get sliding window history
+        // 5. Stream AI Response
         const history = await this.contextManager.getContext(sessionId);
-
-        // Exclude the message we just added? wait, we just saved it.
-        // History includes it now. LlmService.streamChat usually takes (history, newMessage).
-        // If history has it, we should pass history excluding last?
-        // Let's stick to: history = previous messages.
         const previousMessages = history.filter(m => m.id !== userMessage.id);
 
         let fullAiResponse = '';
@@ -384,6 +368,126 @@ Title:`;
 
             return message;
         });
+    }
+
+    /**
+     * Update a user message and regenerate AI response
+     * This is used when user wants to edit their message and get a new AI reply
+     */
+    async *updateMessageAndRegenerate(
+        sessionId: string,
+        userId: string,
+        messageId: string,
+        newContent: string,
+        model?: string
+    ): AsyncGenerator<string> {
+        console.log('[ChatService] updateMessageAndRegenerate called:', { sessionId, userId, messageId, newContent });
+
+        // 1. Verify Access
+        const session = await this.chatSessionRepository.findOne({ where: { id: sessionId, userId } });
+        if (!session) throw new Error('Session not found');
+
+        const message = await this.chatMessageRepository.findOne({ where: { id: messageId, sessionId } });
+        if (!message) throw new Error('Message not found');
+
+        // Only allow editing USER messages
+        if (message.role !== ChatRole.USER) {
+            throw new Error('Only user messages can be edited and regenerated');
+        }
+
+        // 2. Archive and Update User Message (in transaction)
+        await this.chatMessageRepository.manager.transaction(async transactionalEntityManager => {
+            // Archive current state
+            const historyEntry = this.chatMessageHistoryRepository.create({
+                messageId: message.id,
+                role: message.role,
+                content: message.content, // Old content
+            });
+            await transactionalEntityManager.save(ChatMessageHistory, historyEntry);
+
+            // Update Message
+            message.content = newContent;
+            await transactionalEntityManager.save(ChatMessage, message);
+        });
+
+        console.log('[ChatService] User message updated and archived');
+
+        // 3. Find AI reply (child message with parent_id = messageId)
+        const aiReply = await this.chatMessageRepository.findOne({
+            where: {
+                sessionId,
+                parentId: messageId,
+                role: ChatRole.ASSISTANT
+            },
+            order: { createdAt: 'ASC' }
+        });
+
+        // 4. If AI reply exists, archive and delete it
+        if (aiReply) {
+            console.log('[ChatService] Found existing AI reply, archiving and deleting...');
+
+            await this.chatMessageRepository.manager.transaction(async transactionalEntityManager => {
+                // Archive AI reply
+                const aiHistoryEntry = this.chatMessageHistoryRepository.create({
+                    messageId: aiReply.id,
+                    role: aiReply.role,
+                    content: aiReply.content,
+                });
+                await transactionalEntityManager.save(ChatMessageHistory, aiHistoryEntry);
+
+                // Delete AI reply
+                await transactionalEntityManager.remove(ChatMessage, aiReply);
+            });
+
+            console.log('[ChatService] Old AI reply archived and deleted');
+        }
+
+        // 5. Get context (from updated message backwards)
+        // TokenWindowManager will automatically traverse from the edited message
+        const history = await this.contextManager.getContext(sessionId);
+
+        // Filter out the message we just edited (it's already updated)
+        const previousMessages = history.filter(m => m.id !== messageId);
+
+        console.log('[ChatService] Got context with', previousMessages.length, 'previous messages');
+
+        // 6. Stream new AI response
+        let fullAiResponse = '';
+        try {
+            console.log('[ChatService] Calling llmService.streamChat...');
+            const stream = this.llmService.streamChat(
+                previousMessages.map(m => ({ role: m.role, message: m.content })),
+                newContent, // The updated user message content
+                model
+            );
+
+            console.log('[ChatService] Stream obtained, starting iteration...');
+            for await (const chunk of stream) {
+                fullAiResponse += chunk;
+                yield chunk;
+            }
+        } catch (error) {
+            console.error('[ChatService] Stream AI Error:', error);
+            console.error('[ChatService] Error stack:', error.stack);
+            yield `data: [Error: ${error.message}]\n\n`;
+            throw error;
+        }
+
+        // 7. Save new AI Message
+        if (fullAiResponse) {
+            const newAiMessage = this.chatMessageRepository.create({
+                sessionId,
+                role: ChatRole.ASSISTANT,
+                content: fullAiResponse,
+                parentId: messageId // Reply to the updated user message
+            });
+            await this.chatMessageRepository.save(newAiMessage);
+            console.log('[ChatService] New AI message saved');
+        }
+
+        // 8. Update session timestamp
+        session.updatedAt = new Date();
+        await this.chatSessionRepository.save(session);
     }
 
     // New Linear Context Retrieval (Traverse Backwards)
