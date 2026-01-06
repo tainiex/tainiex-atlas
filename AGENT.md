@@ -74,6 +74,9 @@ The application follows a modular architecture. Each major feature has its own d
 - **Messages**: Stored in `chat_messages`. Linked to `ChatSession`.
 - **Real-time Streaming**: Implemented via `ChatGateway` using Socket.io. Supports character-by-character streaming to bypass Cloud Run/Proxy buffering.
 - **Auto-Title**: Upon the **first message** of a session, the system calls `LlmService` to generate a summary title (< 15 chars) and updates the session title.
+- **Message Versioning**: Implemented via `chat_message_histories`. Before updating a message, its current state is archived.
+- **Linked-List Structure**: `chat_messages` use `parent_id` (default 'ROOT') to track sequential relationships and version paths.
+- **Token Window Management**: `TokenWindowManager` manages context windowing to ensure conversations stay within LLM token limits while preserving critical context.
 
 ### 3.4. Global JWT Configuration
 - **Standardization**: `JwtModule` is registered as a **global module** in `AuthModule` via `registerAsync`.

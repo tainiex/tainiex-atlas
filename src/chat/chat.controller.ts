@@ -56,11 +56,24 @@ export class ChatController {
         @Param('id') sessionId: string,
         @Query('limit') limit?: string,
         @Query('before') before?: string,
+        @Query('leafMessageId') leafMessageId?: string,
     ) {
         const sessions = await this.chatService.getUserSessions(req.user.id);
         const exists = sessions.find(s => s.id === sessionId);
         if (!exists) {
             return { messages: [], hasMore: false, nextCursor: null };
+        }
+
+        if (leafMessageId) {
+            const path = await this.chatService.getHistoryPath(sessionId, leafMessageId);
+            // When fetching by path, pagination logic might differ. 
+            // For now, return whole path or slice it? 
+            // getHistoryPath returns max 100 which is fine.
+            return {
+                messages: path,
+                hasMore: false,
+                nextCursor: null
+            };
         }
 
         return this.chatService.getSessionMessages(sessionId, {
@@ -83,7 +96,7 @@ export class ChatController {
 
         // Validation should ideally happen via Zod/Class-validator if using Classes. 
         // With Interfaces, runtime validation is manual or via Schema.
-        const payload = body as AddMessageDto;
+        const payload = body as AddMessageDto & { parentId?: string };
 
         // SSE Headers
         res.setHeader('Content-Type', 'text/event-stream');
@@ -126,7 +139,8 @@ export class ChatController {
                 req.user.id,
                 payload.content,
                 payload.role || ChatRole.USER,
-                payload.model // Optional model param
+                payload.model, // Optional model param
+                payload.parentId // Optional parentId
             );
 
             let isClosed = false;
@@ -170,4 +184,14 @@ export class ChatController {
         }
     }
 
+    @Patch('sessions/:sessionId/messages/:messageId')
+    async updateMessage(
+        @Request() req: any,
+        @Param('sessionId') sessionId: string,
+        @Param('messageId') messageId: string,
+        @Body() body: { content: string }
+    ) {
+        if (!body.content) throw new NotFoundException('Content is required');
+        return this.chatService.updateMessage(sessionId, req.user.id, messageId, body.content);
+    }
 }

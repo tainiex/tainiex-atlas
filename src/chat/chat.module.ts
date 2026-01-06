@@ -6,6 +6,7 @@ import { ChatService } from './chat.service';
 import { ChatGateway } from './chat.gateway';
 import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
+import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmModule } from '../llm/llm.module';
 import { TokenWindowContextManager } from './context/token-window.manager';
 
@@ -15,7 +16,7 @@ import { RateLimitModule } from '../rate-limit/rate-limit.module';
 
 @Module({
     imports: [
-        TypeOrmModule.forFeature([ChatSession, ChatMessage]),
+        TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatMessageHistory]),
         LlmModule, // Import LlmModule to use LlmService
         RateLimitModule,
     ],

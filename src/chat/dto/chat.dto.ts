@@ -39,4 +39,8 @@ export class ChatSendDto implements ChatSendPayload {
     @IsOptional()
     @IsString()
     model?: string;
+
+    @IsOptional()
+    @IsString()
+    parentId?: string;
 }

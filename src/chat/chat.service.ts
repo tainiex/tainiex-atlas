@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
+import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
 import { ChatRole } from '@shared/index';
 import type { IContextManager } from './context/context-manager.interface';
@@ -14,6 +15,8 @@ export class ChatService {
         private chatSessionRepository: Repository<ChatSession>,
         @InjectRepository(ChatMessage)
         private chatMessageRepository: Repository<ChatMessage>,
+        @InjectRepository(ChatMessageHistory)
+        private chatMessageHistoryRepository: Repository<ChatMessageHistory>,
         private llmService: LlmService,
         @Inject('IContextManager')
         private contextManager: IContextManager,
@@ -104,7 +107,7 @@ export class ChatService {
         };
     }
 
-    async addMessage(sessionId: string, userId: string, content: string, role: ChatRole): Promise<ChatMessage> {
+    async addMessage(sessionId: string, userId: string, content: string, role: ChatRole, parentId?: string): Promise<ChatMessage> {
         // ... (existing implementation details) ...
         // Re-implementing to ensure consistency if overwriting file
         const session = await this.chatSessionRepository.findOne({ where: { id: sessionId, userId } });
@@ -112,10 +115,21 @@ export class ChatService {
             throw new Error('Session not found or access denied');
         }
 
+        // Determine Parent ID
+        let actualParentId = parentId;
+        if (!actualParentId) {
+            const lastMessage = await this.chatMessageRepository.findOne({
+                where: { sessionId },
+                order: { createdAt: 'DESC' }
+            });
+            actualParentId = lastMessage ? lastMessage.id : 'ROOT';
+        }
+
         const userMessage = this.chatMessageRepository.create({
             sessionId,
             role,
             content,
+            parentId: actualParentId
         });
         await this.chatMessageRepository.save(userMessage);
 
@@ -138,17 +152,33 @@ export class ChatService {
     }
 
     // New Streaming Method
-    async *streamMessage(sessionId: string, userId: string, content: string, role: ChatRole, model?: string): AsyncGenerator<string> {
-        console.log('[ChatService] streamMessage called:', { sessionId, userId, content, role });
+    async *streamMessage(sessionId: string, userId: string, content: string, role: ChatRole, model?: string, parentId?: string): AsyncGenerator<string> {
+        console.log('[ChatService] streamMessage called:', { sessionId, userId, content, role, parentId });
         // 1. Verify session
         const session = await this.chatSessionRepository.findOne({ where: { id: sessionId, userId } });
         if (!session) throw new Error('Session not found');
 
-        // 2. Save User Message
+        // 2. Determine Parent ID
+        let actualParentId = parentId;
+        if (!actualParentId) {
+            // Fallback: Find the last message (leaf) created in this session?
+            // Or should we demand explicit parentId?
+            // For backward compatibility / ease, allow null -> means new root?
+            // Plan says: "Assign parent_id. If it's the first message, 'ROOT'. If replying to lastMessage..."
+            // If user didn't specify, we try to attach to the latest message.
+            const lastMessage = await this.chatMessageRepository.findOne({
+                where: { sessionId },
+                order: { createdAt: 'DESC' }
+            });
+            actualParentId = lastMessage ? lastMessage.id : 'ROOT';
+        }
+
+        // 3. Save User Message
         const userMessage = this.chatMessageRepository.create({
             sessionId,
             role,
             content,
+            parentId: actualParentId
         });
         await this.chatMessageRepository.save(userMessage);
 
@@ -226,6 +256,7 @@ export class ChatService {
                 sessionId,
                 role: ChatRole.ASSISTANT,
                 content: fullAiResponse,
+                parentId: userMessage.id // AI replies to User
             });
             await this.chatMessageRepository.save(aiMessage);
         }
@@ -320,5 +351,75 @@ Title:`;
             }
         }
         return { processed, total: sessions.length };
+    }
+
+    async updateMessage(sessionId: string, userId: string, messageId: string, newContent: string): Promise<ChatMessage> {
+        // 1. Verify Access
+        const session = await this.chatSessionRepository.findOne({ where: { id: sessionId, userId } });
+        if (!session) throw new Error('Session not found');
+
+        const message = await this.chatMessageRepository.findOne({ where: { id: messageId, sessionId } });
+        if (!message) throw new Error('Message not found');
+
+        // Allow updates to AI messages? Protocol says "Editing a message" -> implies User editing their own.
+        // But maybe we want to correct AI too. Let's allow all for now.
+
+        // 2. Transactional Update: Archive -> Update
+        return this.chatMessageRepository.manager.transaction(async transactionalEntityManager => {
+            // A. Archive current state
+            const historyEntry = this.chatMessageHistoryRepository.create({
+                messageId: message.id,
+                role: message.role,
+                content: message.content, // Old content
+                // archivedAt handled by default
+            });
+            // Use transactional EM
+            await transactionalEntityManager.save(ChatMessageHistory, historyEntry);
+
+            // B. Update Message
+            message.content = newContent;
+            // Should we update createdAt? No. UpdatedAt? Entity doesn't have it explicitly, schema usually does.
+            // If we want to show "Edited", frontend can check history table existence or we add `is_edited` col later.
+            await transactionalEntityManager.save(ChatMessage, message);
+
+            return message;
+        });
+    }
+
+    // New Linear Context Retrieval (Traverse Backwards)
+    // If leafId is provided, traverse from there.
+    // If not, try to find the "latest" based on time (for backward compat or simple usage)
+    async getHistoryPath(sessionId: string, leafMessageId?: string): Promise<ChatMessage[]> {
+        let currentId = leafMessageId;
+
+        if (!currentId) {
+            // Find latest by time
+            const last = await this.chatMessageRepository.findOne({
+                where: { sessionId },
+                order: { createdAt: 'DESC' }
+            });
+            if (!last) return [];
+            currentId = last.id;
+        }
+
+        const path: ChatMessage[] = [];
+        let maxDepth = 100; // Safety break
+
+        while (currentId && currentId !== 'ROOT' && maxDepth > 0) {
+            const msg = await this.chatMessageRepository.findOne({ where: { id: currentId } });
+            if (!msg) break;
+
+            path.unshift(msg); // Add to beginning (to form chronological order)
+            currentId = msg.parentId;
+
+            // Safety: Detect cycles? (A->B->A).
+            if (path.find(p => p.id === currentId)) {
+                console.error('[ChatService] Cycle detected in message chain', sessionId);
+                break;
+            }
+            maxDepth--;
+        }
+
+        return path;
     }
 }

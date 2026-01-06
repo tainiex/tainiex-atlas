@@ -9,6 +9,9 @@ export class ChatMessage implements IChatMessage {
     @Column({ name: 'session_id', type: 'uuid' })
     sessionId: string;
 
+    @Column({ name: 'parent_id', type: 'varchar', default: 'ROOT' })
+    parentId: string;
+
     @Column({
         type: 'enum',
         enum: ChatRole,

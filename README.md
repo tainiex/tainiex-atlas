@@ -366,7 +366,9 @@ tainiex-atlas/
 ### AI Chat Capabilities
 
 - **Google Vertex AI Integration**: Powered by the Gemini language model
-- **Conversation History**: Support for multi-turn conversations
+- **Conversation History**: Support for multi-turn conversations with linked-list message tracking (`parent_id`)
+- **Message Versioning**: Automatic archiving of message history upon updates for version control
+- **Token Window Management**: Intelligent context windowing to optimize LLM performance and token usage
 - **JWT Protected**: Secure, user-specific chat sessions
 - **Configurable**: Easily switch between different Gemini models (default: `gemini-3-pro-preview`)
 - **Streaming Support**: Real-time server-sent events (SSE) for chat responses

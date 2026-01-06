@@ -19,19 +19,17 @@ export class TokenWindowContextManager implements IContextManager {
         const maxTokens = options?.maxTokens || this.DEFAULT_MAX_TOKENS;
         this.logger.debug(`[TokenWindowContextManager] Getting context for session ${sessionId}, limit: ${maxTokens} tokens`);
 
-        // Fetch the last 50 messages (assuming this covers most reasonable contexts)
-        // We fetch in descending order to get the newest first
-        const messages = await this.chatMessageRepository.find({
-            where: { sessionId },
-            order: { createdAt: 'DESC' },
-            take: 50,
-        });
+        // Fetch path using linked list traversal
+        const messages = await this.getHistoryPath(sessionId);
 
-        // Loop from newest to oldest, accumulating tokens until we hit the limit
+        // Messages are returned oldest -> newest by getHistoryPath (unshift)
+        // But for token window trimming, we want to iterate reversed (Newest -> Oldest)
+        const reversedMessages = [...messages].reverse();
+
         const contextMessages: ChatMessage[] = [];
         let currentTokens = 0;
 
-        for (const message of messages) {
+        for (const message of reversedMessages) {
             const messageTokens = this.estimateTokens(message.content);
 
             if (currentTokens + messageTokens > maxTokens) {
@@ -39,14 +37,46 @@ export class TokenWindowContextManager implements IContextManager {
                 break;
             }
 
-            contextMessages.push(message);
+            contextMessages.unshift(message); // Add to front to maintain chronological order
             currentTokens += messageTokens;
         }
 
         this.logger.debug(`[TokenWindowContextManager] Returning ${contextMessages.length} messages (${currentTokens} tokens)`);
 
-        // Return in chronological order (oldest to newest) for the LLM
-        return contextMessages.reverse();
+        return contextMessages;
+    }
+
+    private async getHistoryPath(sessionId: string, leafMessageId?: string): Promise<ChatMessage[]> {
+        let currentId = leafMessageId;
+
+        if (!currentId) {
+            // Find latest by time
+            const last = await this.chatMessageRepository.findOne({
+                where: { sessionId },
+                order: { createdAt: 'DESC' }
+            });
+            if (!last) return [];
+            currentId = last.id;
+        }
+
+        const path: ChatMessage[] = [];
+        let maxDepth = 100; // Safety break
+
+        while (currentId && currentId !== 'ROOT' && maxDepth > 0) {
+            const msg = await this.chatMessageRepository.findOne({ where: { id: currentId } });
+            if (!msg) break;
+
+            path.unshift(msg); // Add to beginning (to form chronological order)
+            currentId = msg.parentId;
+
+            // Safety: Detect cycles
+            if (path.find(p => p.id === currentId)) {
+                break;
+            }
+            maxDepth--;
+        }
+
+        return path;
     }
 
     private estimateTokens(text: string): number {
