@@ -73,6 +73,7 @@ The application follows a modular architecture. Each major feature has its own d
 - **Sessions**: Stored in `chat_sessions`. Contains a `title` and link to `User`.
 - **Messages**: Stored in `chat_messages`. Linked to `ChatSession`.
 - **Real-time Streaming**: Implemented via `ChatGateway` using Socket.io. Supports character-by-character streaming to bypass Cloud Run/Proxy buffering.
+- **Connection Stability**: Configured with optimized `pingInterval` (10s) and `pingTimeout` (20s) to handle mobile network jitters.
 - **Auto-Title**: Upon the **first message** of a session, the system calls `LlmService` to generate a summary title (< 15 chars) and updates the session title.
 - **Message Versioning**: Implemented via `chat_message_histories`. Before updating a message, its current state is archived.
 - **Linked-List Structure**: `chat_messages` use `parent_id` (default 'ROOT') to track sequential relationships and version paths.

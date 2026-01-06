@@ -55,7 +55,13 @@ interface AuthenticatedSocket extends Socket {
         },
         credentials: true
     },
-    namespace: '/api/chat'
+    namespace: '/api/chat',
+    // Tuning for Mobile Stability:
+    // Increased timeout to wait for slow mobile network wakeups
+    pingInterval: 10000,
+    pingTimeout: 20000,
+    // Maximize transport reliability
+    transports: ['websocket', 'polling']
 })
 export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
@@ -166,6 +172,11 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
             let chunkCount = 0;
             for await (const chunk of stream) {
+                // If client disconnected, stop streaming to save resources
+                if (!client.connected) {
+                    this.logger.warn(`Client ${client.id} disconnected during stream, aborting.`);
+                    break;
+                }
                 chunkCount++;
                 client.emit('chat:stream', {
                     type: 'chunk',

@@ -287,6 +287,7 @@ npm run format
 
 **Connection Configuration**:
 > **Note**: To prevent abuse, connections are rate-limited to 10 connections per minute per IP address.
+> **Mobile Stability**: If users experience frequent disconnects on mobile, ensure the client uses `transports: ['websocket']` to bypass proxy buffering. The server is tuned with longer `pingTimeout` (20s) to tolerate network jitters.
 
 For the best experience and to bypass potential proxy buffering issues, we recommend forcing the `websocket` transport:
 
