@@ -169,4 +169,5 @@ export class ChatController {
             clearInterval(heartbeat);
         }
     }
+
 }

@@ -9,7 +9,7 @@ export class ChatSession implements IChatSession {
     @Column({ name: 'user_id', type: 'uuid' })
     userId: string;
 
-    @Column({ length: 50, default: 'New Chat' })
+    @Column({ length: 100, default: 'New Chat', nullable: false })
     title: string;
 
     @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })

@@ -15,6 +15,7 @@ describe('ChatGateway', () => {
 
     const mockChatService = {
         streamMessage: jest.fn(),
+        getSession: jest.fn(),
     };
 
     const mockRateLimitService = {
@@ -121,6 +122,31 @@ describe('ChatGateway', () => {
             expect(originChecker('https://sub.example.com')).toBe(true);
             expect(originChecker('https://example.com')).toBe(false); // *.example.com expects a subdomain
             expect(originChecker('https://other.com')).toBe(false);
+        });
+    });
+
+    describe('handleChatMessage', () => {
+        it('should emit done event with title', async () => {
+            const client: any = {
+                data: { user: { id: 'user_1' } },
+                emit: jest.fn(),
+            };
+            const payload = { sessionId: 'session_1', content: 'hello', role: 'user' } as any;
+
+            // Mock stream
+            async function* mockStream() {
+                yield 'chunk1';
+            }
+            mockChatService.streamMessage.mockImplementation(mockStream);
+
+            // Mock getSession return
+            const mockSession = { id: 'session_1', title: 'Generated Title' };
+            mockChatService.getSession.mockResolvedValue(mockSession);
+
+            await gateway.handleChatMessage(client, payload);
+
+            expect(client.emit).toHaveBeenCalledWith('chat:stream', { type: 'chunk', data: 'chunk1' });
+            expect(client.emit).toHaveBeenLastCalledWith('chat:stream', { type: 'done', title: 'Generated Title' });
         });
     });
 });

@@ -282,7 +282,7 @@ npm run format
 | `connect` | Client→Server | Yes | Establish connection (Supports JWT `auth` or HttpOnly cookies) |
 | `chat:send` | Client→Server | Yes | Send message (Payload: `{sessionId, content, model?, role?}`) |
 | `chat:stream` | Server→Client | - | Incremental chunks (Event: `{type:'chunk', data: '...'}`) |
-| `chat:stream` | Server→Client | - | Stream completion (Event: `{type:'done'}`) |
+| `chat:stream` | Server→Client | - | Stream completion (Event: `{type:'done', title?: 'New Title'}`) |
 | `chat:stream` | Server→Client | - | Stream error (Event: `{type:'error', error: '...'}`) |
 
 **Connection Configuration**:

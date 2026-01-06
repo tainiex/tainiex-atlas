@@ -20,7 +20,9 @@ export class ChatService {
     ) { }
 
     async createSession(userId: string): Promise<ChatSession> {
-        const session = this.chatSessionRepository.create({ userId });
+        // Explicitly set default title to ensure it is returned in the response
+        // and not relying on Database default (which might not be returned by TypeORM save() immediately)
+        const session = this.chatSessionRepository.create({ userId, title: 'New Chat' });
         return this.chatSessionRepository.save(session);
     }
 
@@ -154,10 +156,31 @@ export class ChatService {
         session.updatedAt = new Date();
         await this.chatSessionRepository.save(session);
 
+        // Smart Delay Strategy for Title Generation
+        const messageCount = await this.chatMessageRepository.count({ where: { sessionId } });
+        // Note: messageCount includes the message we just saved.
+        // So for the first message, count is 1.
+
+        let shouldUpdateTitle = false;
         if (session.title === 'New Chat') {
-            // Async title generation, don't await blocking stream?
-            // Better to just let it run.
-            this.updateSessionTitle(session, content);
+            // Relaxed Logic: Always update if title is "New Chat", regardless of turns
+            // But still check length for first message to avoid "Hi" titles
+            if (messageCount === 1) {
+                if (content.length > 20) {
+                    shouldUpdateTitle = true;
+                }
+            } else {
+                // messageCount >= 2: Always update if still default
+                shouldUpdateTitle = true;
+            }
+        }
+
+        let titlePromise: Promise<any> | null = null;
+        if (shouldUpdateTitle) {
+            console.log('[ChatService] Triggering title update. MessageCount:', messageCount);
+            titlePromise = this.updateSessionTitle(session, content);
+        } else {
+            console.log('[ChatService] Skipping title update. MessageCount:', messageCount, 'Length:', content.length, 'CurrentTitle:', session.title);
         }
 
         if (role !== ChatRole.USER) {
@@ -206,6 +229,11 @@ export class ChatService {
             });
             await this.chatMessageRepository.save(aiMessage);
         }
+
+        // Ensure title is updated before finishing
+        if (titlePromise) {
+            await titlePromise;
+        }
     }
 
     private async generateAiResponse(sessionId: string, session: ChatSession) {
@@ -232,17 +260,65 @@ export class ChatService {
         }
     }
 
-    private async updateSessionTitle(session: ChatSession, firstPayload: string) {
+    private async updateSessionTitle(session: ChatSession, lastUserContent: string) {
         try {
-            const prompt = `Please summarize the following user input into a short title of less than 15 characters. Do not use quotes. Input: "${firstPayload}"`;
+            // Get last few messages for context if available
+            const recentMessages = await this.chatMessageRepository.find({
+                where: { sessionId: session.id },
+                order: { createdAt: 'ASC' },
+                take: 5
+            });
+
+            const contextText = recentMessages.map(m => `${m.role}: ${m.content}`).join('\n');
+
+            const prompt = `Role: You are an expert content summarizer.
+Task: Generate a concise, engaging, and descriptive title for a chat session based on the Conversation Context.
+
+Rules:
+1. Language: STRICTLY match the language of the User's main intent. (If Chinese, output Chinese. If English, output English).
+2. Content: Capture the core intent or topic. Avoid generic phrases like "Question about..." or "Chat with...".
+3. Length:
+    - English: 3 to 10 words.
+    - Chinese: 5 to 20 characters.
+4. Format: Plain text only. NO quotes. NO prefixes.
+
+Conversation Context:
+"""
+${contextText}
+"""
+
+Title:`;
+
             const title = await this.llmService.generateContent(prompt);
+            console.log('[ChatService] Generated Title:', title);
 
             if (title) {
-                session.title = title.substring(0, 50);
+                session.title = title.substring(0, 100); // Increased limit
                 await this.chatSessionRepository.save(session);
             }
         } catch (error) {
             console.error('Failed to auto-generate title:', error);
         }
+    }
+
+    async regenerateAllTitles() {
+        console.log('[ChatService] Starting batch title regeneration...');
+        const sessions = await this.chatSessionRepository.find({
+            where: { title: 'New Chat', isDeleted: false },
+            order: { updatedAt: 'DESC' }
+        });
+
+        console.log(`[ChatService] Found ${sessions.length} sessions with default title.`);
+
+        let processed = 0;
+        for (const session of sessions) {
+            const count = await this.chatMessageRepository.count({ where: { sessionId: session.id } });
+            if (count > 0) {
+                await this.updateSessionTitle(session, '');
+                processed++;
+                console.log(`[ChatService] Updated title for session ${session.id} (${processed}/${sessions.length})`);
+            }
+        }
+        return { processed, total: sessions.length };
     }
 }

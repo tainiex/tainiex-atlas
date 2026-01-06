@@ -174,7 +174,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             }
 
             this.logger.log(`Stream completed: ${chunkCount} chunks sent`);
-            client.emit('chat:stream', { type: 'done' });
+
+            // Fetch updated session (title might have changed)
+            const updatedSession = await this.chatService.getSession(sessionId, user.id);
+            client.emit('chat:stream', { type: 'done', title: updatedSession.title });
 
         } catch (error) {
             this.logger.error('Chat stream error:', error);

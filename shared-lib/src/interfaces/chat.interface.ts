@@ -231,6 +231,13 @@ export interface ChatStreamEvent {
      * 当 type='error' 时，包含错误信息。
      */
     error?: string;
+
+    /**
+     * Optional updated session title.
+     * Sent with 'done' event if the title was updated or requested.
+     * 发送 'done' 事件时可能包含的更新后的会话标题。
+     */
+    title?: string;
 }
 
 /**
