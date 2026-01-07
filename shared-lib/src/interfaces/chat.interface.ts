@@ -101,6 +101,12 @@ export interface IChatMessage {
      * 消息创建时间。
      */
     createdAt: Date;
+
+    /**
+     * ID of the parent message.
+     * 父消息 ID。
+     */
+    parentId: string;
 }
 
 // ==========================================
@@ -147,6 +153,12 @@ export interface AddMessageDto {
      * 指定用于生成的模型 ID。如不填则使用系统默认模型。
      */
     model?: string;
+
+    /**
+     * Optional parent ID.
+     * 可选的父消息 ID。
+     */
+    parentId?: string;
 }
 
 // ==========================================
