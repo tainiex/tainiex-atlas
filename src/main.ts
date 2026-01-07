@@ -4,12 +4,21 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 
 import cookieParser from 'cookie-parser';
-import { ClassSerializerInterceptor } from '@nestjs/common';
+import { ClassSerializerInterceptor, LogLevel } from '@nestjs/common';
 
 import { json, urlencoded } from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { bodyParser: false });
+  // Configure logger based on environment
+  const isProduction = process.env.NODE_ENV === 'production';
+  const logLevels: LogLevel[] = isProduction
+    ? ['error', 'warn'] // Production: Only errors and warnings
+    : ['log', 'error', 'warn', 'debug', 'verbose']; // Development: All logs
+
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: false,
+    logger: logLevels
+  });
   app.use(json({ type: ['application/json', 'text/plain'] }));
   app.use(urlencoded({ extended: true }));
   app.use(cookieParser());

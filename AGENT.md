@@ -15,6 +15,13 @@ This document serves as the authoritative guide for AI agents working on the `ta
 - **Database**: PostgreSQL (via TypeORM)
 - **Package Manager**: Yarn
 - **Debug Directory**: Save all debug artifacts (scripts, logs, temp files) to the .llm directory.
+- **Logging**:
+  - **NestJS Built-in Logger**: Controlled by `NODE_ENV` environment variable
+    - `production`: Only outputs `error` and `warn` logs
+    - `development`: Outputs all logs (`log`, `error`, `warn`, `debug`, `verbose`)
+  - **Custom LoggerService**: Controlled by `LOG_LEVEL` environment variable (`debug` | `info` | `warn` | `error`)
+  - **Configuration**: Set in `src/main.ts` during application bootstrap
+
 
 ## 2. Architecture & Design
 
@@ -25,6 +32,7 @@ The application follows a modular architecture. Each major feature has its own d
 - **`src/auth/`**: Authentication logic (Local & Google OAuth).
 - **`src/users/`**: User management and persistence.
 - **src/chat/**: Chat sessions, message history, conversation logic, and **WebSocket Gateway**.
+- **src/notes/**: Core notes system, block-level storage, templates, and **Collaboration Gateway**.
 - **src/llm/**: Integration with Google Vertex AI (Gemini).
 - **`src/invitation/`**: Invitation code generation and validation system.
 - **`shared-lib/`**: Shared interfaces and DTOs (e.g., `IUser`).
@@ -43,8 +51,18 @@ The application follows a modular architecture. Each major feature has its own d
 - **Sync**: `synchronize: true` is currently enabled for development auto-migration.
 - **Schema Script**: `script/create_schema.sql` serves as the reference for the "fresh" database state and seed data.
   - **Seeding**: 100 codes are auto-generated via SQL `generate_series` in `create_schema.sql`.
-  - Avoid using foreign keys; it's considered bad practice. Constraints should be handled in the code.
+- **Notes System Optimization**:
+    - **Smart Snapshots**: Note snapshots are created only when `updated_at` changes, managed by a daily cron job.
+    - **CRDT Persistence**: Y.js binary state is persisted in `document_states` table for disaster recovery.
+    - **Versioning**: Uses a hybrid approach with full snapshots every 10 updates and diffs for intermediate versions.
+- Avoid using foreign keys; it's considered bad practice. Constraints should be handled in the code.
   - If entity schemas are used for frontend responses, they must reside in a shared library. 
+- **Required PostgreSQL Extensions**:
+  - **`tsvector`**: PostgreSQL built-in full-text search (no installation required)
+  - **`pgvector`**: Vector similarity search for AI embeddings and semantic search
+  - **Installation**: Run `CREATE EXTENSION IF NOT EXISTS vector;` at database initialization
+  - **Verification**: Run `SELECT * FROM pg_extension WHERE extname = 'vector';`
+  - **Notes**: Both extensions should be enabled in `script/create_schema.sql` before table creation 
 
 ### 2.3. Authentication Flow
 - **Strategy**: JWT Pair (Access Token + Refresh Token).
@@ -88,7 +106,15 @@ The application follows a modular architecture. Each major feature has its own d
 - **Service**: `LlmService` handles API calls to Vertex AI (both standard `generateContent` and streaming `streamChat`).
 - **Configuration**: Credentials loaded via `GSA_KEY_FILE` or explicit Project/Location env vars.
 
-### 3.5. Rate Limiting
+### 3.5. Notes & Collaboration System
+- **Block-Based Storage**: Notes are composed of multimodal blocks (TEXT, HEADING, IMAGE, etc.).
+- **Concurrency Control**: Limited to **5 concurrent users** per note to ensure stability in a single-instance architecture. Managed by `PresenceService`.
+- **Real-time Sync**: Implemented via `CollaborationGateway` and **Y.js (CRDT)**.
+    - **Binary Updates**: Y.js updates are transmitted as base64-encoded strings over WebSockets.
+    - **Presence**: Cursor positions and selection ranges are synchronized in real-time.
+- **File Management**: Integrated with `StorageService` for GCS uploads. Supports images (10MB), videos (100MB), and attachments (50MB) with signed URLs.
+
+### 3.6. Rate Limiting
 - **Strategy**: Distributed Rate Limiting via PostgreSQL (Atomic Upsert).
 - **Storage**: `rate_limits` table.
 - **Optimization**: Uses in-memory `blockedCache` to reject repetitive spam without hitting DB when a user is already blocked.

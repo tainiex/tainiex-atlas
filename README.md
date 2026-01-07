@@ -13,11 +13,10 @@ Tainiex Atlas is a comprehensive backend solution that combines robust authentic
 
 ### Key Features
 
-- **Dual Authentication**: Traditional username/password login and Google OAuth 2.0 integration
-- **JWT Token Management**: Secure access and refresh token implementation with httpOnly cookies
-- **User Profile Management**: Complete user CRUD operations with avatar support
-- **AI Chat Interface**: Powered by Google Vertex AI (Gemini model) with conversation history
-- **Secure File Storage**: Private avatar storage on Google Cloud Storage with signed URLs
+- **Notion-like Notes**: Block-based editor support with multimodal content (Markdown, Tables, Code, Media)
+- **Real-time Collaboration**: Multi-user editing powered by Y.js CRDT with cursor synchronization
+- **Smart Versioning**: Intelligent note snapshots and block-level history with diff tracking
+- **Secure File Storage**: Multimedia support via Google Cloud Storage with size-restricted uploads
 - **Type Safety**: Full TypeScript implementation with shared type definitions
 - **Production Ready**: Enterprise-grade architecture with security best practices
 
@@ -28,6 +27,7 @@ Tainiex Atlas is a comprehensive backend solution that combines robust authentic
 - **Database**: PostgreSQL with TypeORM
 - **Authentication**: JWT + Passport.js + Google OAuth 2.0
 - **AI/ML**: Google Vertex AI (Gemini)
+- **Collaboration**: Y.js (CRDT) + Socket.io
 - **Storage**: Google Cloud Storage
 - **Testing**: Jest
 - **Code Quality**: ESLint + Prettier
@@ -71,7 +71,9 @@ Create a `.env` file in the root directory:
 PORT=3000
 NODE_ENV=development
 API_PREFIX=api
+LOG_LEVEL=info # debug | info | warn | error (Controls custom LoggerService; NestJS built-in logger controlled by NODE_ENV)
 CORS_ORIGIN=https://your-frontend.com,https://admin.your-domain.com # Comma-separated allowed origins (default: * in dev, none in prod)
+
 
 # Database Configuration
 DB_HOST=localhost
@@ -109,6 +111,61 @@ createdb tainiex_core
 ```
 
 The application will automatically synchronize the database schema on first run (development mode only).
+
+#### Enable Required PostgreSQL Extensions
+
+Tainiex Atlas requires the following PostgreSQL extensions:
+
+- **`tsvector`**: Built-in PostgreSQL full-text search capability (included in PostgreSQL by default, no installation needed)
+- **`pgvector`**: Vector similarity search for AI embeddings and semantic search
+
+**For Self-Hosted PostgreSQL:**
+
+Connect to your database and run:
+
+```sql
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Verify installation
+SELECT * FROM pg_extension WHERE extname = 'vector';
+```
+
+If `pgvector` is not available, install it first:
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install postgresql-16-pgvector
+
+# macOS (Homebrew)
+brew install pgvector
+
+# From source (if needed)
+git clone --branch v0.7.0 https://github.com/pgvector/pgvector.git
+cd pgvector
+make
+sudo make install
+```
+
+**For Google Cloud SQL (PostgreSQL):**
+
+1. Navigate to your Cloud SQL instance in Google Cloud Console
+2. Go to **Databases** tab
+3. Connect to your database using Cloud Shell or any SQL client
+4. Run the following SQL:
+
+```sql
+-- Enable pgvector extension
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Verify installation
+SELECT * FROM pg_extension WHERE extname = 'vector';
+```
+
+> **Note**: Cloud SQL for PostgreSQL includes `pgvector` by default in PostgreSQL 15+. For earlier versions, you may need to upgrade your instance or contact Google Cloud support.
+
+> **Note for Chinese Users / 中文用户注意**: 
+> `tsvector` 是 PostgreSQL 内置的全文搜索功能，无需额外安装。`pgvector` 扩展用于向量数据库功能，支持AI语义搜索和embedding存储。
 
 ### 5. Configure Google Cloud Platform
 
@@ -272,6 +329,45 @@ npm run format
 | PATCH | `/chat/sessions/:id` | JWT | Update session title |
 | GET | `/chat/sessions/:id/messages` | JWT | Get messages for a session |
 | GET | `/chat/models` | JWT | List supported AI models |
+
+### Notes System (`/api/notes` & `/api/blocks`)
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| GET | `/notes` | JWT | List user notes (with hierarchy support) |
+| POST | `/notes` | JWT | Create a new note (optional template) |
+| GET | `/notes/:id` | JWT | Get note metadata and blocks |
+| PATCH | `/notes/:id` | JWT | Update note title, cover, or icon |
+| DELETE | `/notes/:id` | JWT | Soft delete a note |
+| POST | `/notes/:id/duplicate` | JWT | Duplicate a note and its blocks |
+| POST | `/notes/:id/blocks` | JWT | Create a new block in a note |
+| PATCH | `/blocks/:id` | JWT | Update block content or metadata |
+| DELETE | `/blocks/:id` | JWT | Delete a block |
+| POST | `/blocks/:id/move` | JWT | Reorder or move block to another parent |
+
+### Media Upload (`/api/upload`)
+
+| Method | Endpoint | Auth Required | Description |
+|--------|----------|---------------|-------------|
+| POST | `/upload/image/:noteId` | JWT | Upload image (max 10MB) |
+| POST | `/upload/video/:noteId` | JWT | Upload video (max 100MB) |
+| POST | `/upload/file/:noteId` | JWT | Upload attachment (max 50MB) |
+
+### WebSocket Gateways
+
+**1. AI Chat Room (`wss://domain.com/api/chat`)**
+... (existing content) ...
+
+**2. Collaboration Room (`wss://domain.com/api/collaboration`)**
+
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `note:join` | Client→Server | Join a note session (Payload: `{noteId}`) |
+| `yjs:sync` | Server→Client | Initial document state synchronization |
+| `yjs:update` | Bi-directional | Stream base64 encoded CRDT updates |
+| `cursor:update` | Bi-directional | Real-time cursor and selection sync |
+| `presence:list` | Server→Client | Get list of current active collaborators |
+| `collaboration:limit` | Server→Client | Triggered if > 5 users try to edit |
 
 ### WebSocket (`wss://domain.com/api/chat`)
 

@@ -5,6 +5,27 @@
 -- Ensure the helper function exists
 \ir migration_utils.sql
 
+-- ================================================================================
+-- ENABLE POSTGRESQL EXTENSIONS
+-- ================================================================================
+-- Enable required PostgreSQL extensions for full-text search and vector operations
+-- tsvector: Built-in full-text search (PostgreSQL native, no installation needed)
+-- pgvector: Vector similarity search for AI embeddings
+-- ================================================================================
+
+-- Enable pgvector extension (for vector similarity search and AI embeddings)
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- Verify pgvector installation (optional check, can be commented out in production)
+-- Uncomment the following line to see installed extensions:
+-- SELECT extname, extversion FROM pg_extension WHERE extname IN ('vector');
+
+-- Note: tsvector is built into PostgreSQL and does not require CREATE EXTENSION
+
+-- ================================================================================
+-- BEGIN SCHEMA MIGRATION
+-- ================================================================================
+
 -- WRAP IN TRANSACTION to ensure atomicity.
 -- This ensures there is NO moment where the table "does not exist" for other users.
 -- PostgreSQL Transactional DDL ensures the swap is atomic.
@@ -123,6 +144,300 @@ BEGIN
     ALTER TABLE rate_limits_new RENAME TO rate_limits;
 END $$;
 
+
+-- ================================================================================
+-- NOTES SYSTEM TABLES
+-- Notes系统表结构
+-- ================================================================================
+
+-- 6. NOTES Table
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS notes_new;
+CREATE TABLE notes_new (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL,
+    title VARCHAR(200) NOT NULL DEFAULT 'Untitled',
+    cover_image VARCHAR(500),
+    icon VARCHAR(100),
+    parent_id UUID,
+    template VARCHAR(50),
+    is_public BOOLEAN DEFAULT FALSE,
+    is_deleted BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_edited_by UUID NOT NULL,
+    search_vector tsvector
+);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'notes' AND table_schema = current_schema()) THEN
+        PERFORM safe_migrate_data('notes_new', 'notes');
+        EXECUTE 'ALTER TABLE notes RENAME TO notes_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
+    END IF;
+    ALTER TABLE notes_new RENAME TO notes;
+END $$;
+
+CREATE INDEX idx_notes_user_id ON notes(user_id) WHERE is_deleted = FALSE;
+CREATE INDEX idx_notes_parent_id ON notes(parent_id);
+CREATE INDEX notes_search_idx ON notes USING GIN(search_vector);
+
+
+-- 7. BLOCKS Table
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS blocks_new;
+CREATE TABLE blocks_new (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    note_id UUID NOT NULL,
+    type VARCHAR(50) NOT NULL,
+    content TEXT,
+    metadata JSONB DEFAULT '{}',
+    parent_block_id UUID,
+    position INTEGER NOT NULL DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID NOT NULL,
+    last_edited_by UUID NOT NULL,
+    search_vector tsvector
+);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'blocks' AND table_schema = current_schema()) THEN
+        PERFORM safe_migrate_data('blocks_new', 'blocks');
+        EXECUTE 'ALTER TABLE blocks RENAME TO blocks_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
+    END IF;
+    ALTER TABLE blocks_new RENAME TO blocks;
+END $$;
+
+CREATE INDEX idx_blocks_note_id ON blocks(note_id);
+CREATE INDEX idx_blocks_position ON blocks(note_id, position);
+CREATE INDEX idx_blocks_parent ON blocks(parent_block_id);
+CREATE INDEX blocks_search_idx ON blocks USING GIN(search_vector);
+
+
+-- 8. BLOCK_VERSIONS Table
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS block_versions_new;
+CREATE TABLE block_versions_new (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    block_id UUID NOT NULL,
+    version_number INTEGER NOT NULL,
+    content TEXT,
+    metadata JSONB,
+    change_type VARCHAR(20) NOT NULL,
+    diff JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID NOT NULL,
+    UNIQUE(block_id, version_number)
+);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'block_versions' AND table_schema = current_schema()) THEN
+        PERFORM safe_migrate_data('block_versions_new', 'block_versions');
+        EXECUTE 'ALTER TABLE block_versions RENAME TO block_versions_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
+    END IF;
+    ALTER TABLE block_versions_new RENAME TO block_versions;
+END $$;
+
+CREATE INDEX idx_block_versions_block_id ON block_versions(block_id, version_number DESC);
+
+
+-- 9. NOTE_SNAPSHOTS Table
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS note_snapshots_new;
+CREATE TABLE note_snapshots_new (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    note_id UUID NOT NULL,
+    snapshot_data JSONB NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_by UUID NOT NULL
+);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'note_snapshots' AND table_schema = current_schema()) THEN
+        PERFORM safe_migrate_data('note_snapshots_new', 'note_snapshots');
+        EXECUTE 'ALTER TABLE note_snapshots RENAME TO note_snapshots_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
+    END IF;
+    ALTER TABLE note_snapshots_new RENAME TO note_snapshots;
+END $$;
+
+CREATE INDEX idx_note_snapshots_note_id ON note_snapshots(note_id, created_at DESC);
+
+
+-- 10. COLLABORATION_SESSIONS Table
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS collaboration_sessions_new;
+CREATE TABLE collaboration_sessions_new (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    note_id UUID NOT NULL,
+    user_id UUID NOT NULL,
+    cursor_position JSONB,
+    selection JSONB,
+    color VARCHAR(20) NOT NULL,
+    connected_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    last_active_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    socket_id VARCHAR(100) NOT NULL
+);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'collaboration_sessions' AND table_schema = current_schema()) THEN
+        PERFORM safe_migrate_data('collaboration_sessions_new', 'collaboration_sessions');
+        EXECUTE 'ALTER TABLE collaboration_sessions RENAME TO collaboration_sessions_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
+    END IF;
+    ALTER TABLE collaboration_sessions_new RENAME TO collaboration_sessions;
+END $$;
+
+CREATE INDEX idx_collab_sessions_note_id ON collaboration_sessions(note_id);
+CREATE INDEX idx_collab_sessions_activity ON collaboration_sessions(last_active_at);
+
+
+-- 11. DOCUMENT_STATES Table (Y.js协同编辑状态)
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS document_states_new;
+CREATE TABLE document_states_new (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    note_id UUID NOT NULL UNIQUE,
+    state_vector BYTEA,
+    document_state BYTEA,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'document_states' AND table_schema = current_schema()) THEN
+        PERFORM safe_migrate_data('document_states_new', 'document_states');
+        EXECUTE 'ALTER TABLE document_states RENAME TO document_states_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
+    END IF;
+    ALTER TABLE document_states_new RENAME TO document_states;
+END $$;
+
+
+-- 12. NOTE_TEMPLATES Table
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS note_templates_new;
+CREATE TABLE note_templates_new (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    description TEXT,
+    thumbnail VARCHAR(500),
+    category VARCHAR(50) NOT NULL,
+    is_public BOOLEAN DEFAULT TRUE,
+    created_by UUID,
+    template_data JSONB NOT NULL,
+    usage_count INTEGER DEFAULT 0,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'note_templates' AND table_schema = current_schema()) THEN
+        PERFORM safe_migrate_data('note_templates_new', 'note_templates');
+        EXECUTE 'ALTER TABLE note_templates RENAME TO note_templates_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
+    END IF;
+    ALTER TABLE note_templates_new RENAME TO note_templates;
+END $$;
+
+CREATE INDEX idx_templates_category ON note_templates(category) WHERE is_public = TRUE;
+
+
+-- ================================================================================
+-- FULL-TEXT SEARCH TRIGGERS
+-- 全文搜索触发器
+-- ================================================================================
+
+-- Trigger function for notes full-text search
+CREATE OR REPLACE FUNCTION update_notes_search_vector()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.search_vector := to_tsvector('simple', coalesce(NEW.title, ''));
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER notes_search_vector_update
+BEFORE INSERT OR UPDATE ON notes
+FOR EACH ROW EXECUTE FUNCTION update_notes_search_vector();
+
+-- Trigger function for blocks full-text search
+CREATE OR REPLACE FUNCTION update_blocks_search_vector()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.search_vector := to_tsvector('simple', coalesce(NEW.content, ''));
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER blocks_search_vector_update
+BEFORE INSERT OR UPDATE ON blocks
+FOR EACH ROW EXECUTE FUNCTION update_blocks_search_vector();
+
+
+-- ================================================================================
+-- SEED DATA - SYSTEM TEMPLATES
+-- 初始数据 - 系统模板
+-- ================================================================================
+
+-- Seed system templates (only if table is empty)
+DO $$
+BEGIN
+    IF (SELECT count(*) FROM note_templates) = 0 THEN
+        INSERT INTO note_templates (name, description, category, is_public, created_by, template_data) VALUES
+        ('Blank Page', 'Start with a blank page', 'basic', true, NULL, '{"blocks": []}'),
+        ('Meeting Notes', 'Template for meeting notes', 'meeting', true, NULL, 
+         '{"blocks": [
+           {"type": "heading1", "content": "Meeting Notes"},
+           {"type": "text", "content": "Date: "},
+           {"type": "heading2", "content": "Attendees"},
+           {"type": "bullet_list", "content": ""},
+           {"type": "heading2", "content": "Agenda"},
+           {"type": "numbered_list", "content": ""},
+           {"type": "heading2", "content": "Action Items"},
+           {"type": "todo_list", "content": ""}
+         ]}'),
+        ('Project Plan', 'Template for project planning', 'project', true, NULL,
+         '{"blocks": [
+           {"type": "heading1", "content": "Project Plan"},
+           {"type": "heading2", "content": "Overview"},
+           {"type": "text", "content": ""},
+           {"type": "heading2", "content": "Timeline"},
+           {"type": "table", "metadata": {"columns": ["Phase", "Start Date", "End Date", "Status"], "rows": []}},
+           {"type": "heading2", "content": "Tasks"},
+           {"type": "todo_list", "content": ""}
+         ]}'),
+        ('Technical Doc', 'Template for technical documentation', 'doc', true, NULL,
+         '{"blocks": [
+           {"type": "heading1", "content": "Technical Documentation"},
+           {"type": "heading2", "content": "Overview"},
+           {"type": "text", "content": ""},
+           {"type": "heading2", "content": "Architecture"},
+           {"type": "code", "content": "", "metadata": {"language": "typescript"}},
+           {"type": "heading2", "content": "API Reference"},
+           {"type": "table", "metadata": {"columns": ["Endpoint", "Method", "Description"], "rows": []}}
+         ]}'),
+        ('Daily Journal', 'Template for daily journaling', 'personal', true, NULL,
+         '{"blocks": [
+           {"type": "heading1", "content": "Daily Journal"},
+           {"type": "text", "content": "Date: "},
+           {"type": "heading2", "content": "Today''s Highlights"},
+           {"type": "bullet_list", "content": ""},
+           {"type": "heading2", "content": "Thoughts"},
+           {"type": "text", "content": ""},
+           {"type": "heading2", "content": "Tomorrow''s Goals"},
+           {"type": "todo_list", "content": ""}
+         ]}');
+    END IF;
+END $$;
+
+
+-- ================================================================================
+-- INVITATION CODE SEEDING (EXISTING)
+-- 邀请码填充 (现有逻辑)
+-- ================================================================================
 
 -- Seed Data (Only if empty, to avoid duplicates on re-run)
 -- Note: Seeding strategy might need adjustment depending on requirements. 

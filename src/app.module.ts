@@ -16,6 +16,10 @@ import { LoggerModule } from './common/logger/logger.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { RateLimitEntry } from './rate-limit/rate-limit.entity';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
+import { NotesModule } from './notes/notes.module';
+import { Note, Block, BlockVersion, NoteSnapshot, NoteTemplate, CollaborationSession, DocumentState } from './notes/entities';
+import { StorageModule } from './common/storage/storage.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -23,6 +27,7 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
@@ -38,7 +43,21 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
           username: configService.get<string>('DB_USERNAME', 'postgres'),
           password: configService.get<string>('DB_PASSWORD', 'postgres'),
           database: configService.get<string>('DB_NAME', 'tainiex_core'),
-          entities: [User, InvitationCode, ChatSession, ChatMessage, RateLimitEntry],
+          entities: [
+            User,
+            InvitationCode,
+            ChatSession,
+            ChatMessage,
+            RateLimitEntry,
+            // Notes System Entities
+            Note,
+            Block,
+            BlockVersion,
+            NoteSnapshot,
+            NoteTemplate,
+            CollaborationSession,
+            DocumentState,
+          ],
           synchronize: !isProd, // Auto-create tables (dev only)
           ssl: enableSsl ? { rejectUnauthorized: false } : false,
         };
@@ -55,6 +74,8 @@ import { RateLimitModule } from './rate-limit/rate-limit.module';
     InvitationModule,
     ChatModule,
     RateLimitModule,
+    StorageModule,
+    NotesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
