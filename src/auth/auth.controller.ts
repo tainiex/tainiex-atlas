@@ -74,6 +74,31 @@ export class AuthController {
         return user;
     }
 
+    @Post('microsoft')
+    async microsoftLogin(@Body() req: { idToken: string }, @Res({ passthrough: true }) res: Response) {
+        const { user, tokens } = await this.authService.microsoftLogin(req.idToken);
+
+        const cookieDomain = process.env.COOKIE_DOMAIN;
+
+        res.cookie('access_token', tokens.access_token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            domain: cookieDomain,
+            maxAge: 15 * 60 * 1000 // 15 minutes
+        });
+
+        res.cookie('refresh_token', tokens.refresh_token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            domain: cookieDomain,
+            maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+        });
+
+        return user;
+    }
+
     @Post('google/signup')
     async googleSignup(@Body() req: { invitationCode: string, signupToken: string }, @Res({ passthrough: true }) res: Response) {
         const { user, tokens } = await this.authService.googleSignup(req.invitationCode, req.signupToken);

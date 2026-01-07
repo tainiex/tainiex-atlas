@@ -8,6 +8,8 @@ import { OAuth2Client } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
 import { Storage } from '@google-cloud/storage';
 import { InvitationService } from '../invitation/invitation.service';
+import * as jwksClient from 'jwks-rsa';
+import * as jwt from 'jsonwebtoken';
 
 @Injectable()
 export class AuthService {
@@ -154,6 +156,85 @@ export class AuthService {
             }
         }
 
+        const tokens = await this.generateTokens(user);
+        await this.updateRefreshToken(user.id, tokens.refresh_token);
+
+        if (user.avatar) {
+            const signedUrl = await this.usersService.getSignedUrl(user.avatar);
+            if (signedUrl) {
+                user.avatar = signedUrl;
+            }
+        }
+
+        return { user, tokens };
+    }
+
+    async microsoftLogin(idToken: string): Promise<any> {
+        // 1. Verify the ID token
+        const decodedHeader: any = jwt.decode(idToken, { complete: true });
+        if (!decodedHeader || !decodedHeader.header || !decodedHeader.header.kid) {
+            throw new UnauthorizedException('Invalid Microsoft token header');
+        }
+
+        const client = jwksClient.default({
+            jwksUri: 'https://login.microsoftonline.com/common/discovery/v2.0/keys'
+        });
+
+        const getKey = (header, callback) => {
+            client.getSigningKey(header.kid, (err, key) => {
+                const signingKey = key?.getPublicKey();
+                callback(null, signingKey);
+            });
+        };
+
+        const azureClientId = this.configService.get<string>('AZURE_CLIENT_ID');
+
+        let payload: any;
+        try {
+            payload = await new Promise((resolve, reject) => {
+                jwt.verify(idToken, getKey, {
+                    audience: azureClientId,
+                    // issuer: 'https://login.microsoftonline.com/{tenantid}/v2.0', // Optional: strict issuer check if needed
+                    algorithms: ['RS256']
+                }, (err, decoded) => {
+                    if (err) return reject(err);
+                    resolve(decoded);
+                });
+            });
+        } catch (error) {
+
+            console.error('Microsoft token verification failed:', error.message);
+            throw new UnauthorizedException('Invalid Microsoft token');
+        }
+
+        // 2. Extract user info
+        const { oid, name, email, preferred_username } = payload;
+        const userEmail = email || preferred_username;
+
+
+        if (!oid) {
+            throw new UnauthorizedException('Microsoft token missing OID');
+        }
+
+        // 3. Check if user exists
+        // Lookup by email
+        if (!userEmail) {
+            throw new UnauthorizedException('Microsoft token missing email');
+        }
+
+        let user = await this.usersService.findOneByEmail(userEmail);
+
+        if (!user) {
+            // Create new user
+            const username = this.generateRandomUsername(userEmail);
+            user = await this.usersService.create({
+                username,
+                email: userEmail,
+                // avatar: ... // Microsoft Graph API requires access token to fetch photo, maybe later
+            });
+        }
+
+        // 4. Generate Session
         const tokens = await this.generateTokens(user);
         await this.updateRefreshToken(user.id, tokens.refresh_token);
 

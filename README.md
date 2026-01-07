@@ -308,6 +308,11 @@ socket.on('chat:stream', (event) => {
 socket.emit('chat:send', { sessionId: 'xxx', content: 'Hello' });
 ```
 
+> 📱 **Mobile Development** / **移动端开发**:
+> For a detailed guide on handling mobile connection stability (reconnects, visibility changes), please see [Mobile WebSocket Guide](docs/mobile_websocket_guide.md).
+> 
+> 关于处理移动端连接稳定性（重连、页面可见性变化）的详细指南，请参阅 [移动端 WebSocket 指南](docs/mobile_websocket_guide.md)。
+
 
 ## Project Structure
 
