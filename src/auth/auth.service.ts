@@ -225,13 +225,23 @@ export class AuthService {
         let user = await this.usersService.findOneByEmail(userEmail);
 
         if (!user) {
-            // Create new user
-            const username = this.generateRandomUsername(userEmail);
-            user = await this.usersService.create({
-                username,
+            // User does not exist, return signup token (consistent with Google)
+            const signupPayload = {
                 email: userEmail,
-                // avatar: ... // Microsoft Graph API requires access token to fetch photo, maybe later
+                microsoftId: oid, // Keep this in token payload to be used in signup if we decide to use it later, though user requested email only
+                type: 'microsoft_signup_init'
+            };
+
+            const signupToken = await this.jwtService.signAsync(signupPayload, {
+                expiresIn: '10m',
+                secret: this.configService.get<string>('JWT_SECRET'),
             });
+
+            return {
+                requiresInvite: true,
+                email: userEmail,
+                signupToken
+            };
         }
 
         // 4. Generate Session
@@ -244,6 +254,57 @@ export class AuthService {
                 user.avatar = signedUrl;
             }
         }
+
+        return { user, tokens };
+    }
+
+    async microsoftSignup(invitationCode: string, signupToken: string): Promise<any> {
+        // Validate invitation code first
+        const isValid = await this.invitationService.validateCode(invitationCode);
+        if (!isValid) {
+            throw new UnauthorizedException('Invalid or expired invitation code');
+        }
+
+        // Verify signup token
+        let payload;
+        try {
+            payload = await this.jwtService.verifyAsync(signupToken, {
+                secret: this.configService.get<string>('JWT_SECRET'),
+            });
+        } catch (e) {
+            throw new UnauthorizedException('Invalid or expired signup token');
+        }
+
+        if (payload.type !== 'microsoft_signup_init' || !payload.email) {
+            throw new UnauthorizedException('Invalid signup token payload');
+        }
+
+        const { email } = payload;
+
+        // Double check if user exists
+        let user = await this.usersService.findOneByEmail(email);
+        if (user) {
+            const tokens = await this.generateTokens(user);
+            await this.updateRefreshToken(user.id, tokens.refresh_token);
+            return { user, tokens };
+        }
+
+        // Create new user
+        const username = this.generateRandomUsername(email);
+        user = await this.usersService.create({
+            username,
+            email,
+        });
+
+        // Mark code as used
+        const consumed = await this.invitationService.consumeCode(invitationCode, user);
+        if (!consumed) {
+            await this.usersService.delete(user.id);
+            throw new UnauthorizedException('Invitation code is no longer valid');
+        }
+
+        const tokens = await this.generateTokens(user);
+        await this.updateRefreshToken(user.id, tokens.refresh_token);
 
         return { user, tokens };
     }
