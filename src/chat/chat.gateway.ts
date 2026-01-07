@@ -80,7 +80,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     // Constants for Rate Limiting
-    private static readonly RATE_LIMIT_POINTS = 10; // Max requests
+    private static readonly RATE_LIMIT_POINTS = 50; // Max requests (Relaxed for better UX)
     private static readonly RATE_LIMIT_DURATION = 60; // Window in seconds
 
     async handleConnection(client: AuthenticatedSocket) {
