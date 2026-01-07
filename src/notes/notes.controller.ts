@@ -56,6 +56,7 @@ export class NotesController {
      */
     @Get(':id')
     async findOne(@Req() req, @Param('id') id: string) {
+        // console.log(`[NotesController] Reading note ${id} for user ${req.user.id}`);
         return this.notesService.findOne(id, req.user.id);
     }
 

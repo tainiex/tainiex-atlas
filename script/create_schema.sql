@@ -183,13 +183,29 @@ CREATE INDEX idx_notes_parent_id ON notes(parent_id);
 CREATE INDEX notes_search_idx ON notes USING GIN(search_vector);
 
 
--- 7. BLOCKS Table
+-- 8. BLOCKS Table
 --------------------------------------------------------------------------------
 DROP TABLE IF EXISTS blocks_new;
+
+-- Create ENUM type if not exists (explicitly matches shared-lib BlockType)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'blocks_type_enum') THEN
+        CREATE TYPE blocks_type_enum AS ENUM (
+            'TEXT', 'HEADING1', 'HEADING2', 'HEADING3', 
+            'BULLET_LIST', 'NUMBERED_LIST', 
+            'TODO_LIST', 'TODO_ITEM', 
+            'TABLE', 'CODE', 
+            'IMAGE', 'VIDEO', 'FILE', 
+            'DIVIDER', 'QUOTE', 'CALLOUT', 'TOGGLE'
+        );
+    END IF;
+END$$;
+
 CREATE TABLE blocks_new (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     note_id UUID NOT NULL,
-    type VARCHAR(50) NOT NULL,
+    type blocks_type_enum NOT NULL,
     content TEXT,
     metadata JSONB DEFAULT '{}',
     parent_block_id UUID,
@@ -390,45 +406,45 @@ BEGIN
         ('Blank Page', 'Start with a blank page', 'basic', true, NULL, '{"blocks": []}'),
         ('Meeting Notes', 'Template for meeting notes', 'meeting', true, NULL, 
          '{"blocks": [
-           {"type": "heading1", "content": "Meeting Notes"},
-           {"type": "text", "content": "Date: "},
-           {"type": "heading2", "content": "Attendees"},
-           {"type": "bullet_list", "content": ""},
-           {"type": "heading2", "content": "Agenda"},
-           {"type": "numbered_list", "content": ""},
-           {"type": "heading2", "content": "Action Items"},
-           {"type": "todo_list", "content": ""}
+           {"type": "HEADING1", "content": "Meeting Notes"},
+           {"type": "TEXT", "content": "Date: "},
+           {"type": "HEADING2", "content": "Attendees"},
+           {"type": "BULLET_LIST", "content": ""},
+           {"type": "HEADING2", "content": "Agenda"},
+           {"type": "NUMBERED_LIST", "content": ""},
+           {"type": "HEADING2", "content": "Action Items"},
+           {"type": "TODO_LIST", "content": ""}
          ]}'),
         ('Project Plan', 'Template for project planning', 'project', true, NULL,
          '{"blocks": [
-           {"type": "heading1", "content": "Project Plan"},
-           {"type": "heading2", "content": "Overview"},
-           {"type": "text", "content": ""},
-           {"type": "heading2", "content": "Timeline"},
-           {"type": "table", "metadata": {"columns": ["Phase", "Start Date", "End Date", "Status"], "rows": []}},
-           {"type": "heading2", "content": "Tasks"},
-           {"type": "todo_list", "content": ""}
+           {"type": "HEADING1", "content": "Project Plan"},
+           {"type": "HEADING2", "content": "Overview"},
+           {"type": "TEXT", "content": ""},
+           {"type": "HEADING2", "content": "Timeline"},
+           {"type": "TABLE", "metadata": {"columns": ["Phase", "Start Date", "End Date", "Status"], "rows": []}},
+           {"type": "HEADING2", "content": "Tasks"},
+           {"type": "TODO_LIST", "content": ""}
          ]}'),
         ('Technical Doc', 'Template for technical documentation', 'doc', true, NULL,
          '{"blocks": [
-           {"type": "heading1", "content": "Technical Documentation"},
-           {"type": "heading2", "content": "Overview"},
-           {"type": "text", "content": ""},
-           {"type": "heading2", "content": "Architecture"},
-           {"type": "code", "content": "", "metadata": {"language": "typescript"}},
-           {"type": "heading2", "content": "API Reference"},
-           {"type": "table", "metadata": {"columns": ["Endpoint", "Method", "Description"], "rows": []}}
+           {"type": "HEADING1", "content": "Technical Documentation"},
+           {"type": "HEADING2", "content": "Overview"},
+           {"type": "TEXT", "content": ""},
+           {"type": "HEADING2", "content": "Architecture"},
+           {"type": "CODE", "content": "", "metadata": {"language": "typescript"}},
+           {"type": "HEADING2", "content": "API Reference"},
+           {"type": "TABLE", "metadata": {"columns": ["Endpoint", "Method", "Description"], "rows": []}}
          ]}'),
         ('Daily Journal', 'Template for daily journaling', 'personal', true, NULL,
          '{"blocks": [
-           {"type": "heading1", "content": "Daily Journal"},
-           {"type": "text", "content": "Date: "},
-           {"type": "heading2", "content": "Today''s Highlights"},
-           {"type": "bullet_list", "content": ""},
-           {"type": "heading2", "content": "Thoughts"},
-           {"type": "text", "content": ""},
-           {"type": "heading2", "content": "Tomorrow''s Goals"},
-           {"type": "todo_list", "content": ""}
+           {"type": "HEADING1", "content": "Daily Journal"},
+           {"type": "TEXT", "content": "Date: "},
+           {"type": "HEADING2", "content": "Today''s Highlights"},
+           {"type": "BULLET_LIST", "content": ""},
+           {"type": "HEADING2", "content": "Thoughts"},
+           {"type": "TEXT", "content": ""},
+           {"type": "HEADING2", "content": "Tomorrow''s Goals"},
+           {"type": "TODO_LIST", "content": ""}
          ]}');
     END IF;
 END $$;

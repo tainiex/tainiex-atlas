@@ -157,6 +157,8 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
         const stateVector = await this.yjsService.getStateVector(noteId);
         const update = await this.yjsService.getStateAsUpdate(noteId);
 
+        this.logger.log(`[CollaborationGateway] Sending yjs:sync for note ${noteId} to user ${userId}. Update size: ${update.length} bytes`);
+
         client.emit('yjs:sync', {
             noteId,
             update: Buffer.from(update).toString('base64'),

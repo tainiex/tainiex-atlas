@@ -19,6 +19,7 @@ import { YjsService } from './yjs.service';
 import { VersionsService } from './versions.service';
 import { SearchService } from './search.service';
 import { ExportService } from './export.service';
+import { YjsTransformerService } from './yjs-transformer.service';
 
 // Gateways
 import { CollaborationGateway } from './collaboration.gateway';
@@ -76,7 +77,9 @@ import { ExportController } from './export.controller';
         YjsService,
         VersionsService,
         SearchService,
+        SearchService,
         ExportService,
+        YjsTransformerService,
         CollaborationGateway,
     ],
     exports: [
@@ -87,6 +90,7 @@ import { ExportController } from './export.controller';
         VersionsService,
         SearchService,
         ExportService,
+        YjsTransformerService,
     ],
 })
 export class NotesModule { }

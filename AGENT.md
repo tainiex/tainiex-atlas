@@ -112,6 +112,11 @@ The application follows a modular architecture. Each major feature has its own d
 - **Real-time Sync**: Implemented via `CollaborationGateway` and **Y.js (CRDT)**.
     - **Binary Updates**: Y.js updates are transmitted as base64-encoded strings over WebSockets.
     - **Presence**: Cursor positions and selection ranges are synchronized in real-time.
+    - **Integration Flow**:
+        1. Client connects via WebSocket (`/api/collaboration`).
+        2. Client MUST emit `note:join` `{ noteId }` to subscribe.
+        3. Server responds with `yjs:sync` containing initial state (blocks).
+        4. Client binds Tiptap to `blocks` key.
 - **File Management**: Integrated with `StorageService` for GCS uploads. Supports images (10MB), videos (100MB), and attachments (50MB) with signed URLs.
 
 ### 3.6. Rate Limiting

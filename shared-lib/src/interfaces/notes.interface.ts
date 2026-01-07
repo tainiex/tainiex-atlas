@@ -8,49 +8,55 @@
  */
 export enum BlockType {
     /** Plain text paragraph / 普通文本段落 */
-    TEXT = 'text',
+    TEXT = 'TEXT',
 
     /** Heading level 1 / 一级标题 */
-    HEADING1 = 'heading1',
+    HEADING1 = 'HEADING1',
 
     /** Heading level 2 / 二级标题 */
-    HEADING2 = 'heading2',
+    HEADING2 = 'HEADING2',
 
     /** Heading level 3 / 三级标题 */
-    HEADING3 = 'heading3',
+    HEADING3 = 'HEADING3',
 
     /** Bullet point list / 无序列表 */
-    BULLET_LIST = 'bullet_list',
+    BULLET_LIST = 'BULLET_LIST',
 
     /** Numbered list / 有序列表 */
-    NUMBERED_LIST = 'numbered_list',
+    NUMBERED_LIST = 'NUMBERED_LIST',
 
     /** Todo/checkbox list / 待办事项列表 */
-    TODO_LIST = 'todo_list',
+    TODO_LIST = 'TODO_LIST',
+
+    /** Todo item / 待办事项 */
+    TODO_ITEM = 'TODO_ITEM',
 
     /** Table with rows and columns / 表格 */
-    TABLE = 'table',
+    TABLE = 'TABLE',
 
     /** Code block with syntax highlighting / 代码块 */
-    CODE = 'code',
+    CODE = 'CODE',
 
     /** Image (stored in GCS) / 图片（存储在GCS） */
-    IMAGE = 'image',
+    IMAGE = 'IMAGE',
 
     /** Video (stored in GCS) / 视频（存储在GCS） */
-    VIDEO = 'video',
+    VIDEO = 'VIDEO',
 
     /** File attachment (stored in GCS) / 文件附件（存储在GCS） */
-    FILE = 'file',
+    FILE = 'FILE',
 
     /** Horizontal divider / 分割线 */
-    DIVIDER = 'divider',
+    DIVIDER = 'DIVIDER',
 
     /** Quote block / 引用块 */
-    QUOTE = 'quote',
+    QUOTE = 'QUOTE',
 
     /** Callout/alert box / 提示框 */
-    CALLOUT = 'callout',
+    CALLOUT = 'CALLOUT',
+
+    /** Toggle list / 折叠列表 */
+    TOGGLE = 'TOGGLE',
 }
 
 /**
@@ -121,13 +127,13 @@ export interface INote {
      * Timestamp when the note was created. 
      * 笔记创建时间。
      */
-    createdAt: Date;
+    createdAt: Date | string;
 
     /** 
      * Timestamp when the note was last updated. 
      * 笔记最后更新时间。
      */
-    updatedAt: Date;
+    updatedAt: Date | string;
 
     /** 
      * UUID of the user who last edited this note. 
@@ -668,4 +674,43 @@ export interface CollaborationLimitPayload {
 
     /** Maximum allowed editors / 最大允许编辑者数量 */
     maxEditors: number;
+}
+
+/**
+ * Payload for Y.js initial sync.
+ * Y.js 初始同步的 Payload。
+ * 
+ * Event: `server.emit('yjs:sync', payload)`
+ */
+export interface YjsSyncPayload {
+    /** Note ID / 笔记ID */
+    noteId: string;
+
+    /** Y.js update data (base64) / Y.js 更新数据 */
+    update: string;
+
+    /** State vector (base64) / 状态向量 */
+    stateVector: string;
+}
+
+// ==========================================
+// Socket.io Event Maps (Type Safety)
+// Socket.io 事件映射（类型安全）
+// ==========================================
+
+export interface ClientToServerEvents {
+    'note:join': (payload: NoteJoinPayload) => void;
+    'note:leave': (payload: NoteLeavePayload) => void;
+    'yjs:update': (payload: YjsUpdatePayload) => void;
+    'cursor:update': (payload: CursorUpdatePayload) => void;
+}
+
+export interface ServerToClientEvents {
+    'yjs:sync': (payload: YjsSyncPayload) => void;
+    'yjs:update': (payload: YjsUpdatePayload) => void;
+    'cursor:update': (payload: CursorUpdatePayload) => void;
+    'presence:join': (payload: PresenceJoinPayload) => void;
+    'presence:leave': (payload: PresenceLeavePayload) => void;
+    'presence:list': (payload: ICollaborator[]) => void;
+    'collaboration:limit': (payload: CollaborationLimitPayload) => void;
 }

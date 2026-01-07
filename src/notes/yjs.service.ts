@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { DocumentState } from './entities/document-state.entity';
+import { YjsTransformerService } from './yjs-transformer.service';
 import * as Y from 'yjs';
 
 /**
@@ -32,6 +33,7 @@ export class YjsService {
     constructor(
         @InjectRepository(DocumentState)
         private documentStateRepository: Repository<DocumentState>,
+        private yjsTransformerService: YjsTransformerService,
     ) {
         // Start periodic persistence
         // 启动定期持久化
@@ -47,6 +49,7 @@ export class YjsService {
         let doc = this.documents.get(noteId);
 
         if (doc) {
+            console.log(`[YjsService] getDocument: Returning CACHED doc for ${noteId}`);
             return doc;
         }
 
@@ -59,7 +62,41 @@ export class YjsService {
 
         if (state && state.documentState) {
             // Restore document state
+            console.log(`[YjsService] getDocument: Loaded from DB state for ${noteId}, size: ${state.documentState.length}`);
             Y.applyUpdate(doc, state.documentState);
+        } else {
+            console.log(`[YjsService] getDocument: No DB state found for ${noteId}, creating new empty doc`);
+        }
+
+        // AUTO-REPAIR / MIGRATION:
+        // If Y.js doc is missing 'blocks' key (e.g. old data in 'default', or empty),
+        // try to reconstruct it from SQL Blocks (source of truth).
+        const hasBlocks = doc.share.has('blocks');
+        if (!hasBlocks) {
+            console.log(`[YjsService] Note ${noteId} missing 'blocks' key. Attempting reconstruction from SQL...`);
+            await this.yjsTransformerService.loadBlocksToYDoc(noteId, doc);
+
+            // Check again
+            const hasBlocksAfter = doc.share.has('blocks');
+
+            // Fallback: If SQL was empty, but we have 'default' key (Legacy Data)
+            if (!hasBlocksAfter && doc.share.has('default')) {
+                console.log(`[YjsService] Note ${noteId} has legacy 'default' content but no 'blocks'. helping migration...`);
+
+                // 1. Sync 'default' -> SQL
+                await this.yjsTransformerService.syncToBlocks(noteId, doc);
+
+                // 2. Re-load SQL -> 'blocks'
+                await this.yjsTransformerService.loadBlocksToYDoc(noteId, doc);
+                console.log(`[YjsService] Legacy migration finished. Blocks populated: ${doc.share.has('blocks')}`);
+            }
+
+            // If we reconstructed (or migrated), we should persist this converted state back to document_states immediately?
+            // Or let the periodic saver handle it. 
+            // Let's force a persist trigger effectively.
+            if (doc.share.has('blocks')) {
+                this.pendingUpdates.set(noteId, { doc, updateCount: 1 });
+            }
         }
 
         // Cache in memory
@@ -126,6 +163,7 @@ export class YjsService {
      * 持久化文档到数据库。
      */
     private async persistDocument(noteId: string, doc: Y.Doc): Promise<void> {
+        console.log(`[Debug] persistDocument called for note: ${noteId}`);
         const documentState = Y.encodeStateAsUpdate(doc);
         const stateVector = Y.encodeStateVector(doc);
 
@@ -137,6 +175,14 @@ export class YjsService {
             },
             ['noteId']
         );
+
+        // Sync to Blocks table
+        // 同步到Blocks表
+        try {
+            await this.yjsTransformerService.syncToBlocks(noteId, doc);
+        } catch (error) {
+            console.error(`[YjsService] Failed to sync blocks for note ${noteId}:`, error);
+        }
 
         console.log(`[YjsService] Persisted document state for note: ${noteId}`);
     }

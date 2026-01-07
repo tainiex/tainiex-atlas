@@ -369,6 +369,14 @@ npm run format
 | `presence:list` | Server→Client | Get list of current active collaborators |
 | `collaboration:limit` | Server→Client | Triggered if > 5 users try to edit |
 
+**Frontend Integration Flow (Critical):**
+1.  **Connect**: Establish WebSocket connection with JWT.
+2.  **Join Note**: MUST emit `note:join` with `{ noteId }` immediately. The server does NOT send data until this event is received.
+3.  **Receive Data**: Listen for `yjs:sync`. This event contains the initial document state (blocks).
+    *   **Payload**: `{ noteId, update: "base64...", stateVector: "base64..." }`
+    *   **Action**: Decode base64 to Uint8Array and apply to Y.js doc.
+4.  **Edit**: Bind Tiptap to `blocks` key (or `default` fallback). Y.js handles sync automatically.
+
 ### WebSocket (`wss://domain.com/api/chat`)
 
 **Real-time Chat Streaming** - High-performance bi-directional streaming for AI responses.
