@@ -84,9 +84,25 @@ export class ChatService {
 
         // 构建查询条件
         const where: any = { sessionId };
+
         if (options?.before) {
-            // 查找 ID < before 的消息（更早的消息）
-            where.id = LessThan(options.before);
+            // 必须先获取 cursor 消息的创建时间
+            // Must fetch the cursor message's createdAt first
+            const cursorMsg = await this.chatMessageRepository.findOne({
+                where: { id: options.before },
+                select: ['createdAt'] // Optimize selection
+            });
+
+            if (cursorMsg) {
+                // 查找创建时间早于 cursor 的消息
+                // Find messages created before the cursor
+                where.createdAt = LessThan(cursorMsg.createdAt);
+            } else {
+                // Cursor not found? Maybe return empty or just ignore cursor.
+                // If cursor is invalid, we might want to return nothing or start from top.
+                // Safest for pagination is to return empty if cursor context is lost.
+                return { messages: [], hasMore: false, nextCursor: null };
+            }
         }
 
         // 查询 limit + 1 条，用于判断 hasMore
