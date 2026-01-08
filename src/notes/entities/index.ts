@@ -10,6 +10,5 @@ export { Note } from './note.entity';
 export { Block } from './block.entity';
 export { BlockVersion } from './block-version.entity';
 export { NoteSnapshot } from './note-snapshot.entity';
-export { CollaborationSession } from './collaboration-session.entity';
 export { DocumentState } from './document-state.entity';
 export { NoteTemplate } from './note-template.entity';

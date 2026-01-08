@@ -17,7 +17,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { RateLimitEntry } from './rate-limit/rate-limit.entity';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { NotesModule } from './notes/notes.module';
-import { Note, Block, BlockVersion, NoteSnapshot, NoteTemplate, CollaborationSession, DocumentState } from './notes/entities';
+import { Note, Block, BlockVersion, NoteSnapshot, NoteTemplate, DocumentState } from './notes/entities';
 import { StorageModule } from './common/storage/storage.module';
 import { ScheduleModule } from '@nestjs/schedule';
 
@@ -55,7 +55,6 @@ import { ScheduleModule } from '@nestjs/schedule';
             BlockVersion,
             NoteSnapshot,
             NoteTemplate,
-            CollaborationSession,
             DocumentState,
           ],
           synchronize: !isProd, // Auto-create tables (dev only)

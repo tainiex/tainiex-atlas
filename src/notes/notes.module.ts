@@ -8,7 +8,6 @@ import {
     BlockVersion,
     NoteSnapshot,
     NoteTemplate,
-    CollaborationSession,
     DocumentState,
 } from './entities';
 
@@ -58,7 +57,6 @@ import { ExportController } from './export.controller';
             BlockVersion,
             NoteSnapshot,
             NoteTemplate,
-            CollaborationSession,
             DocumentState,
         ]),
     ],

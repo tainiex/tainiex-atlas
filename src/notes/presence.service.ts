@@ -1,20 +1,48 @@
-import { Injectable } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { CollaborationSession } from './entities/collaboration-session.entity';
+import { Injectable, Logger } from '@nestjs/common';
 import type { ICollaborator } from '@shared/index';
 
 /**
- * PresenceService - manages user presence in collaborative editing sessions.
- * PresenceService - 管理协同编辑会话中的用户在线状态。
+ * Local session interface for in-memory storage.
+ * 用于内存存储的本地会话接口。
+ */
+interface LocalSession {
+    noteId: string;
+    userId: string;
+    socketId: string;
+    color: string;
+    username: string;
+    avatar?: string;
+    connectedAt: Date;
+    lastActiveAt: Date;
+    cursorPosition?: { blockId: string; offset: number };
+    selection?: {
+        startBlockId: string;
+        startOffset: number;
+        endBlockId: string;
+        endOffset: number;
+    };
+}
+
+/**
+ * PresenceService - manages user presence in collaborative editing sessions (In-Memory).
+ * PresenceService - 管理协同编辑会话中的用户在线状态（内存存储）。
  */
 @Injectable()
 export class PresenceService {
+    private readonly logger = new Logger(PresenceService.name);
     private readonly MAX_CONCURRENT_EDITORS = 5;
 
-    // In-memory cache for quick access
-    // 内存缓存，用于快速访问
-    private activeSessions = new Map<string, Set<string>>(); // noteId -> Set<userId>
+    // In-memory stores
+    // 内存存储
+
+    // Key: socketId -> Session Data (Fast lookup for disconnects/updates)
+    // 键: socketId -> 会话数据 (用于快速查找断开连接/更新)
+    private sessions = new Map<string, LocalSession>();
+
+    // Key: noteId -> Set of socketIds (Fast lookup for who is in a note)
+    // 键: noteId -> socketId 集合 (用于快速查找谁在笔记中)
+    private noteSessions = new Map<string, Set<string>>();
+
     private userColors = new Map<string, string>(); // userId -> color
 
     // Available colors for user cursors
@@ -25,10 +53,7 @@ export class PresenceService {
         '#FF9FF3', '#54A0FF', '#48DBFB', '#1DD1A1'
     ];
 
-    constructor(
-        @InjectRepository(CollaborationSession)
-        private collaborationRepository: Repository<CollaborationSession>,
-    ) { }
+    constructor() { }
 
     /**
      * User joins a note editing session.
@@ -42,9 +67,18 @@ export class PresenceService {
         avatar?: string
     ): Promise<{ success: boolean; collaborator?: ICollaborator; error?: string }> {
         // Check concurrent editors limit
-        const currentEditors = this.activeSessions.get(noteId) || new Set();
+        const currentEditors = this.noteSessions.get(noteId) || new Set();
 
-        if (currentEditors.size >= this.MAX_CONCURRENT_EDITORS && !currentEditors.has(userId)) {
+        // Check if user is already in (allow multi-tab, but check unique users count if needed)
+        // Currently checking raw socket count or unique user count?
+        // Let's count unique users for the limit.
+        const uniqueUsers = new Set<string>();
+        currentEditors.forEach(sid => {
+            const sess = this.sessions.get(sid);
+            if (sess) uniqueUsers.add(sess.userId);
+        });
+
+        if (uniqueUsers.size >= this.MAX_CONCURRENT_EDITORS && !uniqueUsers.has(userId)) {
             return {
                 success: false,
                 error: `Maximum ${this.MAX_CONCURRENT_EDITORS} concurrent editors reached`,
@@ -59,21 +93,25 @@ export class PresenceService {
             this.userColors.set(userId, color);
         }
 
-        // Save to database
-        const session = this.collaborationRepository.create({
+        // Create session object
+        const session: LocalSession = {
             noteId,
             userId,
             socketId,
+            username,
+            avatar,
             color,
-        });
+            connectedAt: new Date(),
+            lastActiveAt: new Date()
+        };
 
-        await this.collaborationRepository.save(session);
+        // Store in maps
+        this.sessions.set(socketId, session);
 
-        // Update in-memory cache
-        if (!this.activeSessions.has(noteId)) {
-            this.activeSessions.set(noteId, new Set());
+        if (!this.noteSessions.has(noteId)) {
+            this.noteSessions.set(noteId, new Set());
         }
-        this.activeSessions.get(noteId)!.add(userId);
+        this.noteSessions.get(noteId)!.add(socketId);
 
         return {
             success: true,
@@ -91,21 +129,7 @@ export class PresenceService {
      * 用户离开笔记编辑会话。
      */
     async leave(noteId: string, userId: string, socketId: string): Promise<void> {
-        // Remove from database
-        await this.collaborationRepository.delete({
-            noteId,
-            userId,
-            socketId,
-        });
-
-        // Update in-memory cache
-        const editors = this.activeSessions.get(noteId);
-        if (editors) {
-            editors.delete(userId);
-            if (editors.size === 0) {
-                this.activeSessions.delete(noteId);
-            }
-        }
+        this.removeSessionInternal(socketId);
     }
 
     /**
@@ -124,50 +148,39 @@ export class PresenceService {
             endOffset: number;
         }
     ): Promise<void> {
-        await this.collaborationRepository.update(
-            { noteId, userId, socketId },
-            {
-                cursorPosition,
-                selection,
-                lastActiveAt: new Date(),
-            }
-        );
+        const session = this.sessions.get(socketId);
+        if (session) {
+            session.cursorPosition = cursorPosition;
+            session.selection = selection;
+            session.lastActiveAt = new Date();
+        }
     }
 
     /**
      * Get all active collaborators for a note.
      * 获取笔记的所有活跃协作者。
      */
-    async getCollaborators(noteId: string): Promise<CollaborationSession[]> {
-        return this.collaborationRepository.find({
-            where: { noteId },
-            order: { connectedAt: 'ASC' },
-        });
-    }
+    async getCollaborators(noteId: string): Promise<any[]> {
+        const socketIds = this.noteSessions.get(noteId);
+        if (!socketIds) return [];
 
-    /**
-     * Clean up stale sessions (older than 1 hour).
-     * 清理过期会话（超过1小时）。
-     */
-    async cleanupStaleSessions(): Promise<void> {
-        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-
-        await this.collaborationRepository
-            .createQueryBuilder()
-            .delete()
-            .where('last_active_at < :time', { time: oneHourAgo })
-            .execute();
-
-        // Rebuild in-memory cache
-        this.activeSessions.clear();
-        const allSessions = await this.collaborationRepository.find();
-
-        for (const session of allSessions) {
-            if (!this.activeSessions.has(session.noteId)) {
-                this.activeSessions.set(session.noteId, new Set());
+        const collaborators: any[] = [];
+        socketIds.forEach(sid => {
+            const sess = this.sessions.get(sid);
+            if (sess) {
+                collaborators.push({
+                    userId: sess.userId,
+                    color: sess.color,
+                    cursorPosition: sess.cursorPosition,
+                    selection: sess.selection,
+                    username: sess.username,
+                    avatar: sess.avatar,
+                    connectedAt: sess.connectedAt
+                });
             }
-            this.activeSessions.get(session.noteId)!.add(session.userId);
-        }
+        });
+
+        return collaborators.sort((a, b) => a.connectedAt.getTime() - b.connectedAt.getTime());
     }
 
     /**
@@ -175,7 +188,15 @@ export class PresenceService {
      * 获取笔记的当前编辑者数量。
      */
     getEditorCount(noteId: string): number {
-        return this.activeSessions.get(noteId)?.size || 0;
+        const socketIds = this.noteSessions.get(noteId);
+        if (!socketIds) return 0;
+
+        const uniqueUsers = new Set<string>();
+        socketIds.forEach(sid => {
+            const sess = this.sessions.get(sid);
+            if (sess) uniqueUsers.add(sess.userId);
+        });
+        return uniqueUsers.size;
     }
 
     /**
@@ -184,5 +205,36 @@ export class PresenceService {
      */
     isAtCapacity(noteId: string): boolean {
         return this.getEditorCount(noteId) >= this.MAX_CONCURRENT_EDITORS;
+    }
+
+    /**
+     * Remove session by socket ID (used on disconnect).
+     * 根据 Socket ID 移除会话（用于断开连接时）。
+     */
+    async removeSessionBySocketId(socketId: string): Promise<{ noteId: string; userId: string } | null> {
+        return this.removeSessionInternal(socketId);
+    }
+
+    /**
+     * Internal helper to remove a session.
+     * 移除会话的内部辅助方法。
+     */
+    private removeSessionInternal(socketId: string): { noteId: string; userId: string } | null {
+        const session = this.sessions.get(socketId);
+        if (!session) return null;
+
+        // Remove from sessions map
+        this.sessions.delete(socketId);
+
+        // Remove from noteSessions map
+        const noteSockets = this.noteSessions.get(session.noteId);
+        if (noteSockets) {
+            noteSockets.delete(socketId);
+            if (noteSockets.size === 0) {
+                this.noteSessions.delete(session.noteId);
+            }
+        }
+
+        return { noteId: session.noteId, userId: session.userId };
     }
 }

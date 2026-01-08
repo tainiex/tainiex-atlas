@@ -107,8 +107,13 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
     async handleDisconnect(client: AuthenticatedSocket) {
         // Clean up all sessions for this client
         this.logger.log(`Client disconnected: ${client.id}`);
-        // Note: In a production environment, you might want to track which notes the client is in
-        // or iterate through activeSessions to clean up.
+
+        const removed = await this.presenceService.removeSessionBySocketId(client.id);
+
+        if (removed) {
+            client.to(removed.noteId).emit('presence:leave', { userId: removed.userId });
+            this.logger.log(`User ${removed.userId} disconnected (socket cleanup) from note ${removed.noteId}`);
+        }
     }
 
     @SubscribeMessage('note:join')
