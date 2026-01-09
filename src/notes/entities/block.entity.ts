@@ -46,6 +46,9 @@ export class Block implements Omit<IBlock, 'children'> {
     @Column({ name: 'last_edited_by', type: 'uuid' })
     lastEditedBy: string;
 
+    @Column({ name: 'is_deleted', default: false })
+    isDeleted: boolean;
+
     // Full-text search vector (managed by PostgreSQL trigger)
     // 全文搜索向量（由PostgreSQL触发器管理）
     @Column({

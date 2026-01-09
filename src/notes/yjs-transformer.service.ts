@@ -80,14 +80,37 @@ export class YjsTransformerService {
 
         const savePromises = blocksToSave.map(async (partialBlock) => {
             let toSave = partialBlock;
+            let isUpdate = false;
 
             if (partialBlock.id && existingMap.has(partialBlock.id)) {
                 const existing = existingMap.get(partialBlock.id)!;
+
+                // Dirty Check: Skip if content/metadata/position/parent match and not deleted
+                // 脏检查：如果内容/元数据/位置/父级均匹配且未删除，则跳过
+                const isContentMatch = existing.content === partialBlock.content;
+                // Simple fast check for metadata equality (assuming consistent serialization)
+                const isMetadataMatch = JSON.stringify(existing.metadata) === JSON.stringify(partialBlock.metadata);
+                const isPositionMatch = existing.position === partialBlock.position;
+                const isParentMatch = existing.parentBlockId === partialBlock.parentBlockId;
+                const isTypeMatch = existing.type === partialBlock.type;
+                const isDeleted = existing.isDeleted;
+
+                if (isContentMatch && isMetadataMatch && isPositionMatch && isParentMatch && isTypeMatch && !isDeleted) {
+                    // No changes needed
+                    return;
+                }
+
+                // If resurrecting a deleted block, we must explicitly set isDeleted: false
+                if (isDeleted) {
+                    toSave.isDeleted = false;
+                }
+
                 toSave = {
                     ...partialBlock,
                     createdBy: existing.createdBy, // Preserve creator
                     lastEditedBy: existing.lastEditedBy, // Ideally updated by user, but...
                 };
+                isUpdate = true;
             } else {
                 // New block (or re-created Tiptap block)
                 if (existingBlocks.length > 0) {
@@ -109,12 +132,14 @@ export class YjsTransformerService {
         // Only if we are confident we extracted ALL blocks. 
         // If we parsed 'default', we assume that's the source of truth.
         const idsToDelete = existingBlocks
-            .filter(b => !currentBlockIds.has(b.id))
+            .filter(b => !currentBlockIds.has(b.id) && !b.isDeleted) // Only delete if not already deleted
             .map(b => b.id);
 
         if (idsToDelete.length > 0) {
-            await this.blockRepository.delete(idsToDelete);
-            this.logger.log(`Deleted ${idsToDelete.length} blocks for note ${noteId}`);
+            // Soft Delete instead of Remove
+            // 软删除替代物理删除
+            await this.blockRepository.update(idsToDelete, { isDeleted: true });
+            this.logger.log(`Soft deleted ${idsToDelete.length} blocks for note ${noteId}`);
         }
 
         // Execute Save

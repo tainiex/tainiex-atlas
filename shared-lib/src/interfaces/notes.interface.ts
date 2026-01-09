@@ -227,6 +227,12 @@ export interface IBlock {
      * 可选的嵌套子块（用于树状结构渲染）。
      */
     children?: IBlock[];
+
+    /**
+     * Optional soft delete flag.
+     * 可选的软删除标记。
+     */
+    isDeleted?: boolean;
 }
 
 /**

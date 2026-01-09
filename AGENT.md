@@ -79,6 +79,16 @@ The application follows a modular architecture. Each major feature has its own d
         2. **Security**: We do NOT return the raw Google ID Token. We issue a temporary, backend-signed `signupToken` containing the user's profile info.
         3. Client submits `signupToken` + `invitationCode` to `POST /auth/google/signup` to finalize creation.
 
+### 2.4. WebSocket Architecture
+- **Single Connection Strategy**: The application accepts a single physical WebSocket connection (Socket.IO `Manager`) multiplexed into different namespaces. This is the recommended client-side implementation to conserve resources.
+- **Namespaces**:
+    - **`/api/chat`**: Handles AI chat sessions, message sending, and streaming.
+    - **`/api/collaboration`**: Handles real-time note editing (Y.js sync) and presence updates.
+- **Client Implementation**: 
+    - Clients should instantiate **one** `Manager` with the root URL and authentication options.
+    - Open discrete sockets for distinct namespaces from the same manager: `manager.socket('/api/chat')` and `manager.socket('/api/collaboration')`.
+- **Authentication**: Both namespaces share the same authentication mechanism (JWT in `auth.token` or `cookie`).
+
 ## 3. Key Feature Specifications
 
 ### 3.1. Invitation System

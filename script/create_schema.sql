@@ -214,6 +214,7 @@ CREATE TABLE blocks_new (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     created_by UUID NOT NULL,
     last_edited_by UUID NOT NULL,
+    is_deleted BOOLEAN DEFAULT FALSE,
     search_vector tsvector
 );
 
@@ -226,9 +227,19 @@ BEGIN
     ALTER TABLE blocks_new RENAME TO blocks;
 END $$;
 
+DROP INDEX IF EXISTS idx_blocks_note_id;
 CREATE INDEX idx_blocks_note_id ON blocks(note_id);
+
+DROP INDEX IF EXISTS idx_blocks_position;
 CREATE INDEX idx_blocks_position ON blocks(note_id, position);
+
+DROP INDEX IF EXISTS idx_blocks_parent;
 CREATE INDEX idx_blocks_parent ON blocks(parent_block_id);
+
+DROP INDEX IF EXISTS idx_blocks_active;
+CREATE INDEX idx_blocks_active ON blocks(note_id) WHERE is_deleted = FALSE;
+
+DROP INDEX IF EXISTS blocks_search_idx;
 CREATE INDEX blocks_search_idx ON blocks USING GIN(search_vector);
 
 
