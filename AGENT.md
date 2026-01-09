@@ -55,6 +55,7 @@ The application follows a modular architecture. Each major feature has its own d
     - **Smart Snapshots**: Note snapshots are created only when `updated_at` changes, managed by a daily cron job.
     - **CRDT Persistence**: Y.js binary state is persisted in `document_states` table for disaster recovery.
     - **Versioning**: Uses a hybrid approach with full snapshots every 10 updates and diffs for intermediate versions.
+    - **Tree Performance**: Uses **Partial Indexes** (`WHERE is_deleted = FALSE`) to optimize hierarchical queries. Specifically, `idx_notes_parent_active` ensures efficient lazy loading of the note tree.
 - Avoid using foreign keys; it's considered bad practice. Constraints should be handled in the code.
   - If entity schemas are used for frontend responses, they must reside in a shared library. 
 - **Required PostgreSQL Extensions**:
@@ -118,6 +119,11 @@ The application follows a modular architecture. Each major feature has its own d
 
 ### 3.5. Notes & Collaboration System
 - **Block-Based Storage**: Notes are composed of multimodal blocks (TEXT, HEADING, IMAGE, etc.).
+- **Tree Structure (Lazy Loading)**:
+    - `GET /api/notes` without `parentId` parameter returns **only root notes** (where `parentId = null`).
+    - `GET /api/notes?parentId={id}` returns children of the specified parent.
+    - Each note includes `hasChildren: boolean` to indicate if it has sub-notes (for UI rendering).
+    - This design prevents loading thousands of notes at once and supports efficient tree navigation.
 - **Concurrency Control**: Limited to **5 concurrent users** per note to ensure stability in a single-instance architecture. Managed by `PresenceService`.
 - **Real-time Sync**: Implemented via `CollaborationGateway` and **Y.js (CRDT)**.
     - **Binary Updates**: Y.js updates are transmitted as base64-encoded strings over WebSockets.

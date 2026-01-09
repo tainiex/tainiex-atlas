@@ -21,13 +21,16 @@ export class AuthController {
         const tokens = await this.authService.login(user);
 
         const cookieDomain = process.env.COOKIE_DOMAIN;
+        // In development, use 60s for access token to test refresh logic
+        // 在开发环境中，使用 60 秒以测试刷新逻辑
+        const accessTokenMaxAge = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 60 * 1000;
 
         res.cookie('access_token', tokens.access_token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             domain: cookieDomain,
-            maxAge: 15 * 60 * 1000 // 15 minutes
+            maxAge: accessTokenMaxAge
         });
 
         res.cookie('refresh_token', tokens.refresh_token, {
@@ -54,13 +57,14 @@ export class AuthController {
         const { user, tokens } = result;
 
         const cookieDomain = process.env.COOKIE_DOMAIN;
+        const accessTokenMaxAge = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 60 * 1000;
 
         res.cookie('access_token', tokens.access_token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             domain: cookieDomain,
-            maxAge: 15 * 60 * 1000 // 15 minutes
+            maxAge: accessTokenMaxAge
         });
 
         res.cookie('refresh_token', tokens.refresh_token, {
@@ -85,13 +89,14 @@ export class AuthController {
         const { user, tokens } = result;
 
         const cookieDomain = process.env.COOKIE_DOMAIN;
+        const accessTokenMaxAge = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 60 * 1000;
 
         res.cookie('access_token', tokens.access_token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             domain: cookieDomain,
-            maxAge: 15 * 60 * 1000 // 15 minutes
+            maxAge: accessTokenMaxAge
         });
 
         res.cookie('refresh_token', tokens.refresh_token, {
@@ -110,13 +115,14 @@ export class AuthController {
         const { user, tokens } = await this.authService.microsoftSignup(req.invitationCode, req.signupToken);
 
         const cookieDomain = process.env.COOKIE_DOMAIN;
+        const accessTokenMaxAge = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 60 * 1000;
 
         res.cookie('access_token', tokens.access_token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             domain: cookieDomain,
-            maxAge: 15 * 60 * 1000 // 15 minutes
+            maxAge: accessTokenMaxAge
         });
 
         res.cookie('refresh_token', tokens.refresh_token, {
@@ -135,13 +141,14 @@ export class AuthController {
         const { user, tokens } = await this.authService.googleSignup(req.invitationCode, req.signupToken);
 
         const cookieDomain = process.env.COOKIE_DOMAIN;
+        const accessTokenMaxAge = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 60 * 1000;
 
         res.cookie('access_token', tokens.access_token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             domain: cookieDomain,
-            maxAge: 15 * 60 * 1000 // 15 minutes
+            maxAge: accessTokenMaxAge
         });
 
         res.cookie('refresh_token', tokens.refresh_token, {
@@ -164,6 +171,7 @@ export class AuthController {
         const tokens = await this.authService.refreshTokens(userId, refreshToken);
 
         const cookieDomain = process.env.COOKIE_DOMAIN;
+        const accessTokenMaxAge = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 60 * 1000;
 
         // 设置新的 cookies
         res.cookie('access_token', tokens.access_token, {
@@ -171,7 +179,7 @@ export class AuthController {
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',
             domain: cookieDomain,
-            maxAge: 15 * 60 * 1000 // 15 minutes
+            maxAge: accessTokenMaxAge
         });
 
         res.cookie('refresh_token', tokens.refresh_token, {

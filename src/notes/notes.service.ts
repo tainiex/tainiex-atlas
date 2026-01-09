@@ -44,25 +44,51 @@ export class NotesService {
             offset?: number;
         }
     ): Promise<{ notes: Note[]; total: number }> {
-        const where: any = {
-            userId,
-            isDeleted: false,
-        };
+        const queryBuilder = this.noteRepository.createQueryBuilder('n')
+            .where('n.userId = :userId', { userId })
+            .andWhere('n.isDeleted = :isDeleted', { isDeleted: false });
 
         if (options?.parentId !== undefined) {
-            where.parentId = options.parentId === 'null' ? null : options.parentId;
+            if (options.parentId === 'null') {
+                queryBuilder.andWhere('n.parentId IS NULL');
+            } else {
+                queryBuilder.andWhere('n.parentId = :parentId', { parentId: options.parentId });
+            }
+        } else {
+            // Default: only return root notes
+            // 默认：只返回根笔记
+            queryBuilder.andWhere('n.parentId IS NULL');
         }
 
         if (options?.isPublic !== undefined) {
-            where.isPublic = options.isPublic;
+            queryBuilder.andWhere('n.isPublic = :isPublic', { isPublic: options.isPublic });
         }
 
-        const [notes, total] = await this.noteRepository.findAndCount({
-            where,
-            order: { updatedAt: 'DESC' },
-            take: options?.limit || 50,
-            skip: options?.offset || 0,
-        });
+        queryBuilder
+            .orderBy('n.updatedAt', 'DESC')
+            .take(options?.limit || 50)
+            .skip(options?.offset || 0);
+
+        const [notes, total] = await queryBuilder.getManyAndCount();
+
+        // Optimization: Batch check for children (Lazy Loading)
+        // 优化：批量检查子节点（懒加载）
+        if (notes.length > 0) {
+            const noteIds = notes.map(n => n.id);
+            const childrenCounts = await this.noteRepository
+                .createQueryBuilder('n')
+                .select('n.parentId')
+                .distinct(true)
+                .where('n.parentId IN (:...ids)', { ids: noteIds })
+                .andWhere('n.isDeleted = :isDeleted', { isDeleted: false })
+                .getRawMany();
+
+            const parentIdsWithChildren = new Set(childrenCounts.map(c => c.n_parent_id));
+
+            notes.forEach(note => {
+                note.hasChildren = parentIdsWithChildren.has(note.id);
+            });
+        }
 
         return { notes, total };
     }

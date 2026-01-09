@@ -57,4 +57,10 @@ export class Note implements INote {
         update: false
     })
     searchVector?: any;
+
+    /**
+     * Whether the note has children (computed property, not stored in DB).
+     * 笔记是否有子节点（计算属性，不存储在数据库中）。
+     */
+    hasChildren?: boolean;
 }

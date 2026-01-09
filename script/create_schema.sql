@@ -180,6 +180,7 @@ END $$;
 
 CREATE INDEX idx_notes_user_id ON notes(user_id) WHERE is_deleted = FALSE;
 CREATE INDEX idx_notes_parent_id ON notes(parent_id);
+CREATE INDEX idx_notes_parent_active ON notes(parent_id) WHERE is_deleted = FALSE;
 CREATE INDEX notes_search_idx ON notes USING GIN(search_vector);
 
 

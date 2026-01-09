@@ -19,6 +19,7 @@ Tainiex Atlas is a comprehensive backend solution that combines robust authentic
 - **Secure File Storage**: Multimedia support via Google Cloud Storage with size-restricted uploads
 - **Type Safety**: Full TypeScript implementation with shared type definitions
 - **Production Ready**: Enterprise-grade architecture with security best practices
+- **Performance Optimized**: Uses partial indexes and lazy loading for efficient tree structure handling
 
 ## Tech Stack
 
@@ -334,7 +335,7 @@ npm run format
 
 | Method | Endpoint | Auth Required | Description |
 |--------|----------|---------------|-------------|
-| GET | `/notes` | JWT | List user notes (with hierarchy support) |
+| GET | `/notes` | JWT | List user notes (returns root notes by default; use `?parentId=ID` for children) |
 | POST | `/notes` | JWT | Create a new note (optional template) |
 | GET | `/notes/:id` | JWT | Get note metadata and blocks |
 | PATCH | `/notes/:id` | JWT | Update note title, cover, or icon |

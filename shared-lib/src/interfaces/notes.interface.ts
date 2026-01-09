@@ -105,6 +105,12 @@ export interface INote {
      */
     parentId?: string;
 
+    /**
+     * Whether the note has children (computed property).
+     * 笔记是否有子节点（计算属性）。
+     */
+    hasChildren?: boolean;
+
     /** 
      * Optional template type used to create this note. 
      * 可选的模板类型，用于创建此笔记。

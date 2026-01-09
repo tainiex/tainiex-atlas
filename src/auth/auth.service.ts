@@ -45,9 +45,15 @@ export class AuthService {
             sub: user.id,
             email: user.email,
         };
+
+        // In development, use 60s for access token to test refresh logic
+        // 在开发环境中，使用 60 秒的 access token 以测试刷新逻辑
+        const isDevelopment = this.configService.get<string>('NODE_ENV') !== 'production';
+        const accessTokenExpiry = isDevelopment ? '60s' : '15m';
+
         const [accessToken, refreshToken] = await Promise.all([
             this.jwtService.signAsync(payload, {
-                expiresIn: '15m',
+                expiresIn: accessTokenExpiry,
                 secret: this.configService.get<string>('JWT_SECRET'),
             }),
             this.jwtService.signAsync(payload, {
