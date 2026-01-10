@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { NotesService } from './notes.service';
-import type { CreateNoteDto, UpdateNoteDto } from '@shared/index';
+import type { CreateNoteDto, UpdateNoteDto } from '@tainiex/shared';
 
 /**
  * NotesController - handles HTTP requests for note operations.

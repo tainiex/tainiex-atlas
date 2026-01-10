@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Block } from './entities/block.entity';
 import { BlockVersion } from './entities/block-version.entity';
-import { CreateBlockDto, UpdateBlockDto, MoveBlockDto, IBlock } from '@shared/index';
+import { CreateBlockDto, UpdateBlockDto, MoveBlockDto, IBlock } from '@tainiex/shared';
 import { NotesService } from './notes.service';
 
 /**

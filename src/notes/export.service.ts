@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Note, Block } from './entities';
-import { BlockType } from '@shared/index';
+import { BlockType } from '@tainiex/shared';
 
 /**
  * ExportService - handles exporting notes to various formats.

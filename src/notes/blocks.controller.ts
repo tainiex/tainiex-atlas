@@ -11,7 +11,7 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { BlocksService } from './blocks.service';
-import type { CreateBlockDto, UpdateBlockDto, MoveBlockDto } from '@shared/index';
+import type { CreateBlockDto, UpdateBlockDto, MoveBlockDto } from '@tainiex/shared';
 
 /**
  * BlocksController - handles HTTP requests for block operations.

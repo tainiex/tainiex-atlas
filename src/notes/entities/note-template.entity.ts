@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { INoteTemplate } from '@shared/index';
+import { INoteTemplate } from '@tainiex/shared';
 
 /**
  * NoteTemplate entity - stores predefined and user-created templates.

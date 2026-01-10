@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { IChatSession } from '@shared/index';
+import { IChatSession } from '@tainiex/shared';
 
 @Entity('chat_sessions')
 export class ChatSession implements IChatSession {

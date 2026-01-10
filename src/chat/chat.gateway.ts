@@ -12,8 +12,8 @@ import {
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
-import { ChatRole } from '@shared/index';
-import type { ChatSendPayload, ChatStreamEvent, ChatErrorPayload } from '@shared/index';
+import { ChatRole } from '@tainiex/shared';
+import type { ChatSendPayload, ChatStreamEvent, ChatErrorPayload } from '@tainiex/shared';
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ChatSendDto } from './dto/chat.dto';
 import { RateLimitService } from '../rate-limit/rate-limit.service';

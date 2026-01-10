@@ -19,7 +19,7 @@ import type {
     NoteLeavePayload,
     YjsUpdatePayload,
     CursorUpdatePayload
-} from '@shared/index';
+} from '@tainiex/shared';
 
 interface AuthenticatedSocket extends Socket {
     data: {

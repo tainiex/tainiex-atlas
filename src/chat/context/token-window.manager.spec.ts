@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { TokenWindowContextManager } from './token-window.manager';
 import { ChatMessage } from '../chat-message.entity';
-import { ChatRole } from '@shared/index';
+import { ChatRole } from '@tainiex/shared';
 
 describe('TokenWindowContextManager', () => {
     let manager: TokenWindowContextManager;

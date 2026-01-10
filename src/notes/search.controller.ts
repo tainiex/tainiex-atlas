@@ -1,7 +1,7 @@
 import { Controller, Get, Query, UseGuards, Req } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SearchService } from './search.service';
-import { SearchResultDto } from '@shared/index';
+import { SearchResultDto } from '@tainiex/shared';
 
 /**
  * SearchController - handles searching within notes.

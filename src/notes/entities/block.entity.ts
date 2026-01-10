@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { IBlock, BlockType } from '@shared/index';
+import { IBlock, BlockType } from '@tainiex/shared';
 
 /**
  * Block entity - represents a content block within a note.

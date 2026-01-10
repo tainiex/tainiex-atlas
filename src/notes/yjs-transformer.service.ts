@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { Block } from './entities/block.entity';
 import { Note } from './entities/note.entity';
 import * as Y from 'yjs';
-import { BlockType } from '@shared/index';
+import { BlockType } from '@tainiex/shared';
 export class YjsTransformerService {
     private readonly logger = new Logger(YjsTransformerService.name);
 

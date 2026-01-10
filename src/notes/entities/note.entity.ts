@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { INote } from '@shared/index';
+import { INote } from '@tainiex/shared';
 
 /**
  * Note entity - represents a note/page in the database.

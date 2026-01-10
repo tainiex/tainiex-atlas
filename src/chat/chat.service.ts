@@ -5,7 +5,7 @@ import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
-import { ChatRole } from '@shared/index';
+import { ChatRole } from '@tainiex/shared';
 import type { IContextManager } from './context/context-manager.interface';
 
 @Injectable()

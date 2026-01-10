@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Note, Block } from './entities';
-import { SearchResultDto, INote, IBlock } from '@shared/index';
+import { SearchResultDto, INote, IBlock } from '@tainiex/shared';
 
 /**
  * SearchService - handles full-text search for notes and blocks.

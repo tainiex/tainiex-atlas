@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/commo
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Note } from './entities/note.entity';
-import { CreateNoteDto, UpdateNoteDto } from '@shared/index';
+import { CreateNoteDto, UpdateNoteDto } from '@tainiex/shared';
 
 /**
  * NotesService - handles core note operations.

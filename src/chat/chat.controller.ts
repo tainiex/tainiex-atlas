@@ -4,7 +4,7 @@ import { UserThrottlerGuard } from '../common/guards/user-throttler.guard';
 import type { Response } from 'express';
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { ChatRole, AddMessageDto } from '@shared/index';
+import { ChatRole, AddMessageDto } from '@tainiex/shared';
 
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
