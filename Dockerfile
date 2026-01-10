@@ -11,6 +11,7 @@ WORKDIR /usr/src/app
 COPY package.json yarn.lock ./
 
 # Copy local dependencies required for install
+# IMPORTANT: Ensure shared-lib/dist exists before building the Docker image
 COPY shared-lib ./shared-lib
 
 # Install ONLY production dependencies
