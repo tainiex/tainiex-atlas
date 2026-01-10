@@ -41,6 +41,9 @@ jobs:
       - name: Install and Build
         run: |
           yarn install --frozen-lockfile
+          # Build shared-lib first
+          cd shared-lib && yarn build && cd ..
+          # Then build main app
           yarn run build
 
       # Configure Docker to use gcloud command-line tool as a credential helper
