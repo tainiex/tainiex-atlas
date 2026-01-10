@@ -1292,17 +1292,15 @@
   resolved "https://registry.npmjs.org/@sqltools/formatter/-/formatter-1.2.5.tgz"
   integrity sha512-Uy0+khmZqUrUGm5dmMqVlnvufZRSK0FbYzVgp0UMstm+F5+W2/jnEEQyc9vo1ZR/E5ZI/B1WjjoTqBqwJL6Krw==
 
-"@tainiex/shared@npm:@tainiex/tainiex-shared@^0.0.13":
+"@tainiex/shared@file:./shared-lib":
   version "0.0.13"
-  resolved "https://npm.pkg.github.com/download/@tainiex/tainiex-shared/0.0.13/3b2346b286acf72036044d0f8297b77ac6f0b2dc#3b2346b286acf72036044d0f8297b77ac6f0b2dc"
-  integrity sha512-PN3fId5y3acg3YkC9GPi68FttRGPWCexFOauaI3FuwgPGyajLXsmfocv30OZ4P5NHqyXB6vzoQwKV79Vo1c9ew==
   dependencies:
     class-transformer "^0.5.1"
     class-validator "^0.14.3"
 
 "@tainiex/tainiex-shared@0.0.13":
   version "0.0.13"
-  resolved "https://npm.pkg.github.com/download/@tainiex/tainiex-shared/0.0.13/3b2346b286acf72036044d0f8297b77ac6f0b2dc#3b2346b286acf72036044d0f8297b77ac6f0b2dc"
+  resolved "https://npm.pkg.github.com/download/@tainiex/tainiex-shared/0.0.13/3b2346b286acf72036044d0f8297b77ac6f0b2dc"
   integrity sha512-PN3fId5y3acg3YkC9GPi68FttRGPWCexFOauaI3FuwgPGyajLXsmfocv30OZ4P5NHqyXB6vzoQwKV79Vo1c9ew==
   dependencies:
     class-transformer "^0.5.1"
@@ -1896,7 +1894,7 @@
 
 "@unrs/resolver-binding-win32-x64-msvc@1.11.1":
   version "1.11.1"
-  resolved "https://registry.npmjs.org/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz"
+  resolved "https://registry.yarnpkg.com/@unrs/resolver-binding-win32-x64-msvc/-/resolver-binding-win32-x64-msvc-1.11.1.tgz#538b1e103bf8d9864e7b85cc96fa8d6fb6c40777"
   integrity sha512-lrW200hZdbfRtztbygyaq/6jP6AKE8qQN2KvPcJ+x7wiD038YtnYtZ82IMNJ69GJibV7bwL3y9FgK+5w/pYt6g==
 
 "@webassemblyjs/ast@1.14.1", "@webassemblyjs/ast@^1.14.1":

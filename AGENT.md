@@ -165,3 +165,32 @@ The application follows a modular architecture. Each major feature has its own d
 ## 5. Development Workflow
 - **Start Dev**: `yarn run start:dev`
 - **Reset DB**: Use `script/create_schema.sql` (can be run via `node script/reset_db.js` if available, or manual SQL execution).
+
+## 6. Memory Distillation System (New)
+
+### 6.1. Concept
+To provide long-term memory for the AI, we implement a "Memory Distillation" process. This system extracts atomic facts from conversations and notes, stores them as vector embeddings, and retrieves relevant memories for future interactions.
+
+### 6.2. Architecture
+- **Storage**: `semantic_memories` table (PostgreSQL + `pgvector`).
+    - **No Foreign Keys**: `source_id` is a UUID, `user_id` is a UUID.
+    - **Classification**: Memories are classified as `PERSONAL`, `DOMAIN`, or `TASK`.
+    - **Provenance**: `source_type` (`CHAT` | `NOTE`) tracks where the memory came from.
+- **Service**: `MemoryService` handles:
+    - **Distillation**: Extracting facts via LLM (Analyst Persona).
+    - **Deduplication**: Checking against existing vector embeddings before insertion.
+    - **Retrieval**: Hybrid search (Vector + Keyword) for RAG.
+- **Integration**:
+    - **Chat**: `ChatService` retrieves relevant memories during `streamMessage` and injects them into the system prompt.
+    - **LLM**: `LlmService` provides `getEmbeddings` (defaulting to `text-embedding-004`).
+
+### 6.3. Distillation Workflow (Planned)
+1.  **Trigger**: Topic Shift or Session End.
+2.  **Extraction**: LLM identifies "Agreed Facts" vs "Transient Noise".
+3.  **Storage**: Facts are stored with an evolving `importance` score.
+4.  **Consolidation**: Contradictory new facts update/archive old facts.
+
+### 6.4. Retrieval Pipeline
+1.  **Query Analysis**: Analyze user intent.
+2.  **Hybrid Search**: Combine `pgvector` HNSW search with keyword matching.
+3.  **Adaptive Ranking**: Score = `(VectorSim * 0.7) + (Importance * 0.2) + (Recency * 0.1)`.

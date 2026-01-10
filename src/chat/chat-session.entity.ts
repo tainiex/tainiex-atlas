@@ -20,4 +20,7 @@ export class ChatSession implements IChatSession {
 
     @Column({ name: 'is_deleted', default: false })
     isDeleted: boolean;
+
+    @Column({ type: 'jsonb', default: {} })
+    metadata: Record<string, any>;
 }

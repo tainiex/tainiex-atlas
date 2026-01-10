@@ -14,10 +14,13 @@ import { TokenWindowContextManager } from './context/token-window.manager';
 
 import { RateLimitModule } from '../rate-limit/rate-limit.module';
 
+import { MemoryModule } from './memory/memory.module';
+
 @Module({
     imports: [
         TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatMessageHistory]),
-        LlmModule, // Import LlmModule to use LlmService
+        LlmModule,
+        MemoryModule,
         RateLimitModule,
     ],
     controllers: [ChatController],

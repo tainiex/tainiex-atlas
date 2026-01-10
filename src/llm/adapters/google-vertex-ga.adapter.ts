@@ -230,4 +230,61 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
             }
         }
     }
+
+    async getEmbeddings(text: string): Promise<number[]> {
+        return this.withRetry(async () => {
+            try {
+                // Determine project and location
+                const projectId = this.configService.get<string>('VERTEX_PROJECT_ID');
+                const location = this.configService.get<string>('VERTEX_LOCATION', 'us-central1');
+                const apiEndpoint = `${location}-aiplatform.googleapis.com`;
+
+                // Lazy load PredictionServiceClient to avoid import issues if unused
+                const { PredictionServiceClient, helpers } = await import('@google-cloud/aiplatform');
+
+                // Pass the GoogleAuth instance directly
+                const client = new PredictionServiceClient({
+                    apiEndpoint: apiEndpoint,
+                    auth: this.auth as any,
+                    projectId: projectId,
+                });
+
+                const model = 'text-embedding-004';
+                const endpoint = `projects/${projectId}/locations/${location}/publishers/google/models/${model}`;
+
+                const instanceValue = helpers.toValue({
+                    content: text,
+                    task_type: 'RETRIEVAL_QUERY',
+                });
+
+                // Fix TS2488: Don't destructure, handle promise properly
+                const predictResult = await client.predict({
+                    endpoint,
+                    instances: [instanceValue as any], // Fix TS2322: Cast to any
+                });
+                const response = predictResult[0];
+
+                const predictions = response.predictions;
+                if (!predictions || predictions.length === 0) {
+                    throw new Error('No predictions returned');
+                }
+
+                const embedding = predictions[0].structValue?.fields?.embeddings?.structValue?.fields?.values?.listValue?.values?.map(v => v.numberValue || 0);
+
+                if (!embedding) {
+                    // Try alternative structure if above fails
+                    const predictionVal = helpers.fromValue(predictions[0] as any) as any;
+                    if (predictionVal?.embeddings && Array.isArray(predictionVal.embeddings.values)) {
+                        return predictionVal.embeddings.values;
+                    }
+                    throw new Error('Could not parse embedding from response');
+                }
+
+                return embedding;
+            } catch (error) {
+                this.logger.error('[GoogleVertexGaAdapter] getEmbeddings failed:', error);
+                throw error;
+            }
+        });
+    }
 }

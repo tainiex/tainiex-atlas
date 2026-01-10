@@ -35,7 +35,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.11",
-    "@tainiex/shared": "npm:@tainiex/tainiex-shared@^0.0.13",
+    "@tainiex/shared": "file:./shared-lib",
     "@tainiex/tainiex-shared": "0.0.13",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",

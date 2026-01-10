@@ -21,6 +21,7 @@ import { Note, Block, BlockVersion, NoteSnapshot, NoteTemplate, DocumentState } 
 import { StorageModule } from './common/storage/storage.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './health/health.module';
+import { SemanticMemory } from './chat/memory/entities/memory.entity';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { HealthModule } from './health/health.module';
             ChatSession,
             ChatMessage,
             RateLimitEntry,
+            SemanticMemory, // Add this line
             // Notes System Entities
             Note,
             Block,

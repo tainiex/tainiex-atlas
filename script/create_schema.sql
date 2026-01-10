@@ -140,7 +140,8 @@ CREATE TABLE chat_sessions_new (
     title VARCHAR(100) DEFAULT 'New Chat',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    is_deleted BOOLEAN DEFAULT FALSE
+    is_deleted BOOLEAN DEFAULT FALSE,
+    metadata JSONB DEFAULT '{}'
 );
 
 DO $$
@@ -597,3 +598,64 @@ BEGIN
         FROM generate_series(1, 100);
     END IF;
 END $$;
+
+
+-- ================================================================================
+-- MEMORY DISTILLATION TABLES
+-- 记忆蒸馏表结构
+-- ================================================================================
+
+-- 13. SEMANTIC_MEMORIES Table
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS semantic_memories_new;
+
+-- Create ENUM types if not exist
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'memory_type_enum') THEN
+        CREATE TYPE memory_type_enum AS ENUM ('PERSONAL', 'DOMAIN', 'TASK');
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'memory_source_enum') THEN
+        CREATE TYPE memory_source_enum AS ENUM ('CHAT', 'NOTE');
+    END IF;
+END$$;
+
+CREATE TABLE semantic_memories_new (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    -- Provenance (来源)
+    user_id UUID NOT NULL,
+    source_type memory_source_enum NOT NULL, 
+    source_id UUID NOT NULL,
+    
+    -- Content & Vectors
+    content TEXT NOT NULL,
+    embedding vector(768), -- Vertex AI Gecko/Embedding-004
+    
+    -- Classification
+    type memory_type_enum NOT NULL DEFAULT 'PERSONAL',
+    entities JSONB DEFAULT '{}',
+    tags TEXT[],
+    
+    -- Meta
+    importance INTEGER DEFAULT 1,
+    access_count INTEGER DEFAULT 0,
+    last_accessed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'semantic_memories' AND table_schema = current_schema()) THEN
+        PERFORM safe_migrate_data('semantic_memories_new', 'semantic_memories');
+        EXECUTE 'ALTER TABLE semantic_memories RENAME TO semantic_memories_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
+    END IF;
+    ALTER TABLE semantic_memories_new RENAME TO semantic_memories;
+END $$;
+
+DROP INDEX IF EXISTS idx_memories_user_source;
+CREATE INDEX idx_memories_user_source ON semantic_memories(user_id, source_type);
+
+-- Use HNSW for high performance vector search
+DROP INDEX IF EXISTS idx_memories_embedding;
+CREATE INDEX idx_memories_embedding ON semantic_memories USING hnsw (embedding vector_cosine_ops);

@@ -298,4 +298,8 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
             throw error;
         }
     }
+
+    async getEmbeddings(text: string): Promise<number[]> {
+        throw new Error('Method not implemented in Preview Adapter. Use GA Adapter for embeddings.');
+    }
 }

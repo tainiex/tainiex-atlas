@@ -76,4 +76,11 @@ export class LlmService implements OnModuleInit {
 
         yield* adapter.streamChat(history, message);
     }
+
+    async getEmbeddings(text: string): Promise<number[]> {
+        // Default to text-embedding-004 which is stable/GA
+        const modelName = 'text-embedding-004';
+        const adapter = await this.getAdapter(modelName);
+        return adapter.getEmbeddings(text);
+    }
 }

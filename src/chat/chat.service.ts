@@ -5,6 +5,7 @@ import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
+import { MemoryService } from './memory/memory.service';
 import { ChatRole } from '@tainiex/shared';
 import type { IContextManager } from './context/context-manager.interface';
 
@@ -18,6 +19,7 @@ export class ChatService {
         @InjectRepository(ChatMessageHistory)
         private chatMessageHistoryRepository: Repository<ChatMessageHistory>,
         private llmService: LlmService,
+        private memoryService: MemoryService,
         @Inject('IContextManager')
         private contextManager: IContextManager,
     ) { }
@@ -170,8 +172,63 @@ export class ChatService {
     // New Streaming Method
     async *streamMessage(sessionId: string, userId: string, content: string, role: ChatRole, model?: string, parentId?: string): AsyncGenerator<string> {
         console.log('[ChatService] streamMessage called:', { sessionId, userId, content, role, parentId });
+
         // 1. Verify session
         const session = await this.chatSessionRepository.findOne({ where: { id: sessionId, userId } });
+        if (!session) throw new Error('Session not found');
+
+
+        // [NEW] Trigger Distillation (Buffered)
+        // Check session metadata for message count
+        const currentMetadata = session.metadata || {};
+        const msgCount = (currentMetadata.msg_count_since_distill || 0) + 1;
+        const DISTILL_THRESHOLD = 2; // Lowered for testing (was 10)
+
+        let shouldDistill = false;
+        if (msgCount >= DISTILL_THRESHOLD) {
+            shouldDistill = true;
+            session.metadata = { ...currentMetadata, msg_count_since_distill: 0 };
+        } else {
+            session.metadata = { ...currentMetadata, msg_count_since_distill: msgCount };
+        }
+
+        console.log(`[ChatService] Distillation Progress: ${msgCount}/${DISTILL_THRESHOLD}`);
+
+        if (shouldDistill) {
+            console.log('[ChatService] Triggering Memory Distillation (Buffered 10 msgs)');
+            // Run in background to not block response
+            (async () => {
+                try {
+                    // Fetch recent context for distillation
+                    // Note: We want the last 10 messages to analyze the recent conversation flow
+                    const recentMessages = await this.chatMessageRepository.find({
+                        where: { sessionId },
+                        order: { createdAt: 'DESC' },
+                        take: 10
+                    });
+
+                    // Reverse to chronological order (Oldest -> Newest)
+                    const context = recentMessages.reverse().map(m => ({
+                        role: m.role,
+                        content: m.content
+                    }));
+
+                    // Include the current message being processed if it's not saved yet?
+                    // The current message 'userMessage' is saved at Step 3 (line 214+).
+                    // This distillation block is at Step 1 (line 181).
+                    // So 'recentMessages' likely DOES NOT include the current message yet.
+                    // Let's add the current message to context manually.
+                    context.push({ role, content });
+
+                    await this.memoryService.distillConversation(userId, sessionId, context);
+                } catch (e) {
+                    console.error('[ChatService] Distillation trigger failed', e);
+                }
+            })();
+        }
+
+        // 1. Verify session (Already verified above, but we updated session object)
+        // const session = ... (Already loaded)
         if (!session) throw new Error('Session not found');
 
         // 2. Determine Parent ID
@@ -231,9 +288,32 @@ export class ChatService {
 
         let fullAiResponse = '';
         try {
-            console.log('[ChatService] Calling llmService.streamChat with', previousMessages.length, 'previous messages');
+            // [NEW] Memory Retrieval RAG
+            let systemPromptAddon = '';
+            try {
+                if (content && content.trim().length > 0) {
+                    const relevantMemories = await this.memoryService.searchMemories(userId, content);
+                    if (relevantMemories.length > 0) {
+                        const memoryContext = relevantMemories.map(m => `- ${m.content} (Source: ${m.metadata.sourceType})`).join('\n');
+                        systemPromptAddon = `\nRelevant Memories for Context:\n${memoryContext}\n`;
+                    }
+                }
+            } catch (e) {
+                console.error('[ChatService] Memory retrieval failed', e);
+            }
+
+            let effectiveHistory = previousMessages.map(m => ({ role: m.role, message: m.content }));
+
+            if (systemPromptAddon) {
+                effectiveHistory = [
+                    { role: 'system', message: `You are a helpful AI assistant.${systemPromptAddon}` } as any,
+                    ...effectiveHistory
+                ];
+            }
+
+            console.log('[ChatService] Calling llmService.streamChat with', effectiveHistory.length, 'messages (including system)');
             const stream = this.llmService.streamChat(
-                previousMessages.map(m => ({ role: m.role, message: m.content })),
+                effectiveHistory,
                 content,
                 model
             );

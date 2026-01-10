@@ -23,7 +23,7 @@
     "noFallthroughCasesInSwitch": false,
     "paths": {
       "@tainiex/shared": [
-        "./node_modules/@tainiex/shared"
+        "shared-lib/src/index.ts"
       ]
     }
   }

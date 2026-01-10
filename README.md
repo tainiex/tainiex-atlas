@@ -13,6 +13,9 @@ Tainiex Atlas is a comprehensive backend solution that combines robust authentic
 
 ### Key Features
 
+### Key Features
+
+- **Long-Term Memory**: AI remembers user preferences and project details via Vector RAG (Memory Distillation).
 - **Notion-like Notes**: Block-based editor support with multimodal content (Markdown, Tables, Code, Media)
 - **Real-time Collaboration**: Multi-user editing powered by Y.js CRDT with cursor synchronization
 - **Smart Versioning**: Intelligent note snapshots and block-level history with diff tracking
