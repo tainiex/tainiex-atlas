@@ -50,12 +50,25 @@ export class YjsTransformerService {
                 this.logger.error(`[Debug] Failed to parse 'default' key:`, error);
             }
         }
-        // CASE 2: Check for 'blocks' key (Custom Array)
+        // CASE 2: Check for 'blocks' key (Custom Array OR XmlFragment)
+        // Note: loadBlocksToYDoc creates 'blocks' as an XmlFragment.
         else if (keys.includes('blocks')) {
-            const yBlocks = doc.getArray<Y.Map<any>>('blocks');
-            if (yBlocks.length > 0) {
-                this.logger.debug(`[Debug] Found 'blocks' array. Length: ${yBlocks.length}`);
-                blocksToSave = this.parseYArrayToBlocks(noteId, yBlocks);
+            // Try as XmlFragment first (matching loadBlocksToYDoc)
+            const yFragment = doc.getXmlFragment('blocks');
+            // If it has length, it's likely the right type. 
+            // Warning: getXmlFragment on an Array type might return empty fragment or throw?
+            // Y.js is usually consistent.
+
+            if (yFragment.length > 0) {
+                this.logger.debug(`[Debug] Found 'blocks' XmlFragment. Length: ${yFragment.length}`);
+                blocksToSave = this.parseXmlFragmentToBlocks(noteId, yFragment);
+            } else {
+                // Fallback: Check if it's an Array (Legacy?)
+                const yBlocks = doc.getArray<Y.Map<any>>('blocks');
+                if (yBlocks.length > 0) {
+                    this.logger.debug(`[Debug] Found 'blocks' Array. Length: ${yBlocks.length}`);
+                    blocksToSave = this.parseYArrayToBlocks(noteId, yBlocks);
+                }
             }
         }
 
@@ -145,7 +158,11 @@ export class YjsTransformerService {
         // Execute Save
         try {
             await Promise.all(savePromises);
-            this.logger.debug(`Persisted ${blocksToSave.length} blocks`);
+            if (blocksToSave.length > 0) {
+                this.logger.debug(`Persisted ${blocksToSave.length} blocks. First block content preview: "${blocksToSave[0].content?.substring(0, 50)}..."`);
+            } else {
+                this.logger.debug(`Persisted ${blocksToSave.length} blocks`);
+            }
         } catch (e) {
             this.logger.error(`Failed to persist blocks:`, e);
         }

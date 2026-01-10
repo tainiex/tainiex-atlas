@@ -1,4 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan } from 'typeorm';
 import { ChatSession } from './chat-session.entity';
@@ -22,6 +23,7 @@ export class ChatService {
         private memoryService: MemoryService,
         @Inject('IContextManager')
         private contextManager: IContextManager,
+        private configService: ConfigService,
     ) { }
 
     async createSession(userId: string): Promise<ChatSession> {
@@ -182,7 +184,7 @@ export class ChatService {
         // Check session metadata for message count
         const currentMetadata = session.metadata || {};
         const msgCount = (currentMetadata.msg_count_since_distill || 0) + 1;
-        const DISTILL_THRESHOLD = 2; // Lowered for testing (was 10)
+        const DISTILL_THRESHOLD = parseInt(this.configService.get('DISTILL_THRESHOLD') || '20', 10);
 
         let shouldDistill = false;
         if (msgCount >= DISTILL_THRESHOLD) {

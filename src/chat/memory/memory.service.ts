@@ -2,16 +2,26 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import type { IVectorStore, IVectorStoreRecord } from '../../../shared-lib/src/interfaces/vector-store.interface';
 import { LlmService } from '../../llm/llm.service';
 import { MemoryType, MemorySource } from './entities/memory.entity';
+import { Worker } from 'worker_threads';
+import { join } from 'path';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class MemoryService {
     private readonly logger = new Logger(MemoryService.name);
 
+    private queue: { verify: () => void, task: () => Promise<void> }[] = [];
+    private activeWorkers = 0;
+    private readonly maxWorkers: number;
+
     constructor(
         @Inject('IVectorStore')
         private vectorStore: IVectorStore,
-        private llmService: LlmService
-    ) { }
+        private llmService: LlmService,
+        private configService: ConfigService
+    ) {
+        this.maxWorkers = parseInt(this.configService.get('DISTILLATION_CONCURRENCY') || '4', 10);
+    }
 
     async addMemory(
         userId: string,
@@ -72,6 +82,33 @@ export class MemoryService {
     async distillConversation(userId: string, sessionId: string, messages: { role: string, content: string }[]) {
         if (messages.length === 0) return;
 
+        // Push to queue
+        this.queue.push({
+            verify: () => { }, // Placeholder if we need cancellation later
+            task: async () => this.runDistillationTask(userId, sessionId, messages)
+        });
+
+        this.processQueue();
+    }
+
+    private async processQueue() {
+        if (this.activeWorkers >= this.maxWorkers) {
+            return;
+        }
+
+        const item = this.queue.shift();
+        if (!item) return;
+
+        this.activeWorkers++;
+
+        // Don't await the task here, let it run in background
+        item.task().finally(() => {
+            this.activeWorkers--;
+            this.processQueue(); // Process next item
+        });
+    }
+
+    private async runDistillationTask(userId: string, sessionId: string, messages: { role: string, content: string }[]) {
         try {
             const conversationText = messages.map(m => `${m.role}: ${m.content}`).join('\n');
             const prompt = `
@@ -98,21 +135,54 @@ ${conversationText}
 Output JSON (only JSON, no markdown):
 `;
 
-            const response = await this.llmService.generateContent(prompt);
-            // Clean markdown code blocks if present
-            const jsonStr = response.replace(/```json/g, '').replace(/```/g, '').trim();
+            this.logger.log(`[MemoryService] Offloading distillation for session ${sessionId} to Worker Thread... (Active: ${this.activeWorkers}/${this.maxWorkers})`);
+
+            // Worker Thread Execution
+            // In NestJS "start:dev" or "start:prod", the code runs from "dist" usually.
+            // We expect the worker to be compiled to .js in the same folder.
+            const workerPath = join(__dirname, 'distillation.worker.js');
+
+            const config = {
+                VERTEX_PROJECT_ID: this.configService.get('VERTEX_PROJECT_ID'),
+                VERTEX_LOCATION: this.configService.get('VERTEX_LOCATION'),
+                GSA_KEY_FILE: this.configService.get('GSA_KEY_FILE'),
+            };
+
+            const runWorker = () => new Promise<any[]>((resolve, reject) => {
+                const worker = new Worker(workerPath, {
+                    workerData: { config, prompt, modelName: 'gemini-1.5-pro' }
+                });
+
+                worker.on('message', (msg) => {
+                    if (msg.error) {
+                        reject(new Error(msg.error));
+                    } else {
+                        resolve(msg.result);
+                    }
+                });
+
+                worker.on('error', (err) => {
+                    reject(err);
+                });
+
+                worker.on('exit', (code) => {
+                    if (code !== 0) {
+                        reject(new Error(`Worker stopped with exit code ${code}`));
+                    }
+                });
+            });
 
             let memories: any[] = [];
             try {
-                memories = JSON.parse(jsonStr);
-            } catch (e) {
-                this.logger.warn(`[MemoryService] Failed to parse distillation JSON: ${jsonStr}`);
+                memories = await runWorker();
+            } catch (workerError) {
+                this.logger.error(`[MemoryService] Worker Logic Failed: ${workerError.message}`);
                 return;
             }
 
             if (!Array.isArray(memories)) return;
 
-            this.logger.log(`[MemoryService] Extracted ${memories.length} memories from session ${sessionId}`);
+            this.logger.log(`[MemoryService] Extracted ${memories.length} memories from session ${sessionId} (via Worker)`);
 
             for (const m of memories) {
                 if (m.content && m.content.length > 5) {
@@ -120,7 +190,6 @@ Output JSON (only JSON, no markdown):
                     let memoryType = MemoryType.PERSONAL;
                     if (m.type === 'TASK') memoryType = MemoryType.TASK;
                     if (m.type === 'DOMAIN') memoryType = MemoryType.DOMAIN;
-                    // Default to PERSONAL if unknown (e.g. PREFERENCE)
 
                     await this.addMemory(
                         userId,
