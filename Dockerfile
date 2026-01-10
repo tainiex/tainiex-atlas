@@ -17,7 +17,9 @@ COPY package.json yarn.lock ./
 COPY .npmrc ./
 
 # Install ONLY production dependencies (including @tainiex/shared from GitHub Packages)
-RUN GITHUB_TOKEN=${GITHUB_TOKEN} yarn install --production --frozen-lockfile && \
+# Set GITHUB_TOKEN as env var so .npmrc can use it
+RUN export GITHUB_TOKEN=${GITHUB_TOKEN} && \
+    yarn install --production --frozen-lockfile && \
     rm -f .npmrc
 
 # Copy the pre-built application from CI/CD pipeline
