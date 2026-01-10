@@ -497,6 +497,7 @@ CREATE INDEX idx_templates_category ON note_templates(category) WHERE is_public 
 -- ================================================================================
 
 -- Trigger function for notes full-text search
+
 CREATE OR REPLACE FUNCTION update_notes_search_vector()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -505,11 +506,13 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS notes_search_vector_update ON notes;
 CREATE TRIGGER notes_search_vector_update
 BEFORE INSERT OR UPDATE ON notes
 FOR EACH ROW EXECUTE FUNCTION update_notes_search_vector();
 
 -- Trigger function for blocks full-text search
+
 CREATE OR REPLACE FUNCTION update_blocks_search_vector()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -518,6 +521,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS blocks_search_vector_update ON blocks;
 CREATE TRIGGER blocks_search_vector_update
 BEFORE INSERT OR UPDATE ON blocks
 FOR EACH ROW EXECUTE FUNCTION update_blocks_search_vector();
