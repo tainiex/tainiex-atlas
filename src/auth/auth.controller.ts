@@ -5,6 +5,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshAuthGuard } from './jwt-refresh-auth.guard';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
+import { LoginDto, GoogleLoginDto, MicrosoftLoginDto, SocialSignupDto, SignupDto } from '@tainiex/shared';
 
 @Controller('auth')
 @UseGuards(RateLimitGuard) // Apply global guard for this controller (or globally in AppModule)
@@ -13,8 +14,8 @@ export class AuthController {
 
     @Post('login')
     @RateLimit(5, 60) // Limit: 5 requests per 60 seconds
-    async login(@Body() req, @Res({ passthrough: true }) res: Response) {
-        const user = await this.authService.validateUser(req.username, req.password);
+    async login(@Body() loginDto: LoginDto, @Res({ passthrough: true }) res: Response) {
+        const user = await this.authService.validateUser(loginDto.username, loginDto.password);
         if (!user) {
             return { message: 'Invalid credentials' };
         }
@@ -45,8 +46,8 @@ export class AuthController {
     }
 
     @Post('google')
-    async googleLogin(@Body() req: { code: string }, @Res({ passthrough: true }) res: Response) {
-        const result = await this.authService.googleLogin(req.code);
+    async googleLogin(@Body() dto: GoogleLoginDto, @Res({ passthrough: true }) res: Response) {
+        const result = await this.authService.googleLogin(dto.code);
 
         if (result.requiresInvite) {
             // Return intermediate response asking for invite code
@@ -79,8 +80,8 @@ export class AuthController {
     }
 
     @Post('microsoft')
-    async microsoftLogin(@Body() req: { idToken: string }, @Res({ passthrough: true }) res: Response) {
-        const result = await this.authService.microsoftLogin(req.idToken);
+    async microsoftLogin(@Body() dto: MicrosoftLoginDto, @Res({ passthrough: true }) res: Response) {
+        const result = await this.authService.microsoftLogin(dto.idToken);
 
         if (result.requiresInvite) {
             return result;
@@ -111,8 +112,8 @@ export class AuthController {
     }
 
     @Post('microsoft/signup')
-    async microsoftSignup(@Body() req: { invitationCode: string, signupToken: string }, @Res({ passthrough: true }) res: Response) {
-        const { user, tokens } = await this.authService.microsoftSignup(req.invitationCode, req.signupToken);
+    async microsoftSignup(@Body() dto: SocialSignupDto, @Res({ passthrough: true }) res: Response) {
+        const { user, tokens } = await this.authService.microsoftSignup(dto.invitationCode, dto.signupToken);
 
         const cookieDomain = process.env.COOKIE_DOMAIN;
         const accessTokenMaxAge = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 60 * 1000;
@@ -137,8 +138,8 @@ export class AuthController {
     }
 
     @Post('google/signup')
-    async googleSignup(@Body() req: { invitationCode: string, signupToken: string }, @Res({ passthrough: true }) res: Response) {
-        const { user, tokens } = await this.authService.googleSignup(req.invitationCode, req.signupToken);
+    async googleSignup(@Body() dto: SocialSignupDto, @Res({ passthrough: true }) res: Response) {
+        const { user, tokens } = await this.authService.googleSignup(dto.invitationCode, dto.signupToken);
 
         const cookieDomain = process.env.COOKIE_DOMAIN;
         const accessTokenMaxAge = process.env.NODE_ENV === 'production' ? 15 * 60 * 1000 : 60 * 1000;
@@ -194,8 +195,8 @@ export class AuthController {
     }
 
     @Post('signup')
-    async signup(@Body() req) {
-        return this.authService.register(req.username, req.password, req.invitationCode, req.email);
+    async signup(@Body() signupDto: SignupDto) {
+        return this.authService.register(signupDto.username, signupDto.password, signupDto.invitationCode, signupDto.email);
     }
 
     @UseGuards(JwtAuthGuard)

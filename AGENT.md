@@ -143,7 +143,11 @@ The application follows a modular architecture. Each major feature has its own d
 
 ## 4. Constraints & Conventions
 1.  **Code Style**: Follow standard Prettier/ESLint rules.
-2.  **DTOs/Interfaces**: Define shared interfaces in `shared-lib` when applicable to potential frontend sharing.
+2.  **DTOs/Interfaces**: 
+    - **Shared Library**: Define shared interfaces/DTOs in `shared-lib` for all API request/response bodies.
+    - **Strict Validation**: Controllers MUST use DTOs decorated with `class-validator` (e.g., `@Body() dto: SignupDto`).
+    - **Forbidden**: usage of `any` or raw objects like `@Body() req` in controllers is **STRICTLY FORBIDDEN**.
+    - **Global Pipe**: The application runs with a global `ValidationPipe({ whitelist: true })`. Properties not in the DTO will be stripped.
 3.  **Environment Variables**: All sensitive config (DB creds, API keys) must come from `ConfigService`.
 4.  **WebSocket CORS**: Uses a dynamic origin function in `ChatGateway` that strictly verifies the origin against `CORS_ORIGIN` env var to support `credentials: true`.
 5.  **No Direct SQL**: Prefer TypeORM repositories for data access, unless performing bulk seed/maintenance operations in scripts.

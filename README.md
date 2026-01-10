@@ -517,13 +517,23 @@ The project uses ESLint and Prettier for code quality:
 - Prettier for consistent formatting
 - Pre-configured in `eslint.config.mjs` and `.prettierrc`
 
+## Architectural Decisions / 架构决策
+
+- **Database Migrations**: `synchronize: true` is strictly **DISABLED** in all environments (including development) to ensure schema consistency. All changes must be done via migration scripts.
+- **Shared DTOs**: API request/response objects MUST be defined in `shared-lib` to ensure type safety between frontend and backend.
+- **Global Validation**: `ValidationPipe` is enabled globally. ALL controller endpoints MUST use DTOs with `class-validator` decorators. Use of `any` or raw objects in controllers is forbidden.
+- **Scalability**: Socket.io adapter will transition to Redis in the future; currently using in-memory adapter (aware of horizontal scaling limitation).
+- **Logging**: Production logs must use structured JSON format (Winston/Pino) for observability in cloud environments.
+
 ### Database Migrations
 
-In development, TypeORM auto-synchronization is enabled. For production:
+TypeORM auto-synchronization is **DISABLED** by default. To make schema changes:
 
-1. Disable `synchronize` in `app.module.ts`
-2. Generate migrations: `npm run typeorm migration:generate`
-3. Run migrations: `npm run typeorm migration:run`
+1. Modify your Entity files.
+2. Generate migration: `npm run typeorm migration:generate src/migrations/NameOfChange`
+3. Review the generated SQL.
+4. Run migrations: `npm run typeorm migration:run`
+
 
 ### Debugging
 

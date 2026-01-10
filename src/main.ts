@@ -4,7 +4,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 
 import cookieParser from 'cookie-parser';
-import { ClassSerializerInterceptor, LogLevel } from '@nestjs/common';
+import { ClassSerializerInterceptor, LogLevel, ValidationPipe } from '@nestjs/common';
 
 import { json, urlencoded } from 'express';
 
@@ -23,6 +23,7 @@ async function bootstrap() {
   app.use(urlencoded({ extended: true }));
   app.use(cookieParser());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   try {
     const configService = app.get(ConfigService);
     const globalPrefix = configService.get<string>('API_PREFIX', 'api');

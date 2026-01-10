@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, LoggerService as NestLoggerService } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import * as winston from 'winston';
 
 export enum LogLevel {
     DEBUG = 'debug',
@@ -9,48 +10,48 @@ export enum LogLevel {
 }
 
 @Injectable()
-export class LoggerService {
-    private logLevel: LogLevel;
-    private readonly levels = [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR];
+export class LoggerService implements NestLoggerService {
+    private logger: winston.Logger;
 
     constructor(private configService: ConfigService) {
+        const isProduction = this.configService.get('NODE_ENV') === 'production';
         const configuredLevel = this.configService.get<string>('LOG_LEVEL', 'info');
-        this.logLevel = this.parseLogLevel(configuredLevel);
+
+        this.logger = winston.createLogger({
+            level: configuredLevel.toLowerCase(),
+            format: isProduction
+                ? winston.format.json()
+                : winston.format.combine(
+                    winston.format.timestamp(),
+                    winston.format.colorize(),
+                    winston.format.simple()
+                ),
+            transports: [new winston.transports.Console()],
+        });
     }
 
-    private parseLogLevel(level: string): LogLevel {
-        const normalizedLevel = level.toLowerCase() as LogLevel;
-        if (this.levels.includes(normalizedLevel)) {
-            return normalizedLevel;
-        }
-        return LogLevel.INFO;
+    log(message: string, ...optionalParams: any[]) {
+        this.logger.info(message, { context: optionalParams[0], args: optionalParams.slice(1) });
     }
 
-    debug(message: string, ...args: any[]): void {
-        if (this.shouldLog(LogLevel.DEBUG)) {
-            console.log(`[DEBUG] ${message}`, ...args);
-        }
+    error(message: string, ...optionalParams: any[]) {
+        this.logger.error(message, { context: optionalParams[0], trace: optionalParams[1], args: optionalParams.slice(2) });
     }
 
+    warn(message: string, ...optionalParams: any[]) {
+        this.logger.warn(message, { context: optionalParams[0], args: optionalParams.slice(1) });
+    }
+
+    debug(message: string, ...optionalParams: any[]) {
+        this.logger.debug(message, { context: optionalParams[0], args: optionalParams.slice(1) });
+    }
+
+    verbose(message: string, ...optionalParams: any[]) {
+        this.logger.verbose(message, { context: optionalParams[0], args: optionalParams.slice(1) });
+    }
+
+    // Compatibility methods for existing usage "this.logger.info"
     info(message: string, ...args: any[]): void {
-        if (this.shouldLog(LogLevel.INFO)) {
-            console.log(`[INFO] ${message}`, ...args);
-        }
-    }
-
-    warn(message: string, ...args: any[]): void {
-        if (this.shouldLog(LogLevel.WARN)) {
-            console.warn(`[WARN] ${message}`, ...args);
-        }
-    }
-
-    error(message: string, error?: any, ...args: any[]): void {
-        if (this.shouldLog(LogLevel.ERROR)) {
-            console.error(`[ERROR] ${message}`, error, ...args);
-        }
-    }
-
-    private shouldLog(level: LogLevel): boolean {
-        return this.levels.indexOf(level) >= this.levels.indexOf(this.logLevel);
+        this.logger.info(message, { args });
     }
 }

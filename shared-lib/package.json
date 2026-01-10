@@ -1,6 +1,6 @@
 {
     "name": "@tainiex/tainiex-shared",
-    "version": "0.0.11",
+    "version": "0.0.13",
     "description": "Shared interfaces and contracts for Tainiex Atlas",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
@@ -20,5 +20,9 @@
     },
     "devDependencies": {
         "typescript": "^5.7.3"
+    },
+    "dependencies": {
+        "class-transformer": "^0.5.1",
+        "class-validator": "^0.14.3"
     }
 }

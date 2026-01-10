@@ -20,10 +20,12 @@ import { NotesModule } from './notes/notes.module';
 import { Note, Block, BlockVersion, NoteSnapshot, NoteTemplate, DocumentState } from './notes/entities';
 import { StorageModule } from './common/storage/storage.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
     LoggerModule,
+    HealthModule,
     ConfigModule.forRoot({
       isGlobal: true,
     }),
@@ -57,15 +59,15 @@ import { ScheduleModule } from '@nestjs/schedule';
             NoteTemplate,
             DocumentState,
           ],
-          synchronize: !isProd, // Auto-create tables (dev only)
+          synchronize: false, // Strict: Migrations only for all environments
           ssl: enableSsl ? { rejectUnauthorized: false } : false,
         };
       },
       inject: [ConfigService],
     }),
     ThrottlerModule.forRoot([{
-      ttl: 1000,
-      limit: 2,
+      ttl: 60000, // 1 minute
+      limit: 60,  // 60 requests
     }]),
     UsersModule,
     AuthModule,

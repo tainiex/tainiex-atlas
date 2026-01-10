@@ -1,9 +1,66 @@
+-- ================================================================================
+-- TAINIEX ATLAS - DATABASE SCHEMA CREATION SCRIPT
+-- ================================================================================
+-- This script creates and migrates all tables for the Tainiex Atlas application.
+-- It is idempotent and can be safely re-run on existing databases.
+--
+-- USAGE:
+-- 1. Execute this entire script in your PostgreSQL database client
+-- 2. If errors occur, run: ROLLBACK; before re-running this script
+--
+-- ATOMICITY GUARANTEE / 原子性保证:
+-- - Each table migration is wrapped in a DO $$ block, which executes as a single transaction
+-- - The two RENAME operations (old->backup, new->current) are ATOMIC
+-- - Users will NEVER see a moment where the table does not exist
+-- - PostgreSQL's transactional DDL ensures zero-downtime schema changes
+-- - 每个表迁移都包装在 DO $$ 块中，作为单个事务执行
+-- - 两个 RENAME 操作（旧表->备份表，新表->当前表）是原子的
+-- - 用户永远不会看到表不存在的时刻
+-- - PostgreSQL 的事务性 DDL 确保零停机时间的架构更改
+--
+-- IMPORTANT NOTES:
+-- - This script does NOT use a global transaction wrapper (no BEGIN/COMMIT)
+-- - Each DO $$ block is independently atomic
+-- - Failed operations can be debugged more easily without a global transaction
+-- - Migration strategy: Create New Table -> Copy Data -> Rename Old to Backup -> Rename New to Current
+-- ================================================================================
+
 -- Load migration utility helper
 -- Note: Assuming this script is run from the project root or script directory via psql
 -- logic: Create New Table -> Copy Data -> Rename Old to Backup -> Rename New to Current
 
 -- Ensure the helper function exists
-\ir migration_utils.sql
+-- ================================================================================
+-- HELPER FUNCTIONS FOR SAFE MIGRATION
+-- ================================================================================
+
+-- Function to safely migrate data between tables matching column names
+CREATE OR REPLACE FUNCTION safe_migrate_data(target_table text, source_table text) RETURNS void AS $$
+DECLARE
+    col_name text;
+    column_list text := '';
+BEGIN
+    -- Build a list of common columns
+    FOR col_name IN 
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = target_table AND table_schema = current_schema()
+        INTERSECT 
+        SELECT column_name 
+        FROM information_schema.columns 
+        WHERE table_name = source_table AND table_schema = current_schema()
+    LOOP
+        IF column_list <> '' THEN
+            column_list := column_list || ', ';
+        END IF;
+        column_list := column_list || quote_ident(col_name);
+    END LOOP;
+
+    IF column_list <> '' THEN
+        EXECUTE format('INSERT INTO %I (%s) SELECT %s FROM %I', target_table, column_list, column_list, source_table);
+    END IF;
+END;
+$$ LANGUAGE plpgsql;
 
 -- ================================================================================
 -- ENABLE POSTGRESQL EXTENSIONS
@@ -21,15 +78,6 @@ CREATE EXTENSION IF NOT EXISTS vector;
 -- SELECT extname, extversion FROM pg_extension WHERE extname IN ('vector');
 
 -- Note: tsvector is built into PostgreSQL and does not require CREATE EXTENSION
-
--- ================================================================================
--- BEGIN SCHEMA MIGRATION
--- ================================================================================
-
--- WRAP IN TRANSACTION to ensure atomicity.
--- This ensures there is NO moment where the table "does not exist" for other users.
--- PostgreSQL Transactional DDL ensures the swap is atomic.
-BEGIN;
 
 -- 1. USERS Table
 --------------------------------------------------------------------------------
@@ -111,6 +159,7 @@ DROP TABLE IF EXISTS chat_messages_new;
 CREATE TABLE chat_messages_new (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     session_id UUID NOT NULL,
+    parent_id VARCHAR(50) DEFAULT 'ROOT' NOT NULL,
     role VARCHAR(20) NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -124,6 +173,33 @@ BEGIN
     END IF;
     ALTER TABLE chat_messages_new RENAME TO chat_messages;
 END $$;
+
+DROP INDEX IF EXISTS idx_chat_messages_parent_id;
+CREATE INDEX idx_chat_messages_parent_id ON chat_messages(parent_id);
+
+
+-- 4.5. CHAT_MESSAGE_HISTORIES Table
+--------------------------------------------------------------------------------
+DROP TABLE IF EXISTS chat_message_histories_new;
+CREATE TABLE chat_message_histories_new (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID NOT NULL,
+    role VARCHAR(50) NOT NULL,
+    content TEXT NOT NULL,
+    archived_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'chat_message_histories' AND table_schema = current_schema()) THEN
+        PERFORM safe_migrate_data('chat_message_histories_new', 'chat_message_histories');
+        EXECUTE 'ALTER TABLE chat_message_histories RENAME TO chat_message_histories_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
+    END IF;
+    ALTER TABLE chat_message_histories_new RENAME TO chat_message_histories;
+END $$;
+
+DROP INDEX IF EXISTS idx_chat_message_histories_message_id;
+CREATE INDEX idx_chat_message_histories_message_id ON chat_message_histories(message_id);
 
 
 -- 5. RATE_LIMITS Table
@@ -178,9 +254,13 @@ BEGIN
     ALTER TABLE notes_new RENAME TO notes;
 END $$;
 
+DROP INDEX IF EXISTS idx_notes_user_id;
 CREATE INDEX idx_notes_user_id ON notes(user_id) WHERE is_deleted = FALSE;
+DROP INDEX IF EXISTS idx_notes_parent_id;
 CREATE INDEX idx_notes_parent_id ON notes(parent_id);
+DROP INDEX IF EXISTS idx_notes_parent_active;
 CREATE INDEX idx_notes_parent_active ON notes(parent_id) WHERE is_deleted = FALSE;
+DROP INDEX IF EXISTS notes_search_idx;
 CREATE INDEX notes_search_idx ON notes USING GIN(search_vector);
 
 
@@ -222,7 +302,39 @@ CREATE TABLE blocks_new (
 DO $$
 BEGIN
     IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'blocks' AND table_schema = current_schema()) THEN
-        PERFORM safe_migrate_data('blocks_new', 'blocks');
+        -- Explicit migration for blocks to handle ENUM casting
+        -- Assumes legacy 'type' column is text/varchar and needs to be cast to blocks_type_enum
+        INSERT INTO blocks_new (
+            id, note_id, type, content, metadata, parent_block_id, position, 
+            created_at, updated_at, created_by, last_edited_by, is_deleted, search_vector
+        )
+        SELECT 
+            id, 
+            note_id, 
+            -- Inline safe cast: Check if upper(type) is valid, else fallback to TEXT
+            CASE 
+                WHEN upper(type::text) IN (
+                    'TEXT', 'HEADING1', 'HEADING2', 'HEADING3', 
+                    'BULLET_LIST', 'NUMBERED_LIST', 
+                    'TODO_LIST', 'TODO_ITEM', 
+                    'TABLE', 'CODE', 
+                    'IMAGE', 'VIDEO', 'FILE', 
+                    'DIVIDER', 'QUOTE', 'CALLOUT', 'TOGGLE'
+                ) THEN upper(type::text)::blocks_type_enum
+                ELSE 'TEXT'::blocks_type_enum
+            END,
+            content, 
+            metadata, 
+            parent_block_id, 
+            position, 
+            created_at, 
+            updated_at, 
+            created_by, 
+            last_edited_by, 
+            is_deleted, 
+            search_vector
+        FROM blocks;
+        
         EXECUTE 'ALTER TABLE blocks RENAME TO blocks_backup_' || to_char(now(), 'YYYYMMDD_HH24MISS');
     END IF;
     ALTER TABLE blocks_new RENAME TO blocks;
@@ -269,6 +381,7 @@ BEGIN
     ALTER TABLE block_versions_new RENAME TO block_versions;
 END $$;
 
+DROP INDEX IF EXISTS idx_block_versions_block_id;
 CREATE INDEX idx_block_versions_block_id ON block_versions(block_id, version_number DESC);
 
 
@@ -292,6 +405,7 @@ BEGIN
     ALTER TABLE note_snapshots_new RENAME TO note_snapshots;
 END $$;
 
+DROP INDEX IF EXISTS idx_note_snapshots_note_id;
 CREATE INDEX idx_note_snapshots_note_id ON note_snapshots(note_id, created_at DESC);
 
 
@@ -319,7 +433,9 @@ BEGIN
     ALTER TABLE collaboration_sessions_new RENAME TO collaboration_sessions;
 END $$;
 
+DROP INDEX IF EXISTS idx_collab_sessions_note_id;
 CREATE INDEX idx_collab_sessions_note_id ON collaboration_sessions(note_id);
+DROP INDEX IF EXISTS idx_collab_sessions_activity;
 CREATE INDEX idx_collab_sessions_activity ON collaboration_sessions(last_active_at);
 
 
@@ -370,6 +486,7 @@ BEGIN
     ALTER TABLE note_templates_new RENAME TO note_templates;
 END $$;
 
+DROP INDEX IF EXISTS idx_templates_category;
 CREATE INDEX idx_templates_category ON note_templates(category) WHERE is_public = TRUE;
 
 
@@ -480,4 +597,3 @@ BEGIN
         FROM generate_series(1, 100);
     END IF;
 END $$;
-COMMIT;

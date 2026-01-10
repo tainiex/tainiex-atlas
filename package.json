@@ -31,6 +31,7 @@
     "@nestjs/platform-express": "^11.0.1",
     "@nestjs/platform-socket.io": "^11.1.11",
     "@nestjs/schedule": "^6.1.0",
+    "@nestjs/terminus": "^11.0.0",
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.11",
@@ -42,6 +43,7 @@
     "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.0",
+    "nest-winston": "^1.10.2",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "pg": "^8.16.3",
@@ -50,6 +52,7 @@
     "socket.io": "^4.8.3",
     "typeorm": "^0.3.28",
     "uuid": "^13.0.0",
+    "winston": "^3.19.0",
     "yjs": "^13.6.29"
   },
   "devDependencies": {
