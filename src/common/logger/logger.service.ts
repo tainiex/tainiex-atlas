@@ -1,65 +1,67 @@
-import { Injectable, LoggerService as NestLoggerService } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
+import { Injectable, LoggerService as NestLoggerService, Scope } from '@nestjs/common';
+import { createLogger, format, transports, Logger } from 'winston';
 
-export enum LogLevel {
-    DEBUG = 'debug',
-    INFO = 'info',
-    WARN = 'warn',
-    ERROR = 'error'
-}
-
-@Injectable()
+@Injectable({ scope: Scope.TRANSIENT })
 export class LoggerService implements NestLoggerService {
-    private logLevel: LogLevel;
-    private readonly levels = [LogLevel.DEBUG, LogLevel.INFO, LogLevel.WARN, LogLevel.ERROR];
+    private logger: Logger;
+    private context?: string;
 
-    constructor(private configService: ConfigService) {
-        const configuredLevel = this.configService.get<string>('LOG_LEVEL', 'info');
-        this.logLevel = this.parseLogLevel(configuredLevel);
+    constructor() {
+        const isProduction = process.env.NODE_ENV === 'production';
+        const logLevel = process.env.LOG_LEVEL?.toLowerCase() || 'info';
+
+        // Production: JSON format for structured logging
+        // Development: Human-readable colored output
+        const logFormat = isProduction
+            ? format.combine(
+                format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+                format.errors({ stack: true }),
+                format.json()
+            )
+            : format.combine(
+                format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+                format.colorize(),
+                format.printf(({ timestamp, level, message, context, ...meta }) => {
+                    const ctx = context ? `[${context}]` : '';
+                    const metaStr = Object.keys(meta).length ? JSON.stringify(meta) : '';
+                    return `${timestamp} ${level} ${ctx} ${message} ${metaStr}`;
+                })
+            );
+
+        this.logger = createLogger({
+            level: logLevel,
+            format: logFormat,
+            transports: [new transports.Console()],
+            exitOnError: false,
+        });
     }
 
-    private parseLogLevel(level: string): LogLevel {
-        const normalizedLevel = level.toLowerCase() as LogLevel;
-        if (this.levels.includes(normalizedLevel)) {
-            return normalizedLevel;
-        }
-        return LogLevel.INFO;
+    setContext(context: string) {
+        this.context = context;
     }
 
-    debug(message: string, ...args: any[]): void {
-        if (this.shouldLog(LogLevel.DEBUG)) {
-            console.log(`[DEBUG] ${message}`, ...args);
-        }
+    log(message: string, context?: string) {
+        this.logger.info(message, { context: context || this.context });
     }
 
-    info(message: string, ...args: any[]): void {
-        if (this.shouldLog(LogLevel.INFO)) {
-            console.log(`[INFO] ${message}`, ...args);
-        }
+    error(message: string, trace?: string, context?: string) {
+        this.logger.error(message, { trace, context: context || this.context });
     }
 
-    warn(message: string, ...args: any[]): void {
-        if (this.shouldLog(LogLevel.WARN)) {
-            console.warn(`[WARN] ${message}`, ...args);
-        }
+    warn(message: string, context?: string) {
+        this.logger.warn(message, { context: context || this.context });
     }
 
-    error(message: string, error?: any, ...args: any[]): void {
-        if (this.shouldLog(LogLevel.ERROR)) {
-            console.error(`[ERROR] ${message}`, error, ...args);
-        }
+    debug(message: string, context?: string) {
+        this.logger.debug(message, { context: context || this.context });
     }
 
-    // NestJS LoggerService interface compatibility
-    log(message: string, ...optionalParams: any[]) {
-        this.info(message, ...optionalParams);
+    verbose(message: string, context?: string) {
+        this.logger.verbose(message, { context: context || this.context });
     }
 
-    verbose(message: string, ...optionalParams: any[]) {
-        this.debug(message, ...optionalParams);
-    }
-
-    private shouldLog(level: LogLevel): boolean {
-        return this.levels.indexOf(level) >= this.levels.indexOf(this.logLevel);
+    // Backward compatibility: info() as alias for log()
+    info(message: string, context?: string) {
+        this.log(message, context);
     }
 }
