@@ -26,7 +26,7 @@
         "./shared-lib/src/*"
       ],
       "@tainiex/shared": [
-        "./shared-lib/src/index.ts"
+        "./shared-lib/dist/index.js"
       ]
     }
   }
