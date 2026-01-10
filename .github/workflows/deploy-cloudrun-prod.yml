@@ -46,6 +46,9 @@ jobs:
       # Install Dependencies and Build
       - name: Install and Build
         run: |
+          # Configure npm auth for CI
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
+          
           # Install all dependencies
           yarn install --frozen-lockfile
           
