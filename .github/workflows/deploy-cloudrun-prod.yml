@@ -41,15 +41,21 @@ jobs:
         with:
           node-version: '22'
           cache: 'yarn'
+          registry-url: 'https://npm.pkg.github.com'
 
       # Install Dependencies and Build
       - name: Install and Build
         run: |
+          # Install all dependencies
           yarn install --frozen-lockfile
-          # Build shared-lib first
-          cd shared-lib && yarn build && cd ..
-          # Then build main app
+          
+          # Build the application
           yarn run build
+          
+          # Prune to production dependencies for the Docker image
+          yarn install --production --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # Configure Docker to use gcloud command-line tool as a credential helper
       - name: Configure Docker for GCR
@@ -62,8 +68,7 @@ jobs:
           # Define image tag for GCR
           IMAGE_TAG=gcr.io/${{ env.PROJECT_ID }}/${{ env.CLOUD_RUN_SERVICE_NAME }}:${{ github.sha }}
           
-          # Build with GITHUB_TOKEN for NPM package access
-          docker build --build-arg GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }} -t $IMAGE_TAG .
+          docker build -t $IMAGE_TAG .
           docker push $IMAGE_TAG
           
           # Set the image tag as an output for the next step
