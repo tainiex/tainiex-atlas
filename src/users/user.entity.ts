@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { IUser } from '@tainiex/shared';
+import { IUser } from '@tainiex/shared-atlas';
 import { Exclude } from 'class-transformer';
 
 @Entity('users')

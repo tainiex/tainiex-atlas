@@ -1,7 +1,7 @@
 {
   "name": "tainiex-atlas",
   "version": "0.0.1",
-  "description": "Tainiex Backend",
+  "description": "Tainiex Atlas",
   "author": "zilianpn",
   "private": true,
   "license": "LGPL-3.0-or-later",
@@ -35,7 +35,7 @@
     "@nestjs/throttler": "^6.5.0",
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.11",
-    "@tainiex/shared": "file:./shared-lib",
+    "@tainiex/shared-atlas": "file:./shared-atlas",
     "bcrypt": "^6.0.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
@@ -105,8 +105,8 @@
     ],
     "testEnvironment": "node",
     "moduleNameMapper": {
-      "^@shared/(.*)$": "<rootDir>/../shared-lib/src/$1",
-      "^@tainiex/shared$": "<rootDir>/../shared-lib/src/index"
+      "^@tainiex/shared-atlas/(.*)$": "<rootDir>/../shared-atlas/src/$1",
+      "^@tainiex/shared-atlas$": "<rootDir>/../shared-atlas/src/index"
     }
   }
 }

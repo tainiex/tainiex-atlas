@@ -1,5 +1,5 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
-import { ChatRole, IChatMessage } from '@tainiex/shared';
+import { ChatRole, IChatMessage } from '@tainiex/shared-atlas';
 
 @Entity('chat_messages')
 export class ChatMessage implements IChatMessage {

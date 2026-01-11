@@ -1,12 +1,12 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { INoteTemplate } from '@tainiex/shared';
+import { INoteTemplate } from '@tainiex/shared-atlas';
 
 /**
  * NoteTemplate entity - stores predefined and user-created templates.
  * NoteTemplate实体 - 存储预定义和用户创建的模板。
  * 
- * Implements INoteTemplate interface from shared-lib for type consistency.
- * 实现shared-lib中的INoteTemplate接口以确保类型一致性。
+ * Implements INoteTemplate interface from shared-atlas for type consistency.
+ * 实现shared-atlas中的INoteTemplate接口以确保类型一致性。
  */
 @Entity('note_templates')
 export class NoteTemplate implements INoteTemplate {

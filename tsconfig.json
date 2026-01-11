@@ -22,8 +22,8 @@
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@tainiex/shared": [
-        "shared-lib/src/index"
+      "@tainiex/shared-atlas": [
+        "shared-atlas/src/index"
       ]
     }
   }

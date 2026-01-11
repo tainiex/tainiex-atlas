@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import type { ICollaborator } from '@tainiex/shared';
+import type { ICollaborator } from '@tainiex/shared-atlas';
 
 /**
  * Local session interface for in-memory storage.

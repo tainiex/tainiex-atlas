@@ -8,7 +8,7 @@ import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
 import { MemoryService } from './memory/memory.service';
 import type { IJobQueue } from './queue/job-queue.interface';
-import { ChatRole, CHAT_ROOT_PARENT_ID } from '@tainiex/shared';
+import { ChatRole, CHAT_ROOT_PARENT_ID } from '@tainiex/shared-atlas';
 import type { IContextManager } from './context/context-manager.interface';
 
 @Injectable()

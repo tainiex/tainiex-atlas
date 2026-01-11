@@ -1,12 +1,12 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { INote } from '@tainiex/shared';
+import { INote } from '@tainiex/shared-atlas';
 
 /**
  * Note entity - represents a note/page in the database.
  * Note实体 - 代表数据库中的笔记/页面。
  * 
- * Implements INote interface from shared-lib for type consistency.
- * 实现shared-lib中的INote接口以确保类型一致性。
+ * Implements INote interface from shared-atlas for type consistency.
+ * 实现shared-atlas中的INote接口以确保类型一致性。
  */
 @Entity('notes')
 export class Note implements INote {

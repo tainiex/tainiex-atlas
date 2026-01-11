@@ -13,7 +13,7 @@ WORKDIR /usr/src/app
 COPY package.json yarn.lock ./
 
 # Copy shared library source code (needed for local dependency)
-COPY shared-lib ./shared-lib
+COPY shared-atlas ./shared-atlas
 
 # Copy production dependencies pre-installed by pipeline
 COPY node_modules ./node_modules

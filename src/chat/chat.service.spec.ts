@@ -7,7 +7,7 @@ import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
 import { JwtService } from '@nestjs/jwt';
-import { ChatRole } from '@tainiex/shared';
+import { ChatRole } from '@tainiex/shared-atlas';
 
 describe('ChatService - Title Generation', () => {
     let service: ChatService;

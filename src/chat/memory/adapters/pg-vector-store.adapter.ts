@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { IVectorStore, IVectorStoreRecord } from '../../../../shared-lib/src/interfaces/vector-store.interface';
+import { IVectorStore, IVectorStoreRecord } from '../../../../shared-atlas/src/interfaces/vector-store.interface';
 import { SemanticMemory, MemorySource, MemoryType } from '../entities/memory.entity';
 
 @Injectable()

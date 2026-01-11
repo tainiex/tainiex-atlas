@@ -38,7 +38,7 @@ The application follows a modular architecture. Each major feature has its own d
 - **src/notes/**: Core notes system, block-level storage, templates, and **Collaboration Gateway**.
 - **src/llm/**: Integration with Google Vertex AI (Gemini).
 - **`src/invitation/`**: Invitation code generation and validation system.
-- **`shared-lib/`**: Shared interfaces and DTOs (e.g., `IUser`).
+- **`shared-atlas/`**: Shared interfaces and DTOs (e.g., `IUser`).
   - Request parameter structs (DTOs)
   - Response structs
   - Common shared structs

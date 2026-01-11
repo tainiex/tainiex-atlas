@@ -1,12 +1,12 @@
 import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
-import { IBlock, BlockType } from '@tainiex/shared';
+import { IBlock, BlockType } from '@tainiex/shared-atlas';
 
 /**
  * Block entity - represents a content block within a note.
  * Block实体 - 代表笔记中的内容块。
  * 
- * Implements IBlock interface from shared-lib for type consistency.
- * 实现shared-lib中的IBlock接口以确保类型一致性。
+ * Implements IBlock interface from shared-atlas for type consistency.
+ * 实现shared-atlas中的IBlock接口以确保类型一致性。
  */
 @Entity('blocks')
 export class Block implements Omit<IBlock, 'children'> {

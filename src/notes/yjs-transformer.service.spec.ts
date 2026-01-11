@@ -4,7 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Block } from './entities/block.entity';
 import { Note } from './entities/note.entity';
 import * as Y from 'yjs';
-import { BlockType } from '@tainiex/shared';
+import { BlockType } from '@tainiex/shared-atlas';
 
 describe('YjsTransformerService', () => {
     let service: YjsTransformerService;

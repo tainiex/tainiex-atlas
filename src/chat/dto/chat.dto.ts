@@ -1,6 +1,6 @@
 
 import { IsString, IsUUID, IsOptional, IsEnum, Length } from 'class-validator';
-import { ChatRole, ChatSendPayload } from '@tainiex/shared';
+import { ChatRole, ChatSendPayload } from '@tainiex/shared-atlas';
 
 /**
  * DTO for validating WebSocket chat messages.

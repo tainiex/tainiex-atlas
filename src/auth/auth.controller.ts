@@ -5,7 +5,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshAuthGuard } from './jwt-refresh-auth.guard';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
-import { LoginDto, GoogleLoginDto, MicrosoftLoginDto, SocialSignupDto, SignupDto } from '@tainiex/shared';
+import { LoginDto, GoogleLoginDto, MicrosoftLoginDto, SocialSignupDto, SignupDto } from '@tainiex/shared-atlas';
 
 @Controller('auth')
 @UseGuards(RateLimitGuard) // Apply global guard for this controller (or globally in AppModule)

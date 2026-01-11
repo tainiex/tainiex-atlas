@@ -1,5 +1,5 @@
 import { Injectable, Inject, Logger } from '@nestjs/common';
-import type { IVectorStore, IVectorStoreRecord } from '../../../shared-lib/src/interfaces/vector-store.interface';
+import type { IVectorStore, IVectorStoreRecord } from '../../../shared-atlas/src/interfaces/vector-store.interface';
 import { LlmService } from '../../llm/llm.service';
 import { MemoryType, MemorySource } from './entities/memory.entity';
 import { Worker } from 'worker_threads';
