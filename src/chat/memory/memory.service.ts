@@ -127,12 +127,32 @@ Avoid:
 
 **Language Rule**: The \`content\` field MUST be in the same language as the User's messages in the verified conversation. If the user speaks Chinese, the memory content MUST be in Chinese. If English, use English.
 
+**Anti-Patterns (禁止的输出形式):**
+❌ WRONG: "Firebase提供10GB流量，Vercel提供100GB流量"
+   → 纯事实陈述，缺少用户立场
+
+❌ WRONG: "用户询问了关于托管方案的问题"
+   → 流程描述，无价值
+
+❌ WRONG: "对话讨论了Firebase和Vercel两种方案的优劣"
+   → 摘要式总结
+
+**Correct Patterns (正确的输出形式):**
+✅ RIGHT: "用户倾向选择流量充裕的托管方案（重视Vercel 100GB over Firebase 10GB，看重爆款承载能力）"
+   → 明确的偏好和决策理由
+
+✅ RIGHT: "用户认为部署速度和图片优化是选择托管方案的关键因素"
+   → 提炼出的价值判断
+
+**Golden Rule:** Ask yourself "What did the user DECIDE, PREFER, or LEARN?" not "What did they SAY?"
+**黄金准则：** 问自己"用户**决定、偏好或学到了什么**"，而不是"用户**说了什么**"
+
 Output Format: JSON Array of objects.
 Allowed Types: "PERSONAL", "TASK", "DOMAIN"
 
 Example:
 [
-  { "content": "User prefers using functional programming patterns in TypeScript generally.", "type": "PERSONAL", "importance": 2 },
+  { "content": "用户倾向选择Vercel托管（重视100GB流量和图片优化能力over Firebase）", "type": "PERSONAL", "importance": 3 },
   { "content": "Mobile Safari aggressively suspends WebSocket connections in background tabs, necessitating a robust Ping/Pong heartbeat.", "type": "DOMAIN", "importance": 3 },
   { "content": "The project uses 'file:./' references for shared libraries to simplify CI/CD authentication.", "type": "TASK", "importance": 3 }
 ]
@@ -229,7 +249,7 @@ Output JSON (only JSON, no markdown):
     ): Promise<string | null> {
         try {
             // 1. Fetch next chunk
-            const limit = parseInt(this.configService.get('DISTILL_BACKFILL_CHUNK_SIZE') || '20', 10);
+            const limit = parseInt(this.configService.get('DISTILL_BACKFILL_CHUNK_SIZE') || '30', 10);
             const messages = await messageFetcher(sessionId, lastProcessedMsgId, limit);
 
             if (messages.length === 0) {

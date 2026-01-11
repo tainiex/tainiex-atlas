@@ -233,11 +233,11 @@ export class ChatService {
             (async () => {
                 try {
                     // Fetch recent context for distillation
-                    // Note: We want the last 10 messages to analyze the recent conversation flow
+                    // Note: We want the last 30 messages to analyze the recent conversation flow
                     const recentMessages = await this.chatMessageRepository.find({
                         where: { sessionId },
                         order: { createdAt: 'DESC' },
-                        take: 10
+                        take: 30
                     });
 
                     // Reverse to chronological order (Oldest -> Newest)
