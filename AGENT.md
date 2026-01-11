@@ -188,9 +188,19 @@ To provide long-term memory for the AI, we implement a "Memory Distillation" pro
 1.  **Trigger**: Topic Shift or Session End.
 2.  **Extraction**: LLM identifies "Agreed Facts" vs "Transient Noise".
 3.  **Storage**: Facts are stored with an evolving `importance` score.
+3.  **Storage**: Facts are stored with an evolving `importance` score.
 4.  **Consolidation**: Contradictory new facts update/archive old facts.
 
-### 6.4. Retrieval Pipeline
+### 6.4. Historical Memory Backfill (Auto-Trigger)
+-   **Purpose**: Automatically generate memories for old sessions that predate the distillation system.
+-   **Mechanism**:
+    -   **Trigger**: When a user loads a chat session (`GET /messages`), the system checks metadata.
+    -   **Zero-Cost Check**: If `metadata.backfill_complete` is NOT true, a background job is enqueued.
+    -   **Worker**: `InMemoryJobQueue` processes the backfill in chunks (20 messages) recursively.
+    -   **Checkpointing**: Saves `last_backfilled_message_id` to DB to support crash recovery and idempotency.
+    -   **Completion**: Once caught up, `backfill_complete` is set to `true`, preventing future overhead.
+
+### 6.5. Retrieval Pipeline
 1.  **Query Analysis**: Analyze user intent.
 2.  **Hybrid Search**: Combine `pgvector` HNSW search with keyword matching.
 3.  **Adaptive Ranking**: Score = `(VectorSim * 0.7) + (Importance * 0.2) + (Recency * 0.1)`.

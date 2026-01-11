@@ -486,7 +486,10 @@ tainiex-atlas/
 - **JWT Protected**: Secure, user-specific chat sessions
 - **Configurable**: Easily switch between different Gemini models (default: `gemini-3-pro-preview`)
 - **Streaming Support**: Real-time server-sent events (SSE) for chat responses
+- **Configurable**: Easily switch between different Gemini models (default: `gemini-3-pro-preview`)
+- **Streaming Support**: Real-time server-sent events (SSE) for chat responses
 - **Model Discovery**: API endpoint to list all available Vertex AI models
+- **Historical Memory Backfill**: Automatically processes past conversations to generate long-term memories ("Auto-Backfill" triggered on chat load).
 
 ### Security Features
 

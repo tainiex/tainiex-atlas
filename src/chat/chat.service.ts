@@ -1,17 +1,20 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository, LessThan, MoreThan } from 'typeorm';
 import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
 import { MemoryService } from './memory/memory.service';
-import { ChatRole } from '@tainiex/shared';
+import type { IJobQueue } from './queue/job-queue.interface';
+import { ChatRole, CHAT_ROOT_PARENT_ID } from '@tainiex/shared';
 import type { IContextManager } from './context/context-manager.interface';
 
 @Injectable()
 export class ChatService {
+    private logger = new Logger(ChatService.name);
+
     constructor(
         @InjectRepository(ChatSession)
         private chatSessionRepository: Repository<ChatSession>,
@@ -23,8 +26,15 @@ export class ChatService {
         private memoryService: MemoryService,
         @Inject('IContextManager')
         private contextManager: IContextManager,
+        @Inject('IJobQueue')
+        private backfillQueue: IJobQueue<{ sessionId: string, userId: string }>,
         private configService: ConfigService,
-    ) { }
+    ) {
+        // Register Queue Processor
+        this.backfillQueue.process(async (job) => {
+            await this.processBackfillJob(job.sessionId, job.userId);
+        });
+    }
 
     async createSession(userId: string): Promise<ChatSession> {
         // Explicitly set default title to ensure it is returned in the response
@@ -84,6 +94,27 @@ export class ChatService {
         hasMore: boolean;
         nextCursor: string | null;
     }> {
+        // [NEW] Trigger Lazy Backfill Check
+        // We need to fetch session first to check metadata (or rely on Caller passing it? No, caller is Controller)
+        // Optimization: We could fetch Session + Messages in parallel or use loaded session if available.
+        // Controller calls getUserSessions which loads ALL sessions. 
+        // Ideally we should pass the session object to this method to avoid re-fetch, 
+        // but `getSessionMessages` signature is `sessionId`. 
+        // Let's do a quick fetch of the session here or in the Controller.
+
+        // Actually, the Controller calls `getUserSessions` first, finds the session, then calls `getSessionMessages`.
+        // Let's modify `getSessionMessages` to accept the `session` entity? 
+        // Or simply fetch it here (cost: 1 DB read).
+        // Since we want "Zero Cost", maybe the Controller should call `checkAndTriggerBackfill` 
+        // because IT has the session object from `getUserSessions`.
+
+        // REVERT: Updated Implementation Plan said "Check !session.metadata.backfill_complete in memory".
+        // The Controller has the session list. Let's move the trigger to the Controller?
+        // OR: Allow `getSessionMessages` to take `session: ChatSession` as optional arg.
+
+        // Let's stick to the Plan: "User calls GET messages... Backend loads session... if (!meta) queue".
+        // I'll update the Controller to do this check since it already has the session object.
+
         const limit = Math.min(options?.limit || 20, 100);
 
         // 构建查询条件
@@ -235,12 +266,36 @@ export class ChatService {
 
         // 2. Determine Parent ID
         let actualParentId = parentId;
-        if (!actualParentId) {
+
+        if (actualParentId === CHAT_ROOT_PARENT_ID) {
+            // Constraint: ROOT is only allowed for the very first message
+            // This prevents frontend bugs from "resetting" context by always sending ROOT
+            if (msgCount > 0) {
+                this.logger.warn(`[ChatService] Frontend sent ROOT parentId for non-empty session ${sessionId}. Auto-correcting to latest message.`);
+                const lastMessage = await this.chatMessageRepository.findOne({
+                    where: { sessionId },
+                    order: { createdAt: 'DESC' }
+                });
+                actualParentId = lastMessage ? lastMessage.id : CHAT_ROOT_PARENT_ID;
+            }
+        } else if (actualParentId) {
+            // Validate: check if parent exists AND belongs to this session
+            const parentMsg = await this.chatMessageRepository.findOne({
+                where: { id: actualParentId, sessionId },
+                select: ['id']
+            });
+
+            if (!parentMsg) {
+                // Security/Integrity Check Failed
+                throw new BadRequestException(`Invalid parentId: Message ${actualParentId} not found in this session.`);
+            }
+        } else {
+            // Auto-detect: Append to the latest message
             const lastMessage = await this.chatMessageRepository.findOne({
                 where: { sessionId },
                 order: { createdAt: 'DESC' }
             });
-            actualParentId = lastMessage ? lastMessage.id : 'ROOT';
+            actualParentId = lastMessage ? lastMessage.id : CHAT_ROOT_PARENT_ID;
         }
 
         // 3. Save User Message
@@ -586,6 +641,97 @@ Title:`;
         // 8. Update session timestamp
         session.updatedAt = new Date();
         await this.chatSessionRepository.save(session);
+    }
+
+    // New Linear Context Retrieval (Traverse Backwards)
+    // If leafId is provided, traverse from there.
+    // If not, try to find the "latest" based on time (for backward compat or simple usage)
+
+    // ============================================
+    // Historical Memory Backfill Logic
+    // ============================================
+
+    /**
+     * Triggered when user loads session history (Zero-cost check in memory)
+     */
+    async checkAndTriggerBackfill(sessionId: string, session: ChatSession) {
+        // 1. Fast Exit: If already marked complete, skip
+        if (session.metadata?.backfill_complete === true) {
+            this.logger.debug(`[Backfill] Session ${sessionId} already complete. Skipping check.`);
+            return;
+        }
+
+        // 2. Enqueue Job
+        // The queue handles deduplication or we can rely on idempotency of the logic
+        this.logger.log(`[Backfill] Triggering backfill check for session ${sessionId}. Metadata: ${JSON.stringify(session.metadata)}`);
+        await this.backfillQueue.add({ sessionId, userId: session.userId });
+    }
+
+    private async processBackfillJob(sessionId: string, userId: string) {
+        const session = await this.chatSessionRepository.findOne({ where: { id: sessionId } });
+        if (!session || session.userId !== userId) {
+            this.logger.warn(`[Backfill] Session ${sessionId} invalid or not found during job processing.`);
+            return;
+        }
+
+        // Double-check complete flag
+        if (session.metadata?.backfill_complete === true) {
+            this.logger.debug(`[Backfill] Job skipped, session ${sessionId} already marked complete.`);
+            return;
+        }
+
+        const lastProcessedId = session.metadata?.last_backfilled_message_id || null;
+
+        this.logger.log(`[Backfill] Worker processing backfill for ${sessionId}. LastID: ${lastProcessedId}`);
+
+        // Callback to fetch messages (Keeping DB logic in ChatService)
+        const messageFetcher = async (sid: string, lastId: string | null, limit: number) => {
+            const where: any = { sessionId: sid };
+            if (lastId) {
+                where.id = MoreThan(lastId);
+            }
+            return this.chatMessageRepository.find({
+                where,
+                order: { createdAt: 'ASC' }, // Chronological
+                take: limit,
+                select: ['id', 'role', 'content']
+            });
+        };
+
+        const newCheckpoint = await this.memoryService.processBackfillChunk(
+            userId,
+            sessionId,
+            lastProcessedId,
+            messageFetcher
+        );
+
+        // Update Session Metadata
+        if (newCheckpoint) {
+            // Checkpoint updated - More chunks might be needed, handled by recursive queue logic if implemented in Service
+            // BUT: Our design was "Recursive Job". 
+            // In InMemoryQueue, I implemented recursiveness via "processNext". 
+            // Here we need to decide: Does "processBackfillChunk" recurse? 
+            // The MemoryService returns 'newCheckpoint' if it did work.
+            // If it returns 'null', it means it fetched 0 messages (caught up).
+
+            // Update DB
+            session.metadata = {
+                ...session.metadata,
+                last_backfilled_message_id: newCheckpoint
+            };
+            await this.chatSessionRepository.save(session);
+
+            // Enqueue Next Chunk
+            await this.backfillQueue.add({ sessionId, userId });
+        } else {
+            // Caught up!
+            session.metadata = {
+                ...session.metadata,
+                backfill_complete: true
+            };
+            await this.chatSessionRepository.save(session);
+            console.log(`[ChatService] Backfill complete for session ${sessionId}`);
+        }
     }
 
     // New Linear Context Retrieval (Traverse Backwards)

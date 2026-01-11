@@ -15,12 +15,14 @@ import { TokenWindowContextManager } from './context/token-window.manager';
 import { RateLimitModule } from '../rate-limit/rate-limit.module';
 
 import { MemoryModule } from './memory/memory.module';
+import { JobQueueModule } from './queue/job-queue.module';
 
 @Module({
     imports: [
         TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatMessageHistory]),
         LlmModule,
         MemoryModule,
+        JobQueueModule,
         RateLimitModule,
     ],
     controllers: [ChatController],

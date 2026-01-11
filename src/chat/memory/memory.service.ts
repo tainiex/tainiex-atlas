@@ -149,8 +149,9 @@ Output JSON (only JSON, no markdown):
             };
 
             const runWorker = () => new Promise<any[]>((resolve, reject) => {
+                const targetModel = this.configService.get('MEMORY_DISTILLATION_MODEL') || 'gemini-2.0-flash-001';
                 const worker = new Worker(workerPath, {
-                    workerData: { config, prompt, modelName: 'gemini-1.5-pro' }
+                    workerData: { config, prompt, modelName: targetModel }
                 });
 
                 worker.on('message', (msg) => {
@@ -177,7 +178,7 @@ Output JSON (only JSON, no markdown):
                 memories = await runWorker();
             } catch (workerError) {
                 this.logger.error(`[MemoryService] Worker Logic Failed: ${workerError.message}`);
-                return;
+                throw workerError; // Re-throw to signal failure to caller
             }
 
             if (!Array.isArray(memories)) return;
@@ -204,6 +205,44 @@ Output JSON (only JSON, no markdown):
             }
         } catch (error) {
             this.logger.error(`[MemoryService] Distillation failed for session ${sessionId}:`, error);
+            throw error; // Re-throw so caller knows it failed
+        }
+    }
+
+    /**
+     * Recursive Backfill Logic
+     * Returns the ID of the last processed message, or null if no messages were processed (caught up).
+     */
+    async processBackfillChunk(
+        userId: string,
+        sessionId: string,
+        lastProcessedMsgId: string | null,
+        messageFetcher: (sessionId: string, lastMsgId: string | null, limit: number) => Promise<{ id: string, role: string, content: string }[]>
+    ): Promise<string | null> {
+        try {
+            // 1. Fetch next chunk
+            const limit = parseInt(this.configService.get('DISTILL_BACKFILL_CHUNK_SIZE') || '20', 10);
+            const messages = await messageFetcher(sessionId, lastProcessedMsgId, limit);
+
+            if (messages.length === 0) {
+                this.logger.debug(`[MemoryService] [Backfill] No more messages to process for ${sessionId}. Backfill Complete.`);
+                return null; // Done
+            }
+
+            // 2. Distill
+            const startId = messages[0].id;
+            const endId = messages[messages.length - 1].id;
+            this.logger.log(`[MemoryService] [Backfill] Processing chunk for ${sessionId}. Size: ${messages.length}. Range: ${startId} ... ${endId}`);
+
+            await this.runDistillationTask(userId, sessionId, messages); // Re-use existing logic
+
+            // 3. Return checkpoint (last message ID)
+            const newCheckpoint = endId;
+            this.logger.debug(`[MemoryService] [Backfill] Chunk finished. New Checkpoint: ${newCheckpoint}`);
+            return newCheckpoint;
+        } catch (error) {
+            this.logger.error(`[MemoryService] Backfill chunk failed for session ${sessionId}`, error);
+            throw error; // Propagate to retry or fail the job
         }
     }
 }

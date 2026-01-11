@@ -249,7 +249,7 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
                     projectId: projectId,
                 });
 
-                const model = 'text-embedding-004';
+                const model = this.configService.get<string>('VERTEX_EMBEDDING_MODEL') || 'text-embedding-004';
                 const endpoint = `projects/${projectId}/locations/${location}/publishers/google/models/${model}`;
 
                 const instanceValue = helpers.toValue({

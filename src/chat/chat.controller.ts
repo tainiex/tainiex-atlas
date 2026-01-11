@@ -64,6 +64,9 @@ export class ChatController {
             return { messages: [], hasMore: false, nextCursor: null };
         }
 
+        // [NEW] Trigger Lazy Backfill Check (Zero-cost, piggybacking on session load)
+        this.chatService.checkAndTriggerBackfill(sessionId, exists);
+
         if (leafMessageId) {
             const path = await this.chatService.getHistoryPath(sessionId, leafMessageId);
             // When fetching by path, pagination logic might differ. 

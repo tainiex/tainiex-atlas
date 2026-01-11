@@ -24,6 +24,7 @@ async function bootstrap() {
   app.use(cookieParser());
   app.useGlobalInterceptors(new ClassSerializerInterceptor(app.get(Reflector)));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
+  app.enableShutdownHooks();
   try {
     const configService = app.get(ConfigService);
     const globalPrefix = configService.get<string>('API_PREFIX', 'api');

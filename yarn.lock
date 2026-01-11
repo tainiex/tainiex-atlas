@@ -1293,15 +1293,7 @@
   integrity sha512-Uy0+khmZqUrUGm5dmMqVlnvufZRSK0FbYzVgp0UMstm+F5+W2/jnEEQyc9vo1ZR/E5ZI/B1WjjoTqBqwJL6Krw==
 
 "@tainiex/shared@file:./shared-lib":
-  version "0.0.13"
-  dependencies:
-    class-transformer "^0.5.1"
-    class-validator "^0.14.3"
-
-"@tainiex/tainiex-shared@0.0.13":
-  version "0.0.13"
-  resolved "https://npm.pkg.github.com/download/@tainiex/tainiex-shared/0.0.13/3b2346b286acf72036044d0f8297b77ac6f0b2dc"
-  integrity sha512-PN3fId5y3acg3YkC9GPi68FttRGPWCexFOauaI3FuwgPGyajLXsmfocv30OZ4P5NHqyXB6vzoQwKV79Vo1c9ew==
+  version "0.0.14"
   dependencies:
     class-transformer "^0.5.1"
     class-validator "^0.14.3"

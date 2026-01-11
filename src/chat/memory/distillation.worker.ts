@@ -61,7 +61,9 @@ async function run() {
         };
 
         const vertexAI = new VertexAI(vertexOptions);
-        const model = vertexAI.getGenerativeModel({ model: modelName || 'gemini-1.5-pro' });
+        // Use configured model or fallback to a stable model ID
+        const configuredModel = config['MEMORY_DISTILLATION_MODEL'] || 'gemini-2.0-flash-001';
+        const model = vertexAI.getGenerativeModel({ model: modelName || configuredModel });
 
         // Generate Content
         try {
