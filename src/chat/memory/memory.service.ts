@@ -112,21 +112,29 @@ export class MemoryService {
         try {
             const conversationText = messages.map(m => `${m.role}: ${m.content}`).join('\n');
             const prompt = `
-Task: Analyze the following conversation fragment and extract key facts, user preferences, or important context that should be stored as long-term memory for future retrieval.
-Focus on:
-- User's personal details (name, job, location, relations) -> Type: PERSONAL
-- User's strong preferences or dislikes -> Type: PERSONAL
-- Specific project details or requirements mentioned -> Type: TASK
-- Important decisions made
-- Domain knowledge or technical facts -> Type: DOMAIN
+Task: Analyze the provided conversation context and distill high-value, long-term memories.
+CRITICAL: Do NOT just summarize the conversation events. Instead, extract underlying truths, insights, patterns, and strong opinions.
+
+Focus on extracting:
+1. **User Philosophies & Preferences**: The user's deep-seated beliefs about coding, design, or workflow (e.g., "Prefers composition over inheritance", "Strongly dislikes verbose logging", "Values aesthetics over performance"). -> Type: PERSONAL
+2. **Technical Insights & Learnings**: Proven solutions or conclusions reached about specific technical problems, including the "Why" (e.g., "WebSockets require heartbeat on mobile due to aggressive OS background suspension"). -> Type: DOMAIN
+3. **Project Decisions & Context**: Critical architectural decisions and their rationale. -> Type: TASK
+
+Avoid:
+- Trivial facts ("User sent a message about X").
+- Transient debugging state ("User is fixing a bug in loop").
+- Repetition of logs or error messages.
+
+**Language Rule**: The \`content\` field MUST be in the same language as the User's messages in the verified conversation. If the user speaks Chinese, the memory content MUST be in Chinese. If English, use English.
 
 Output Format: JSON Array of objects.
 Allowed Types: "PERSONAL", "TASK", "DOMAIN"
 
 Example:
 [
-  { "content": "User is a software engineer working on NestJS", "type": "PERSONAL", "importance": 1 },
-  { "content": "Project requires strict TypeScript strict mode", "type": "TASK", "importance": 2 }
+  { "content": "User prefers using functional programming patterns in TypeScript generally.", "type": "PERSONAL", "importance": 2 },
+  { "content": "Mobile Safari aggressively suspends WebSocket connections in background tabs, necessitating a robust Ping/Pong heartbeat.", "type": "DOMAIN", "importance": 3 },
+  { "content": "The project uses 'file:./' references for shared libraries to simplify CI/CD authentication.", "type": "TASK", "importance": 3 }
 ]
 
 Conversation:
