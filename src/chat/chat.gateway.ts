@@ -167,7 +167,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
                 user.id,
                 content,
                 role || ChatRole.USER,
-                model
+                model,
+                payload.parentId
             );
 
             let chunkCount = 0;

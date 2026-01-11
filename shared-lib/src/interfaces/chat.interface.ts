@@ -215,6 +215,12 @@ export interface ChatSendPayload {
      * 指定模型（可选）。
      */
     model?: string;
+
+    /**
+     * Optional parent ID.
+     * 父消息 ID (可选).
+     */
+    parentId?: string;
 }
 
 /**
