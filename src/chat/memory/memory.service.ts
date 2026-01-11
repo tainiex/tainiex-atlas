@@ -164,6 +164,32 @@ Later: "I decided on B"
 → ONLY extract the final decision (B)
 → IGNORE early exploration phase unless it reveals preference patterns
 
+**OUTPUT CONSTRAINTS:**
+CRITICAL: Extract ONLY 1-3 memories per distillation cycle
+- Maximum 3 memories — if you have more, you are doing it WRONG
+- Minimum importance threshold: 2 (DO NOT create memories with importance < 2)
+- Quality over Quantity: Better to extract 1 perfect memory than 5 mediocre ones
+- If conversation is trivial/exploratory with no strong conclusions, return EMPTY array []
+
+Importance Level Guidelines:
+IMPORTANCE 3 (Critical - ALWAYS extract if present):
+- Final decisions on major technical choices
+- Strong personal preferences with reasoning
+- Proven solutions to recurring problems
+- Architectural decisions with long-term impact
+
+IMPORTANCE 2 (Medium - Extract if truly valuable):
+- Secondary preferences
+- Learned patterns
+- Non-critical but meaningful decisions
+
+IMPORTANCE 1 (Low - NEVER extract):
+- Transient concerns
+- Exploratory questions without conclusions
+- Factual information without user stance
+
+Rule: If in doubt, DO NOT extract. Err on the side of fewer, higher-quality memories.
+
 Focus on extracting:
 1. **User Philosophies & Preferences**: The user's deep-seated beliefs about coding, design, or workflow (e.g., "Prefers composition over inheritance", "Strongly dislikes verbose logging", "Values aesthetics over performance"). -> Type: PERSONAL
 2. **Technical Insights & Learnings**: Proven solutions or conclusions reached about specific technical problems, including the "Why" (e.g., "WebSockets require heartbeat on mobile due to aggressive OS background suspension"). -> Type: DOMAIN
@@ -208,13 +234,27 @@ user: "嗯，流量限制是个问题"
 assistant: "是的，Vercel有100GB"
 user: "好的，那我就用Vercel了，虽然贵点但流量够"
 
-Correct Output (Decision-focused):
+❌ WRONG Output (Too many, low importance):
+[
+  { "content": "用户询问了Firebase和Vercel的对比", "importance": 1 },
+  { "content": "用户了解了两者的价格差异", "importance": 1 },
+  { "content": "用户关心流量限制问题", "importance": 2 },
+  { "content": "Firebase提供的流量较少", "importance": 1 },
+  { "content": "Vercel提供100GB流量", "importance": 1 },
+  { "content": "用户决定使用Vercel", "importance": 2 },
+  { "content": "用户接受了更高的成本", "importance": 1 },
+  { "content": "用户重视流量扩展性", "importance": 2 }
+]
+→ Problem: 8 items! Violates max=3 rule, many importance=1 (should be excluded)
+
+✅ CORRECT Output (Focused, high importance only):
 [
   { "content": "用户选择Vercel作为托管方案（权衡后认为流量限制比成本更重要）", "type": "TASK", "importance": 3 },
   { "content": "用户在技术选型时优先考虑可扩展性（流量承载能力）over 成本", "type": "PERSONAL", "importance": 3 }
 ]
+→ Success: 2 items, both importance=3, captures the essence
 
-Wrong Outputs to AVOID:
+Additional Wrong Outputs to AVOID:
 ❌ "用户在考虑Firebase和Vercel" (exploration phase, not decision)
 ❌ "Vercel提供100GB流量" (factual statement from assistant)
 ❌ "AI建议使用Vercel" (assistant's action, not user's)
