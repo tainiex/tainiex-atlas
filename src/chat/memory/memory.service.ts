@@ -115,6 +115,55 @@ export class MemoryService {
 Task: Analyze the provided conversation context and distill high-value, long-term memories.
 CRITICAL: Do NOT just summarize the conversation events. Instead, extract underlying truths, insights, patterns, and strong opinions.
 
+**CRITICAL ROLE AWARENESS:**
+The conversation contains TWO participants:
+- "user": The actual user (YOUR PRIMARY FOCUS)
+- "assistant": The AI assistant (IGNORE ITS SUGGESTIONS)
+
+RULES:
+✅ ONLY extract insights from what the user explicitly said or decided
+❌ DO NOT attribute assistant's recommendations to the user
+❌ DO NOT create memories like "User thinks X" if only assistant suggested X
+
+Role Confusion Prevention:
+If conversation shows:
+  assistant: "I recommend using Vercel"
+  user: "Okay" (without explicitly agreeing)
+→ DO NOT create: "User prefers Vercel"
+→ This is assistant's opinion, not user's preference
+
+**CRITICAL DECISION AWARENESS:**
+Distinguish between EXPLORATION and CONCLUSION:
+
+EXPLORATION (探索阶段) - Lower priority, avoid if possible:
+- "I'm considering A or B" / "我在考虑A或B"
+- "What about X?" / "X怎么样？"
+- "A has pros, B has cons" / "A有优点，B有缺点"
+→ User is still thinking, NO decision made yet
+
+CONCLUSION (决策阶段) - Higher priority, MUST capture:
+- "I decided to use X" / "我决定用X"
+- "I'll go with Y because..." / "我选择Y，因为..."
+- "After considering, I choose Z" / "考虑后，我选Z"
+→ User made a final decision, CAPTURE THIS
+
+Signal Words for Decisions (决策信号词):
+- Chinese: 决定、选择、确定、最终、采用、用、就用
+- English: decided, chosen, will use, going with, settled on, pick
+
+Extraction Priority:
+1. HIGHEST: Final decisions with reasoning
+2. MEDIUM: Strong preferences ("I prefer X over Y because...")
+3. LOWEST: Options being explored ("considering A or B")
+4. AVOID: Questions without conclusions
+
+Temporal Priority Rule:
+If conversation shows evolution from exploration to decision:
+Early: "I'm thinking about A, B, C"
+Later: "I decided on B"
+→ ONLY extract the final decision (B)
+→ IGNORE early exploration phase unless it reveals preference patterns
+
 Focus on extracting:
 1. **User Philosophies & Preferences**: The user's deep-seated beliefs about coding, design, or workflow (e.g., "Prefers composition over inheritance", "Strongly dislikes verbose logging", "Values aesthetics over performance"). -> Type: PERSONAL
 2. **Technical Insights & Learnings**: Proven solutions or conclusions reached about specific technical problems, including the "Why" (e.g., "WebSockets require heartbeat on mobile due to aggressive OS background suspension"). -> Type: DOMAIN
@@ -150,12 +199,25 @@ Avoid:
 Output Format: JSON Array of objects.
 Allowed Types: "PERSONAL", "TASK", "DOMAIN"
 
-Example:
+Example with Decision Awareness:
+
+Conversation:
+user: "我在纠结用Firebase还是Vercel"
+assistant: "Firebase便宜，Vercel功能强"
+user: "嗯，流量限制是个问题"
+assistant: "是的，Vercel有100GB"
+user: "好的，那我就用Vercel了，虽然贵点但流量够"
+
+Correct Output (Decision-focused):
 [
-  { "content": "用户倾向选择Vercel托管（重视100GB流量和图片优化能力over Firebase）", "type": "PERSONAL", "importance": 3 },
-  { "content": "Mobile Safari aggressively suspends WebSocket connections in background tabs, necessitating a robust Ping/Pong heartbeat.", "type": "DOMAIN", "importance": 3 },
-  { "content": "The project uses 'file:./' references for shared libraries to simplify CI/CD authentication.", "type": "TASK", "importance": 3 }
+  { "content": "用户选择Vercel作为托管方案（权衡后认为流量限制比成本更重要）", "type": "TASK", "importance": 3 },
+  { "content": "用户在技术选型时优先考虑可扩展性（流量承载能力）over 成本", "type": "PERSONAL", "importance": 3 }
 ]
+
+Wrong Outputs to AVOID:
+❌ "用户在考虑Firebase和Vercel" (exploration phase, not decision)
+❌ "Vercel提供100GB流量" (factual statement from assistant)
+❌ "AI建议使用Vercel" (assistant's action, not user's)
 
 Conversation:
 ${conversationText}
