@@ -1,0 +1,40 @@
+import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
+import { JwtModule } from '@nestjs/jwt';
+import { ChatController } from './chat.controller';
+import { ChatService } from './chat.service';
+import { ChatGateway } from './chat.gateway';
+import { ChatSession } from './chat-session.entity';
+import { ChatMessage } from './chat-message.entity';
+import { ChatMessageHistory } from './chat-message-history.entity';
+import { LlmModule } from '../llm/llm.module';
+import { TokenWindowContextManager } from './context/token-window.manager';
+
+
+
+import { RateLimitModule } from '../rate-limit/rate-limit.module';
+
+import { MemoryModule } from './memory/memory.module';
+import { JobQueueModule } from './queue/job-queue.module';
+
+@Module({
+    imports: [
+        TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatMessageHistory]),
+        LlmModule,
+        MemoryModule,
+        JobQueueModule,
+        RateLimitModule,
+    ],
+    controllers: [ChatController],
+    providers: [
+        ChatService,
+        ChatGateway,
+        TokenWindowContextManager,
+        {
+            provide: 'IContextManager',
+            useClass: TokenWindowContextManager,
+        },
+    ],
+    exports: [ChatService],
+})
+export class ChatModule { }

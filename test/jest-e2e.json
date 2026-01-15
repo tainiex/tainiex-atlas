@@ -1,0 +1,20 @@
+{
+  "moduleFileExtensions": [
+    "js",
+    "json",
+    "ts"
+  ],
+  "rootDir": ".",
+  "testEnvironment": "node",
+  "testRegex": ".e2e-spec.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "transformIgnorePatterns": [
+    "node_modules/(?!uuid)"
+  ],
+  "moduleNameMapper": {
+    "^@shared/(.*)$": "<rootDir>/../shared-lib/src/$1",
+    "^@tainiex/shared$": "<rootDir>/../shared-lib/src/index"
+  }
+}

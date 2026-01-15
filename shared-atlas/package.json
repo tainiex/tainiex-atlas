@@ -1,0 +1,28 @@
+{
+    "name": "@tainiex/shared-atlas",
+    "version": "0.0.20",
+    "description": "Shared interfaces and contracts for Tainiex Atlas",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "scripts": {
+        "build": "tsc",
+        "pub": "npm version patch && npm run build && npm publish"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "LGPL-3.0-or-later",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/tainiex/tainiex-atlas.git"
+    },
+    "publishConfig": {
+        "registry": "https://npm.pkg.github.com"
+    },
+    "devDependencies": {
+        "typescript": "^5.7.3"
+    },
+    "dependencies": {
+        "class-transformer": "^0.5.1",
+        "class-validator": "^0.14.3"
+    }
+}
