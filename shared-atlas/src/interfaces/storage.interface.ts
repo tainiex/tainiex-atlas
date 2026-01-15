@@ -27,6 +27,14 @@ export interface IFileUploadResponse {
     path: string;
 
     /**
+     * URL expiration timestamp (Unix milliseconds)
+     * URL 过期时间戳（Unix 毫秒）
+     * 
+     * @new Added for URL refresh tracking
+     */
+    expiresAt?: number;
+
+    /**
      * File metadata
      * 文件元数据
      */
@@ -61,4 +69,36 @@ export interface IFileUploadResponse {
          */
         updated?: string;
     };
+}
+
+/**
+ * Signed URL Response
+ * 签名 URL 响应
+ * 
+ * @new Response format for URL refresh endpoint
+ */
+export interface ISignedUrlResponse {
+    /**
+     * New signed URL
+     * 新签名 URL
+     */
+    url: string;
+
+    /**
+     * GCS path (for verification)
+     * GCS 路径（用于验证）
+     */
+    path: string;
+
+    /**
+     * URL expiration timestamp (Unix milliseconds)
+     * URL 过期时间戳（Unix 毫秒）
+     */
+    expiresAt: number;
+
+    /**
+     * Seconds until expiration
+     * 距离过期的秒数
+     */
+    expiresIn: number;
 }

@@ -172,7 +172,9 @@ export class UploadController {
             );
 
             // Generate signed URL
-            const signedUrl = await this.storageService.getSignedUrl(gcsPath, 60); // 60 minutes
+            const expirationMinutes = 60;
+            const signedUrl = await this.storageService.getSignedUrl(gcsPath, expirationMinutes); // 60 minutes
+            const expiresAt = Date.now() + expirationMinutes * 60 * 1000;
 
             // Get file metadata
             const metadata = await this.storageService.getFileMetadata(gcsPath);
@@ -180,7 +182,10 @@ export class UploadController {
             return {
                 success: true,
                 url: signedUrl,
-                gcsPath,
+                path: gcsPath, // Return 'path' to match IFileUploadResponse
+                gcsPath, // Keep 'gcsPath' for backward compatibility if any
+                expiresAt,
+
                 metadata: {
                     filename: file.originalname,
                     size: file.size,

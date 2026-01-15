@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString } from 'class-validator';
+import { IsEnum, IsOptional, IsString, IsNotEmpty, IsInt, Min, Max } from 'class-validator';
 
 /**
  * Storage Module Enum
@@ -44,4 +44,37 @@ export class UploadFileQueryDto {
     @IsOptional()
     @IsString()
     folder?: string;
+}
+
+/**
+ * Get Signed URL Query DTO
+ * 获取签名 URL 查询 DTO
+ *
+ * Request a fresh signed URL for an existing GCS path.
+ * 为现有 GCS 路径请求新的签名 URL。
+ */
+export class GetSignedUrlQueryDto {
+    /**
+     * Internal GCS path
+     * 内部 GCS 路径
+     *
+     * @example 'notes/user-123/images/abc.jpg'
+     */
+    @IsString()
+    @IsNotEmpty({
+        message: 'path is required',
+    })
+    path: string;
+
+    /**
+     * Optional expiration time in seconds
+     * 可选的过期时间（秒）
+     *
+     * @default 3600 (1 hour)
+     */
+    @IsOptional()
+    @IsInt()
+    @Min(60)
+    @Max(86400) // Max 24 hours
+    expirationSeconds?: number;
 }
