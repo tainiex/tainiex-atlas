@@ -7,7 +7,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshAuthGuard } from './jwt-refresh-auth.guard';
 import { RateLimit } from '../rate-limit/rate-limit.decorator';
 import { RateLimitGuard } from '../rate-limit/rate-limit.guard';
-import { LoginDto, GoogleLoginDto, MicrosoftLoginDto, SocialSignupDto, SignupDto } from '@tainiex/shared-atlas';
+import { LoginDto, GoogleLoginDto, MicrosoftLoginDto, SocialSignupDto, SignupDto, LogoutDto, LogoutResponse } from '@tainiex/shared-atlas';
 
 @Controller('auth')
 @UseGuards(RateLimitGuard) // Apply global guard for this controller (or globally in AppModule)
@@ -270,8 +270,8 @@ export class AuthController {
     async logout(
         @Request() req: any,
         @Res({ passthrough: true }) res: FastifyReply,
-        @Body() _body?: any, // Explicitly allow empty body to avoid Fastify 400 errors / 显式允许空 Body 以避免 Fastify 报 400 错误
-    ) {
+        @Body() _body: LogoutDto,
+    ): Promise<LogoutResponse> {
 
         await this.authService.logout(req.user.id);
 

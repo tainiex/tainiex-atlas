@@ -57,3 +57,9 @@ export class RefreshTokenDto {
     @IsOptional()
     refreshToken?: string;
 }
+
+export class LogoutDto {
+    @IsString()
+    @IsOptional()
+    userId?: string;
+}

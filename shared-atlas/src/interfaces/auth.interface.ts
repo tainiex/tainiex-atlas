@@ -48,3 +48,7 @@ export interface RefreshTokenResponse {
 export interface RefreshMessageResponse {
     message: string;
 }
+
+export interface LogoutResponse {
+    message: string;
+}
