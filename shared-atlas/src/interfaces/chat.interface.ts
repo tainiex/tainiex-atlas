@@ -180,6 +180,31 @@ export interface ChatSessionResponse extends IChatSession { }
  */
 export interface ChatMessageResponse extends IChatMessage { }
 
+/**
+ * Response structure for fetching messages.
+ * 获取消息的响应结构。
+ */
+export interface GetMessagesResponse {
+    /**
+     * List of messages.
+     * 消息列表。
+     */
+    messages: ChatMessageResponse[];
+
+    /**
+     * Whether there are more older messages available.
+     * 是否还有更多旧消息。
+     */
+    hasMore: boolean;
+
+    /**
+     * Cursor for the next page requests (use as 'before' param).
+     * 下一页请求的游标（作为 'before' 参数使用）。
+     */
+    nextCursor: string | null;
+}
+
+
 // ==========================================
 // WebSocket Event DTOs
 // WebSocket 事件 DTO

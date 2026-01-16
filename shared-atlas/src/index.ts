@@ -6,3 +6,5 @@ export * from './dto/storage.dto';
 export * from './interfaces/auth.interface';
 export * from './interfaces/storage.interface';
 export * from './constants';
+export * from './dto/chat.dto';
+

@@ -1,5 +1,6 @@
 import { ConfigService } from '@nestjs/config';
 import { Controller, Post, Get, Delete, Patch, Body, Param, UseGuards, Request, Query, NotFoundException } from '@nestjs/common';
+import { GetMessagesResponse, GetMessagesDto } from '@tainiex/shared-atlas';
 
 
 
@@ -55,10 +56,10 @@ export class ChatController {
     async getMessages(
         @Request() req: any,
         @Param('id') sessionId: string,
-        @Query('limit') limit?: string,
-        @Query('before') before?: string,
-        @Query('leafMessageId') leafMessageId?: string,
-    ) {
+        @Query() query: GetMessagesDto,
+    ): Promise<GetMessagesResponse> {
+        const { limit, before, leafMessageId } = query;
+
         const sessions = await this.chatService.getUserSessions(req.user.id);
         const exists = sessions.find(s => s.id === sessionId);
         if (!exists) {
@@ -81,7 +82,7 @@ export class ChatController {
         }
 
         return this.chatService.getSessionMessages(sessionId, {
-            limit: limit ? parseInt(limit, 10) : undefined,
+            limit: limit ? Number(limit) : undefined,
             before,
         });
     }
