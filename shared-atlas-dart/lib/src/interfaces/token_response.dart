@@ -1,3 +1,5 @@
+/// Token Response - Used for refresh token endpoint
+/// Contains access and refresh tokens
 class TokenResponse {
   final String access_token;
   final String refresh_token;

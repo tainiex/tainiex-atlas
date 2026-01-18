@@ -1,5 +1,7 @@
 import 'package:shared_atlas_dart/shared_atlas_dart.dart';
 
+/// Prefix: Mobile
+/// Used for mobile app authentication response.
 class MobileAuthResponse {
   final IUser user;
   final dynamic tokens;

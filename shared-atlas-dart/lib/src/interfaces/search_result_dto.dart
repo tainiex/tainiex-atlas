@@ -1,8 +1,16 @@
 import 'package:shared_atlas_dart/shared_atlas_dart.dart';
 
+/// API response for search results.
+/// 搜索结果的 API 响应。
 class SearchResultDto {
+  /// Matching notes.
+  /// 匹配的笔记。
   final List<INote> notes;
+  /// Matching blocks with highlight info.
+  /// 匹配的块及高亮信息。
   final List<dynamic> blocks;
+  /// Total count of results.
+  /// 结果总数。
   final num total;
 
   SearchResultDto({

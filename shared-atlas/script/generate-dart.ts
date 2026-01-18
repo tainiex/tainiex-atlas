@@ -65,6 +65,35 @@ function mapTypeToDart(type: Type, isOptional: boolean): string {
     return dartType;
 }
 
+// Helper: Extract and format JSDoc comment from ts-morph node
+function extractJsDoc(node: any): string[] {
+    const lines: string[] = [];
+    const jsDocs = node.getJsDocs();
+    if (jsDocs && jsDocs.length > 0) {
+        const doc = jsDocs[0];
+        const description = doc.getDescription().trim();
+        if (description) {
+            // Convert JSDoc to Dart doc comment (///)
+            const descLines = description.split('\n');
+            descLines.forEach(line => {
+                lines.push(`/// ${line.trim()}`);
+            });
+        }
+    }
+    return lines;
+}
+
+
+// Helper: Generate random build suffix (4 alphanumeric characters)
+function generateBuildSuffix(): string {
+    const chars = '0123456789abcdefghijklmnopqrstuvwxyz';
+    let result = '';
+    for (let i = 0; i < 4; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
 // Helper: Get Dart default value
 function getDartDefaultValue(type: Type): string | null {
     if (type.isArray()) return '[]';
@@ -77,6 +106,13 @@ function generateDartEnum(enumDec: EnumDeclaration): string {
     if (!enumName) return '';
 
     const lines: string[] = [];
+
+    // Add JSDoc comment if available
+    const jsDoc = extractJsDoc(enumDec);
+    if (jsDoc.length > 0) {
+        lines.push(...jsDoc);
+    }
+
     // Enums don't reference other generated types, so no import needed
     lines.push(`enum ${enumName} {`);
 
@@ -113,7 +149,7 @@ function generateDartClass(classDec: ClassDeclaration | InterfaceDeclaration, kn
     const className = classDec.getName();
     if (!className) return '';
 
-    const properties: { name: string; originalName: string; type: string; isOptional: boolean; defaultValue?: string }[] = [];
+    const properties: { name: string; originalName: string; type: string; isOptional: boolean; jsDoc: string[]; defaultValue?: string }[] = [];
 
     // Get all properties (flattened inheritance)
     const type = classDec.getType();
@@ -137,6 +173,9 @@ function generateDartClass(classDec: ClassDeclaration | InterfaceDeclaration, kn
         if (['in', 'is', 'var', 'final', 'const', 'class', 'enum', 'default', 'extends', 'with', 'implements'].includes(name)) {
             name = name + '_';
         }
+
+        // Extract JSDoc for this property
+        const propJsDoc = extractJsDoc(propDecl);
 
         // Determine type
         // Use getTypeAtLocation logic if possible, or just getType() from declaration
@@ -171,7 +210,7 @@ function generateDartClass(classDec: ClassDeclaration | InterfaceDeclaration, kn
             }
         }
 
-        properties.push({ name, originalName, type: dartType, isOptional });
+        properties.push({ name, originalName, type: dartType, isOptional, jsDoc: propJsDoc });
     }
 
     // If no properties, skip generation (e.g. for Services or empty marker interfaces)
@@ -201,10 +240,21 @@ function generateDartClass(classDec: ClassDeclaration | InterfaceDeclaration, kn
         lines.push(`import 'package:shared_atlas_dart/shared_atlas_dart.dart';`);
         lines.push('');
     }
+
+    // Add class-level JSDoc
+    const classJsDoc = extractJsDoc(classDec);
+    if (classJsDoc.length > 0) {
+        lines.push(...classJsDoc);
+    }
+
     lines.push(`class ${className} {`);
 
     // Properties
     properties.forEach(p => {
+        // Add property JSDoc if available
+        if (p.jsDoc.length > 0) {
+            p.jsDoc.forEach(doc => lines.push(`  ${doc}`));
+        }
         lines.push(`  final ${p.type} ${p.name};`);
     });
     lines.push('');
@@ -429,7 +479,9 @@ async function main() {
     // Read version from shared-atlas package.json
     const packageJsonPath = path.join(__dirname, '../package.json');
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
-    const version = packageJson.version || '0.0.1';
+    const baseVersion = packageJson.version || '0.0.1';
+    const buildSuffix = generateBuildSuffix();
+    const version = `${baseVersion}-${buildSuffix}`;
     console.log(`Using version: ${version}`);
 
     // Generate pubspec.yaml

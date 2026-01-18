@@ -1,3 +1,9 @@
+/// Enum defining the type of a content block in a note.
+/// 定义笔记中内容块的类型。
+/// 
+/// Usage / 使用场景:
+/// - `IBlock.type`
+/// - `CreateBlockDto.type`
 enum BlockType {
   // @JsonValue('TEXT')
   TEXT('TEXT'),

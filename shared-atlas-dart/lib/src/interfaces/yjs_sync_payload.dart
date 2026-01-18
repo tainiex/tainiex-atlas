@@ -1,6 +1,13 @@
+/// Payload for Y.js initial sync.
+/// Y.js 初始同步的 Payload。
+/// 
+/// Event: `server.emit('yjs:sync', payload)`
 class YjsSyncPayload {
+  /// Note ID / 笔记ID
   final String noteId;
+  /// Y.js update data (base64) / Y.js 更新数据
   final String update;
+  /// State vector (base64) / 状态向量
   final String stateVector;
 
   YjsSyncPayload({

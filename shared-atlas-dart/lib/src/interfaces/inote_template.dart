@@ -1,14 +1,42 @@
+/// Represents a note template.
+/// 代表笔记模板。
+/// 
+/// Related APIs / 相关接口:
+/// - `GET /api/templates`: Returns available templates.
+/// - `POST /api/notes/from-template/:templateId`: Creates note from template.
 class INoteTemplate {
+  /// Unique UUID of the template.
+  /// 模板的唯一 UUID。
   final String id;
+  /// Template name.
+  /// 模板名称。
   final String name;
+  /// Optional description.
+  /// 可选的描述。
   final String? description;
+  /// Optional thumbnail URL.
+  /// 可选的缩略图URL。
   final String? thumbnail;
+  /// Category (e.g., 'meeting', 'project', 'doc').
+  /// 分类（如：'meeting'、'project'、'doc'）。
   final String category;
+  /// Whether this is a public/system template.
+  /// 是否为公共/系统模板。
   final bool isPublic;
+  /// Optional creator user ID (null for system templates).
+  /// 可选的创建者用户ID（系统模板为null）。
   final String? createdBy;
+  /// Template structure (array of block definitions).
+  /// 模板结构（块定义数组）。
   final dynamic templateData;
+  /// Number of times this template has been used.
+  /// 此模板被使用的次数。
   final num usageCount;
+  /// Timestamp when the template was created.
+  /// 模板创建时间。
   final DateTime createdAt;
+  /// Timestamp when the template was last updated.
+  /// 模板最后更新时间。
   final DateTime updatedAt;
 
   INoteTemplate({

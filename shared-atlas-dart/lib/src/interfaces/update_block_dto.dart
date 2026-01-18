@@ -1,5 +1,13 @@
+/// Payload for updating a block.
+/// 更新块的请求体。
+/// 
+/// API: `PATCH /api/blocks/:id`
 class UpdateBlockDto {
+  /// Optional new content.
+  /// 可选的新内容。
   final String? content;
+  /// Optional new metadata.
+  /// 可选的新元数据。
   final dynamic metadata;
 
   UpdateBlockDto({

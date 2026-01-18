@@ -1,4 +1,9 @@
+/// Event when a user leaves the collaboration session.
+/// 用户离开协作会话时的事件。
+/// 
+/// Event: `server.emit('presence:leave', payload)`
 class PresenceLeavePayload {
+  /// User ID / 用户ID
   final String userId;
 
   PresenceLeavePayload({

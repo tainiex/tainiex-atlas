@@ -1,7 +1,15 @@
+/// Event when a user joins the collaboration session.
+/// 用户加入协作会话时的事件。
+/// 
+/// Event: `server.emit('presence:join', payload)`
 class PresenceJoinPayload {
+  /// User ID / 用户ID
   final String userId;
+  /// Username / 用户名
   final String username;
+  /// User avatar URL / 用户头像URL
   final String? avatar;
+  /// Assigned color / 分配的颜色
   final String color;
 
   PresenceJoinPayload({

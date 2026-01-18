@@ -1,5 +1,6 @@
 import 'package:shared_atlas_dart/shared_atlas_dart.dart';
 
+/// Standard Auth Response (Web/Mobile)
 class AuthResponse {
   final IUser user;
   final dynamic tokens;

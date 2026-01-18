@@ -1,6 +1,16 @@
+/// Payload for updating note metadata.
+/// 更新笔记元数据的请求体。
+/// 
+/// API: `PATCH /api/notes/:id`
 class UpdateNoteDto {
+  /// Optional new title.
+  /// 可选的新标题。
   final String? title;
+  /// Optional new cover image URL.
+  /// 可选的新封面图片URL。
   final String? coverImage;
+  /// Optional new icon.
+  /// 可选的新图标。
   final String? icon;
 
   UpdateNoteDto({

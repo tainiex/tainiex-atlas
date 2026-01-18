@@ -1,3 +1,5 @@
+/// Refresh Token Response for Web
+/// Web clients receive a simple message confirmation
 class RefreshMessageResponse {
   final String message;
 

@@ -1,10 +1,24 @@
 import 'package:shared_atlas_dart/shared_atlas_dart.dart';
 
+/// Payload for creating a new block.
+/// 创建新块的请求体。
+/// 
+/// API: `POST /api/notes/:noteId/blocks`
 class CreateBlockDto {
+  /// Type of the block.
+  /// 块的类型。
   final BlockType type;
+  /// Content of the block.
+  /// 块的内容。
   final String content;
+  /// Optional metadata.
+  /// 可选的元数据。
   final dynamic metadata;
+  /// Optional parent block ID.
+  /// 可选的父块ID。
   final String? parentBlockId;
+  /// Optional position (defaults to end).
+  /// 可选的位置（默认为末尾）。
   final num? position;
 
   CreateBlockDto({

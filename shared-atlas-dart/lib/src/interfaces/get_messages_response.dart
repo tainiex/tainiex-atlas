@@ -1,8 +1,16 @@
 import 'package:shared_atlas_dart/shared_atlas_dart.dart';
 
+/// Response structure for fetching messages.
+/// 获取消息的响应结构。
 class GetMessagesResponse {
+  /// List of messages.
+  /// 消息列表。
   final List<ChatMessageResponse> messages;
+  /// Whether there are more older messages available.
+  /// 是否还有更多旧消息。
   final bool hasMore;
+  /// Cursor for the next page requests (use as 'before' param).
+  /// 下一页请求的游标（作为 'before' 参数使用）。
   final String nextCursor;
 
   GetMessagesResponse({

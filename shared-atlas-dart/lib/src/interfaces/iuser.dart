@@ -1,9 +1,18 @@
+/// Represents a User entity in the system for frontend consumption.
+/// Contains public profile information. Sensitive data like passwords are excluded.
 class IUser {
+  /// Unique UUID of the user.
   final String id;
+  /// Unique username chosen by the user.
   final String username;
+  /// Email address of the user.
   final String email;
+  /// URL to the user's avatar image.
+  /// Can be a GCS signed URL or external URL (e.g., Google profile picture).
   final String? avatar;
+  /// Timestamp when the user account was registered.
   final DateTime createdAt;
+  /// Timestamp when the user profile was last updated.
   final DateTime updatedAt;
 
   IUser({
