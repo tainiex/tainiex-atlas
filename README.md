@@ -1,6 +1,6 @@
 # Tainiex Atlas
 
-[![License: LGPL v3](https://img.shields.io/badge/License-LGPL%20v3-blue.svg)](https://www.gnu.org/licenses/lgpl-3.0)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![NestJS](https://img.shields.io/badge/NestJS-11.0-E0234E?logo=nestjs)](https://nestjs.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-latest-336791?logo=postgresql)](https://www.postgresql.org/)
@@ -514,6 +514,26 @@ The project includes a shared TypeScript library (`@tainiex/tainiex-shared`) loc
 
 This ensures type consistency between frontend and backend implementations.
 
+## Client Code Generation
+
+Tainiex Atlas supports automatic generation of Dart DTOs for Flutter applications.
+
+### Dart (Flutter)
+- **Source**: `@tainiex/shared-atlas`
+- **Output**: `shared-atlas-dart` directory
+- **Command**: `pnpm run generate:dart`
+- **Verification**: The generation command automatically runs `verify:dart` to ensure structural and content consistency using `ts-morph` AST analysis.
+
+**Usage in Flutter**:
+
+1.  Add dependency in `pubspec.yaml`:
+    ```yaml
+    dependencies:
+      shared_atlas_dart: ^0.0.24 # Match the version in shared-atlas
+    ```
+    *If using a private pub server, ensure `publishConfig` is set correctly.*
+2.  Run `flutter pub get`.
+
 ## Development
 
 ### Code Style
@@ -594,7 +614,7 @@ We welcome contributions to Tainiex Atlas! Here's how you can help:
 
 ## License
 
-This project is licensed under the GNU Lesser General Public License v3.0 or later (LGPL-3.0-or-later). See the [LICENSE](https://www.gnu.org/licenses/lgpl-3.0) for details.
+This project is licensed under the Apache License, Version 2.0. See the [LICENSE](LICENSE) for details.
 
 ## Support
 

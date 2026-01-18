@@ -1,16 +1,18 @@
 {
     "name": "@tainiex/shared-atlas",
-    "version": "0.0.24",
+    "version": "0.0.25",
     "description": "Shared interfaces and contracts for Tainiex Atlas",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
         "build": "tsc",
-        "pub": "npm version patch && npm run build && npm publish"
+        "pub": "npm version patch && npm run build && npm publish",
+        "generate:dart": "ts-node script/generate-dart.ts && npm run verify:dart",
+        "verify:dart": "ts-node test/verify-dart-structure.ts"
     },
     "keywords": [],
     "author": "",
-    "license": "LGPL-3.0-or-later",
+    "license": "Apache-2.0",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/tainiex/tainiex-atlas.git"
@@ -19,7 +21,9 @@
         "registry": "https://npm.pkg.github.com"
     },
     "devDependencies": {
-        "typescript": "^5.7.3"
+        "typescript": "^5.7.3",
+        "ts-morph": "^25.0.0",
+        "ts-node": "^10.9.2"
     },
     "dependencies": {
         "class-transformer": "^0.5.1",

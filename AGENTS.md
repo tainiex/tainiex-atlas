@@ -44,6 +44,9 @@ The application follows a modular architecture. Each major feature has its own d
   - Common shared structs
   - Keep the API type definitions shared
   - The shared library must contain more comments for users
+  - **Scripts**:
+      - `script/generate-dart.ts`: Generates Dart DTOs from TS source.
+      - `test/verify-dart-structure.ts`: Verifies structural and content consistency between TS and Dart.
 
 ### 2.2. Database (TypeORM)
 - **Entities**: All entities are defined in their respective modules/directories.
@@ -168,6 +171,8 @@ The application follows a modular architecture. Each major feature has its own d
 ## 5. Development Workflow
 - **Start Dev**: `yarn run start:dev`
 - **Reset DB**: Use `script/create_schema.sql` (can be run via `node script/reset_db.js` if available, or manual SQL execution).
+- **Generate Client**: `pnpm run generate:dart` (Runs generation + verification).
+- **Publish Client**: `cd shared-atlas-dart && dart pub publish`.
 
 ## 6. Memory Distillation System (New)
 
