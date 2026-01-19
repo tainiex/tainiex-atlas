@@ -8,18 +8,15 @@ import { LlmModule } from '../../llm/llm.module';
 import { WorkerPoolService } from '../worker/worker-pool.service';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([SemanticMemory]),
-        LlmModule
-    ],
-    providers: [
-        MemoryService,
-        WorkerPoolService,
-        {
-            provide: 'IVectorStore',
-            useClass: PgVectorStoreAdapter
-        }
-    ],
-    exports: [MemoryService]
+  imports: [TypeOrmModule.forFeature([SemanticMemory]), LlmModule],
+  providers: [
+    MemoryService,
+    WorkerPoolService,
+    {
+      provide: 'IVectorStore',
+      useClass: PgVectorStoreAdapter,
+    },
+  ],
+  exports: [MemoryService],
 })
-export class MemoryModule { }
+export class MemoryModule {}

@@ -1,7 +1,7 @@
 /**
  * Notes module entities export.
  * Notes模块实体导出。
- * 
+ *
  * All entities are exported for use in TypeORM forFeature() registration.
  * 所有实体都导出以供TypeORM forFeature()注册使用。
  */

@@ -10,17 +10,17 @@ import { SearchResultDto } from '@tainiex/shared-atlas';
 @Controller('search')
 @UseGuards(JwtAuthGuard)
 export class SearchController {
-    constructor(private readonly searchService: SearchService) { }
+  constructor(private readonly searchService: SearchService) {}
 
-    /**
-     * Search notes and blocks.
-     * GET /api/search?q=query_string
-     */
-    @Get()
-    async search(
-        @Req() req,
-        @Query('q') query: string
-    ): Promise<SearchResultDto> {
-        return this.searchService.search(req.user.id, query);
-    }
+  /**
+   * Search notes and blocks.
+   * GET /api/search?q=query_string
+   */
+  @Get()
+  async search(
+    @Req() req,
+    @Query('q') query: string,
+  ): Promise<SearchResultDto> {
+    return this.searchService.search(req.user.id, query);
+  }
 }

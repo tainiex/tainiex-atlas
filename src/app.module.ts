@@ -17,7 +17,14 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { RateLimitEntry } from './rate-limit/rate-limit.entity';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
 import { NotesModule } from './notes/notes.module';
-import { Note, Block, BlockVersion, NoteSnapshot, NoteTemplate, DocumentState } from './notes/entities';
+import {
+  Note,
+  Block,
+  BlockVersion,
+  NoteSnapshot,
+  NoteTemplate,
+  DocumentState,
+} from './notes/entities';
 import { StorageModule } from './common/storage/storage.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { HealthModule } from './health/health.module';
@@ -73,10 +80,12 @@ import { GraphEdge } from './graph/entities/graph-edge.entity';
       },
       inject: [ConfigService],
     }),
-    ThrottlerModule.forRoot([{
-      ttl: 60000, // 1 minute
-      limit: 60,  // 60 requests
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000, // 1 minute
+        limit: 60, // 60 requests
+      },
+    ]),
     UsersModule,
     AuthModule,
     LlmModule,
@@ -90,4 +99,4 @@ import { GraphEdge } from './graph/entities/graph-edge.entity';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

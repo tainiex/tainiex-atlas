@@ -6,10 +6,8 @@ import { GraphEdge } from './entities/graph-edge.entity';
 
 @Global()
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([GraphNode, GraphEdge])
-    ],
-    providers: [GraphService],
-    exports: [GraphService]
+  imports: [TypeOrmModule.forFeature([GraphNode, GraphEdge])],
+  providers: [GraphService],
+  exports: [GraphService],
 })
-export class GraphModule { }
+export class GraphModule {}

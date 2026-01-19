@@ -4,8 +4,8 @@ import { InvitationCode } from './invitation-code.entity';
 import { InvitationService } from './invitation.service';
 
 @Module({
-    imports: [TypeOrmModule.forFeature([InvitationCode])],
-    providers: [InvitationService],
-    exports: [InvitationService],
+  imports: [TypeOrmModule.forFeature([InvitationCode])],
+  providers: [InvitationService],
+  exports: [InvitationService],
 })
-export class InvitationModule { }
+export class InvitationModule {}

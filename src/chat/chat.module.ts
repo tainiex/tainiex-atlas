@@ -13,34 +13,32 @@ import { TokenLifecycleService } from './token-lifecycle.service';
 import { ConnectionHealthService } from './connection-health.service';
 import { ReliableMessageService } from './reliable-message.service';
 
-
-
 import { RateLimitModule } from '../rate-limit/rate-limit.module';
 
 import { MemoryModule } from './memory/memory.module';
 import { JobQueueModule } from './queue/job-queue.module';
 
 @Module({
-    imports: [
-        TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatMessageHistory]),
-        LlmModule,
-        MemoryModule,
-        JobQueueModule,
-        RateLimitModule,
-    ],
-    controllers: [ChatController],
-    providers: [
-        ChatService,
-        ChatGateway,
-        TokenLifecycleService,
-        ConnectionHealthService,
-        ReliableMessageService,
-        TokenWindowContextManager,
-        {
-            provide: 'IContextManager',
-            useClass: TokenWindowContextManager,
-        },
-    ],
-    exports: [ChatService],
+  imports: [
+    TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatMessageHistory]),
+    LlmModule,
+    MemoryModule,
+    JobQueueModule,
+    RateLimitModule,
+  ],
+  controllers: [ChatController],
+  providers: [
+    ChatService,
+    ChatGateway,
+    TokenLifecycleService,
+    ConnectionHealthService,
+    ReliableMessageService,
+    TokenWindowContextManager,
+    {
+      provide: 'IContextManager',
+      useClass: TokenWindowContextManager,
+    },
+  ],
+  exports: [ChatService],
 })
-export class ChatModule { }
+export class ChatModule {}

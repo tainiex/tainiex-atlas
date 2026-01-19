@@ -3,8 +3,15 @@ import { AppModule } from './app.module';
 
 import { ConfigService } from '@nestjs/config';
 
-import { ClassSerializerInterceptor, LogLevel, ValidationPipe } from '@nestjs/common';
-import { FastifyAdapter, NestFastifyApplication } from '@nestjs/platform-fastify';
+import {
+  ClassSerializerInterceptor,
+  LogLevel,
+  ValidationPipe,
+} from '@nestjs/common';
+import {
+  FastifyAdapter,
+  NestFastifyApplication,
+} from '@nestjs/platform-fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
 
@@ -18,11 +25,11 @@ async function bootstrap() {
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      logger: isProduction ? false : true // Simple logger config for Fastify
+      logger: isProduction ? false : true, // Simple logger config for Fastify
     }),
     {
-      logger: logLevels
-    }
+      logger: logLevels,
+    },
   );
 
   await app.register(fastifyCookie);

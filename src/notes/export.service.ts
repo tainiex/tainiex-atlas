@@ -10,88 +10,88 @@ import { BlockType } from '@tainiex/shared-atlas';
  */
 @Injectable()
 export class ExportService {
-    constructor(
-        @InjectRepository(Note)
-        private noteRepository: Repository<Note>,
-        @InjectRepository(Block)
-        private blockRepository: Repository<Block>,
-    ) { }
+  constructor(
+    @InjectRepository(Note)
+    private noteRepository: Repository<Note>,
+    @InjectRepository(Block)
+    private blockRepository: Repository<Block>,
+  ) {}
 
-    /**
-     * Export a note to Markdown format.
-     * 将笔记导出为 Markdown 格式。
-     */
-    async exportToMarkdown(noteId: string, userId: string): Promise<string> {
-        const note = await this.noteRepository.findOne({
-            where: { id: noteId, userId },
-        });
+  /**
+   * Export a note to Markdown format.
+   * 将笔记导出为 Markdown 格式。
+   */
+  async exportToMarkdown(noteId: string, userId: string): Promise<string> {
+    const note = await this.noteRepository.findOne({
+      where: { id: noteId, userId },
+    });
 
-        if (!note) {
-            throw new NotFoundException('Note not found');
-        }
-
-        const blocks = await this.blockRepository.find({
-            where: { noteId },
-            order: { position: 'ASC' },
-        });
-
-        let markdown = `# ${note.title}\n\n`;
-
-        for (const block of blocks) {
-            markdown += this.blockToMarkdown(block) + '\n\n';
-        }
-
-        return markdown;
+    if (!note) {
+      throw new NotFoundException('Note not found');
     }
 
-    /**
-     * Helper to convert a single block to Markdown.
-     * 将单个块转换为 Markdown 的辅助方法。
-     */
-    private blockToMarkdown(block: Block): string {
-        switch (block.type) {
-            case BlockType.HEADING1:
-                return `# ${block.content}`;
-            case BlockType.HEADING2:
-                return `## ${block.content}`;
-            case BlockType.HEADING3:
-                return `### ${block.content}`;
-            case BlockType.BULLET_LIST:
-                return `- ${block.content}`;
-            case BlockType.NUMBERED_LIST:
-                return `1. ${block.content}`;
-            case BlockType.TODO_LIST:
-                const checked = block.metadata?.checked ? '[x]' : '[ ]';
-                return `${checked} ${block.content}`;
-            case BlockType.CODE:
-                const lang = block.metadata?.language || '';
-                return `\`\`\`${lang}\n${block.content}\n\`\`\``;
-            case BlockType.QUOTE:
-                return `> ${block.content}`;
-            case BlockType.DIVIDER:
-                return `---`;
-            case BlockType.IMAGE:
-                return `![${block.metadata?.filename || 'image'}](${block.content})`;
-            case BlockType.VIDEO:
-                return `[Video: ${block.metadata?.filename || 'video'}](${block.content})`;
-            case BlockType.FILE:
-                return `[File: ${block.metadata?.filename || 'attachment'}](${block.content})`;
-            case BlockType.CALLOUT:
-                return `:::info\n${block.content}\n:::`;
-            case BlockType.TEXT:
-            default:
-                return block.content || '';
-        }
+    const blocks = await this.blockRepository.find({
+      where: { noteId },
+      order: { position: 'ASC' },
+    });
+
+    let markdown = `# ${note.title}\n\n`;
+
+    for (const block of blocks) {
+      markdown += this.blockToMarkdown(block) + '\n\n';
     }
 
-    /**
-     * Export a note to HTML format.
-     * 将笔记导出为 HTML 格式。
-     */
-    async exportToHtml(noteId: string, userId: string): Promise<string> {
-        // Very basic HTML export for now
-        const md = await this.exportToMarkdown(noteId, userId);
-        // In a real app, use a library like showdown or markdown-it
-        return `<html><body>${md.replace(/\n/g, '<br>')}</body></html>`;
+    return markdown;
+  }
+
+  /**
+   * Helper to convert a single block to Markdown.
+   * 将单个块转换为 Markdown 的辅助方法。
+   */
+  private blockToMarkdown(block: Block): string {
+    switch (block.type) {
+      case BlockType.HEADING1:
+        return `# ${block.content}`;
+      case BlockType.HEADING2:
+        return `## ${block.content}`;
+      case BlockType.HEADING3:
+        return `### ${block.content}`;
+      case BlockType.BULLET_LIST:
+        return `- ${block.content}`;
+      case BlockType.NUMBERED_LIST:
+        return `1. ${block.content}`;
+      case BlockType.TODO_LIST:
+        const checked = block.metadata?.checked ? '[x]' : '[ ]';
+        return `${checked} ${block.content}`;
+      case BlockType.CODE:
+        const lang = block.metadata?.language || '';
+        return `\`\`\`${lang}\n${block.content}\n\`\`\``;
+      case BlockType.QUOTE:
+        return `> ${block.content}`;
+      case BlockType.DIVIDER:
+        return `---`;
+      case BlockType.IMAGE:
+        return `![${block.metadata?.filename || 'image'}](${block.content})`;
+      case BlockType.VIDEO:
+        return `[Video: ${block.metadata?.filename || 'video'}](${block.content})`;
+      case BlockType.FILE:
+        return `[File: ${block.metadata?.filename || 'attachment'}](${block.content})`;
+      case BlockType.CALLOUT:
+        return `:::info\n${block.content}\n:::`;
+      case BlockType.TEXT:
+      default:
+        return block.content || '';
     }
+  }
+
+  /**
+   * Export a note to HTML format.
+   * 将笔记导出为 HTML 格式。
+   */
+  async exportToHtml(noteId: string, userId: string): Promise<string> {
+    // Very basic HTML export for now
+    const md = await this.exportToMarkdown(noteId, userId);
+    // In a real app, use a library like showdown or markdown-it
+    return `<html><body>${md.replace(/\n/g, '<br>')}</body></html>`;
+  }
 }
