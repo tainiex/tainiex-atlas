@@ -1,10 +1,10 @@
-import { Catch, ArgumentsHost, HttpException, Logger } from '@nestjs/common';
-import { BaseWsExceptionFilter, WsException } from '@nestjs/websockets';
+import { Catch, ArgumentsHost, HttpException, Logger, ExceptionFilter } from '@nestjs/common';
+import { WsException } from '@nestjs/websockets';
 import { WebSocketErrorCode, WsErrorResponse } from '@tainiex/shared-atlas';
 import { Socket } from 'socket.io';
 
 @Catch()
-export class WebSocketExceptionFilter extends BaseWsExceptionFilter {
+export class WebSocketExceptionFilter implements ExceptionFilter {
     private readonly logger = new Logger(WebSocketExceptionFilter.name);
 
     catch(exception: unknown, host: ArgumentsHost) {

@@ -157,6 +157,7 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
             }, 30000);
 
             // Resend Pending Messages
+            const userId = payload.sub || payload.id;
             await this.reliableMsgService.resendPending(client, userId);
 
             this.logger.log(`Client connected: ${client.id}, User: ${payload.sub || payload.id}`);
