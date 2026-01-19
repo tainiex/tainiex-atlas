@@ -4,6 +4,9 @@ import { ChatGateway } from './chat.gateway';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
+import { TokenLifecycleService } from './token-lifecycle.service';
+import { ConnectionHealthService } from './connection-health.service';
+import { ReliableMessageService } from './reliable-message.service';
 
 describe('ChatGateway', () => {
     let gateway: ChatGateway;
@@ -22,6 +25,22 @@ describe('ChatGateway', () => {
         isAllowed: jest.fn().mockResolvedValue(true),
     };
 
+    const mockTokenLifecycleService = {
+        scheduleRefreshNotification: jest.fn(),
+        clearTimer: jest.fn(),
+    };
+
+    const mockHealthService = {
+        onConnect: jest.fn(),
+        onDisconnect: jest.fn(),
+        recordPong: jest.fn(),
+    };
+
+    const mockReliableMsgService = {
+        resendPending: jest.fn().mockResolvedValue(undefined),
+        handleAck: jest.fn(),
+    };
+
     beforeEach(async () => {
         const module: TestingModule = await Test.createTestingModule({
             providers: [
@@ -29,6 +48,9 @@ describe('ChatGateway', () => {
                 { provide: JwtService, useValue: mockJwtService },
                 { provide: ChatService, useValue: mockChatService },
                 { provide: RateLimitService, useValue: mockRateLimitService },
+                { provide: TokenLifecycleService, useValue: mockTokenLifecycleService },
+                { provide: ConnectionHealthService, useValue: mockHealthService },
+                { provide: ReliableMessageService, useValue: mockReliableMsgService },
             ],
         }).compile();
 

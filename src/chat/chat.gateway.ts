@@ -17,6 +17,12 @@ import type { ChatSendPayload, ChatStreamEvent, ChatErrorPayload } from '@tainie
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ChatSendDto } from './dto/chat.dto';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
+import { TokenLifecycleService } from './token-lifecycle.service';
+import { ConnectionHealthService } from './connection-health.service';
+import { ReliableMessageService } from './reliable-message.service';
+import { UseFilters } from '@nestjs/common';
+import { WebSocketExceptionFilter } from '../common/filters/websocket-exception.filter';
+import { WebSocketErrorCode } from '@tainiex/shared-atlas';
 
 interface AuthenticatedSocket extends Socket {
     data: {
@@ -63,6 +69,7 @@ interface AuthenticatedSocket extends Socket {
     // Maximize transport reliability
     transports: ['websocket', 'polling']
 })
+@UseFilters(new WebSocketExceptionFilter())
 export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
@@ -72,7 +79,10 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     constructor(
         private readonly jwtService: JwtService,
         private readonly chatService: ChatService,
-        private readonly rateLimitService: RateLimitService
+        private readonly rateLimitService: RateLimitService,
+        private readonly tokenLifecycleService: TokenLifecycleService,
+        private readonly healthService: ConnectionHealthService,
+        private readonly reliableMsgService: ReliableMessageService
     ) { }
 
     afterInit(server: Server) {
@@ -158,14 +168,69 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
             client.data.user = payload;
 
             this.logger.log(`Client connected: ${client.id}, User: ${userId} (Via ${client.handshake.auth.token ? 'socket.auth' : (client.handshake.headers.authorization ? 'header' : 'cookie')})`);
+
+            // Schedule token refresh notification
+            if (token) {
+                this.tokenLifecycleService.scheduleRefreshNotification(client, token);
+            }
+
+            // Health Monitor Init
+            this.healthService.onConnect(client.id);
+            // Start Active Ping
+            const pingInterval = setInterval(() => {
+                if (!client.connected) {
+                    clearInterval(pingInterval);
+                    return;
+                }
+                const start = Date.now();
+                client.emit('packet:ping', {}, () => { // Expecting immediate ack
+                    const latency = Date.now() - start;
+                    this.healthService.recordPong(client.id, latency);
+                });
+            }, 30000); // 30s
+            // Store interval in client data to clear later? 
+            // Or just rely on closure check !client.connected
+
+            // Resend Pending Messages
+            await this.reliableMsgService.resendPending(client, userId);
+
         } catch (error) {
             this.logger.error('Authentication failed:', error.message);
+            // WebSocketExceptionFilter will handle this if we re-throw, but here we disconnect manually
+            // Let's emit error before disconnecting
+            client.emit('error', {
+                code: WebSocketErrorCode.AUTH_TOKEN_INVALID,
+                message: 'Authentication failed: ' + error.message,
+                category: 'AUTH'
+            });
             client.disconnect();
         }
     }
 
     handleDisconnect(client: AuthenticatedSocket) {
+        this.tokenLifecycleService.clearTimer(client.id);
+        this.healthService.onDisconnect(client.id);
         this.logger.log(`Client disconnected: ${client.id}`);
+    }
+
+    @SubscribeMessage('message:ack')
+    handleMessageAck(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() payload: { messageId: string }
+    ) {
+        const user = client.data.user;
+        if (user && payload?.messageId) {
+            this.reliableMsgService.handleAck(user.id, payload.messageId);
+        }
+    }
+
+    @SubscribeMessage('auth:token-refreshed')
+    async handleTokenRefreshed(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() payload: { newToken: string }
+    ) {
+        if (!payload?.newToken) return;
+        await this.tokenLifecycleService.handleTokenRefreshed(client, payload.newToken);
     }
 
     @UsePipes(new ValidationPipe({ transform: true, whitelist: true }))

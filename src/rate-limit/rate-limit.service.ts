@@ -11,15 +11,7 @@ interface LocalRateLimit {
 
 /**
  * Service to handle distributed rate limiting using PostgreSQL + Memory (Write-Behind).
- * 
- * Strategy: **Write-Behind Caching (异步回写)**
- * - **Read**: Check In-Memory Map (Fast).
- * - **Write**: Update In-Memory Map immediately.
- * - **Persist**: Async Flush dirty counters to DB every few seconds.
- * 
- * Assumption: **Session Stickiness (会话粘滞)**
- * We assume the Load Balancer routes the same user/IP to the same instance.
- * Even if it fails, eventually the DB update ensures other instances see the usage (Eventual Consistency).
+ * Enhanced with IP Blocklist mechanism.
  */
 @Injectable()
 export class RateLimitService implements OnModuleDestroy {
@@ -27,6 +19,11 @@ export class RateLimitService implements OnModuleDestroy {
 
     // In-Memory State
     private localOneStorage = new Map<string, LocalRateLimit>();
+
+    // Blocklist State
+    private readonly blockedIPs = new Set<string>();
+    private readonly BLOCK_THRESHOLD = 200; // 200 requests per duration -> Block
+    private readonly BLOCK_DURATION = 3600000; // 1 Hour
 
     // Timer for background flushing
     private flushInterval: NodeJS.Timeout;
@@ -49,6 +46,12 @@ export class RateLimitService implements OnModuleDestroy {
      * Use Memory-First approach.
      */
     async isAllowed(key: string, limit: number, durationSeconds: number): Promise<boolean> {
+        // 0. Check Blocklist
+        if (this.blockedIPs.has(key)) {
+            this.logger.debug(`Blocked IP attempted connection: ${key}`);
+            return false;
+        }
+
         const now = Date.now();
         let entry = this.localOneStorage.get(key);
 
@@ -65,6 +68,10 @@ export class RateLimitService implements OnModuleDestroy {
 
         // 2. Check Limit
         if (entry.points >= limit) {
+            // 2.1 Check Block Threshold (Auto-Block)
+            if (entry.points >= this.BLOCK_THRESHOLD && !this.blockedIPs.has(key)) {
+                this.blockIP(key);
+            }
             return false;
         }
 
@@ -73,6 +80,16 @@ export class RateLimitService implements OnModuleDestroy {
         entry.dirty++;
 
         return true;
+    }
+
+    private blockIP(ip: string) {
+        this.blockedIPs.add(ip);
+        this.logger.warn(`IP ${ip} has been blocked for ${this.BLOCK_DURATION / 1000}s (Exceeded ${this.BLOCK_THRESHOLD} requests)`);
+
+        setTimeout(() => {
+            this.blockedIPs.delete(ip);
+            this.logger.log(`IP ${ip} unblocked`);
+        }, this.BLOCK_DURATION);
     }
 
     /**
@@ -84,15 +101,16 @@ export class RateLimitService implements OnModuleDestroy {
 
         if (batch.length === 0) return;
 
-        // Reset dirty flags immediately
+        // Reset dirty flags immediately (optimistic)
+        // If flush fails, we might lose these counts, but that's acceptable for rate limiting
         for (const [_, val] of batch) {
             val.dirty = 0;
         }
 
         this.logger.debug(`Flushing ${batch.length} rate limit counters to DB...`);
 
-        // Process in parallel
-        await Promise.all(batch.map(async ([key, val]) => {
+        // Process in parallel with error handling
+        await Promise.allSettled(batch.map(async ([key, val]) => {
             try {
                 // SQL: Increment points in DB, update expiry if needed
                 await this.repo.manager.query(`
@@ -106,6 +124,7 @@ export class RateLimitService implements OnModuleDestroy {
 
             } catch (err) {
                 this.logger.error(`Failed to flush rate limit for ${key}`, err);
+                // Ideally, we could add back the dirty count, but for simplicity/performance in RL, we skip.
             }
         }));
     }

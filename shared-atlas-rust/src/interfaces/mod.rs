@@ -42,3 +42,8 @@ pub mod isigned_url_response;
 pub mod iuser;
 pub mod ivector_store_record;
 pub mod ivector_store;
+pub mod ws_error_response;
+pub mod ws_token_expiring_payload;
+pub mod ws_token_refreshed_payload;
+pub mod ws_message_ack_payload;
+pub mod web_socket_error_code;

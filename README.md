@@ -391,13 +391,18 @@ npm run format
 |-------|-----------|---------------|-------------|
 | `connect` | Client→Server | Yes | Establish connection (Supports JWT `auth` or HttpOnly cookies) |
 | `chat:send` | Client→Server | Yes | Send message (Payload: `{sessionId, content, model?, role?}`) |
-| `chat:stream` | Server→Client | - | Incremental chunks (Event: `{type:'chunk', data: '...'}`) |
-| `chat:stream` | Server→Client | - | Stream completion (Event: `{type:'done', title?: 'New Title'}`) |
-| `chat:stream` | Server→Client | - | Stream error (Event: `{type:'error', error: '...'}`) |
+| `chat:stream` | Server→Client | - | Stream events: `chunk`, `done`, `error` / 流事件：`chunk`, `done`, `error` |
+| `auth:token-expiring` | Server→Client | - | Warns client 5min before expiry (refresh required) / 过期前5分钟警告（需刷新） |
+| `auth:token-refreshed` | Client→Server | Yes | Notify server of token renewal (Payload: `{ newToken }`) / 通知服务器令牌已更新 |
+| `message:ack` | Client→Server | - | Acknowledge critical message (Payload: `{ messageId }`) / 确认关键消息 |
 
 **Connection Configuration**:
-> **Note**: To prevent abuse, connections are rate-limited to 10 connections per minute per IP address.
-> **Mobile Stability**: If users experience frequent disconnects on mobile, ensure the client uses `transports: ['websocket']` to bypass proxy buffering. The server is tuned with longer `pingTimeout` (20s) to tolerate network jitters.
+> **Note / 注意**: To prevent abuse, connections are rate-limited to 50 requests per minute per IP address. Excessive violations trigger a 1-hour IP block.
+> 限制每 IP 每分钟 50 次请求。过度违规将触发 1 小时 IP 封锁。
+> **Mobile Stability / 移动端稳定性**: If users experience frequent disconnects on mobile, ensure the client uses `transports: ['websocket']` to bypass proxy buffering. The server is tuned with longer `pingTimeout` (20s) to tolerate network jitters.
+> 移动端若频繁断连，请确保客户端使用 `transports: ['websocket']` 以绕过代理缓冲。服务器已调整 `pingTimeout` (20s) 以容忍网络抖动。
+> **Reliability / 可靠性**: Critical server messages (like stream start/end) include a `messageId`. Clients MUST acknowledge receipt via `message:ack` to prevent duplicate delivery upon reconnection.
+> 关键服务器消息包含 `messageId`。客户端必须通过 `message:ack` 确认接收，以防止重连时重复投递。
 
 For the best experience and to bypass potential proxy buffering issues, we recommend forcing the `websocket` transport:
 

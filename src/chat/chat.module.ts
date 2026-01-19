@@ -9,6 +9,9 @@ import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmModule } from '../llm/llm.module';
 import { TokenWindowContextManager } from './context/token-window.manager';
+import { TokenLifecycleService } from './token-lifecycle.service';
+import { ConnectionHealthService } from './connection-health.service';
+import { ReliableMessageService } from './reliable-message.service';
 
 
 
@@ -29,6 +32,9 @@ import { JobQueueModule } from './queue/job-queue.module';
     providers: [
         ChatService,
         ChatGateway,
+        TokenLifecycleService,
+        ConnectionHealthService,
+        ReliableMessageService,
         TokenWindowContextManager,
         {
             provide: 'IContextManager',

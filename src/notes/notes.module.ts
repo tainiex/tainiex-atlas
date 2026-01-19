@@ -21,7 +21,11 @@ import { ExportService } from './export.service';
 import { YjsTransformerService } from './yjs-transformer.service';
 
 // Gateways
+// Gateways
 import { CollaborationGateway } from './collaboration.gateway';
+import { TokenLifecycleService } from '../chat/token-lifecycle.service';
+import { ConnectionHealthService } from '../chat/connection-health.service';
+import { ReliableMessageService } from '../chat/reliable-message.service';
 
 // Controllers
 import { NotesController } from './notes.controller';
@@ -79,6 +83,9 @@ import { ExportController } from './export.controller';
         ExportService,
         YjsTransformerService,
         CollaborationGateway,
+        TokenLifecycleService,
+        ConnectionHealthService,
+        ReliableMessageService,
     ],
     exports: [
         NotesService,

@@ -84,7 +84,15 @@ The application follows a modular architecture. Each major feature has its own d
     - **New User Flow**:
         1. If user doesn't exist, backend returns `{ requiresInvite: true, signupToken: "..." }`.
         2. **Security**: We do NOT return the raw Google ID Token. We issue a temporary, backend-signed `signupToken` containing the user's profile info.
+        2. **Security**: We do NOT return the raw Google ID Token. We issue a temporary, backend-signed `signupToken` containing the user's profile info.
         3. Client submits `signupToken` + `invitationCode` to `POST /auth/google/signup` to finalize creation.
+        2. **Security**: We do NOT return the raw Google ID Token. We issue a temporary, backend-signed `signupToken` containing the user's profile info.
+        3. Client submits `signupToken` + `invitationCode` to `POST /auth/google/signup` to finalize creation.
+    - **Token Lifecycle / 令牌生命周期**:
+        - **Proactive Notification / 主动通知**: Server monitors token expiry (via `TokenLifecycleService`) and emits `auth:token-expiring` 5 minutes before expiration.
+        - 服务器监控令牌过期（通过 `TokenLifecycleService`），在过期前 5 分钟发送 `auth:token-expiring`。
+        - **Renewal / 续期**: Client must call `POST /auth/refresh`, then emit `auth:token-refreshed` with the new token to reset the server-side timer without reconnecting.
+        - 客户端必须调用 `POST /auth/refresh`，然后发送 `auth:token-refreshed` 携带新令牌，以重置服务器端计时器且无需重连。
 
 ### 2.4. WebSocket Architecture
 - **Single Connection Strategy**: The application accepts a single physical WebSocket connection (Socket.IO `Manager`) multiplexed into different namespaces. This is the recommended client-side implementation to conserve resources.
@@ -94,7 +102,21 @@ The application follows a modular architecture. Each major feature has its own d
 - **Client Implementation**: 
     - Clients should instantiate **one** `Manager` with the root URL and authentication options.
     - Open discrete sockets for distinct namespaces from the same manager: `manager.socket('/api/chat')` and `manager.socket('/api/collaboration')`.
+    - Open discrete sockets for distinct namespaces from the same manager: `manager.socket('/api/chat')` and `manager.socket('/api/collaboration')`.
 - **Authentication**: Both namespaces share the same authentication mechanism (JWT in `auth.token` or `cookie`).
+- **Authentication**: Both namespaces share the same authentication mechanism (JWT in `auth.token` or `cookie`).
+- **Reliability (ACK System) / 可靠性（ACK 系统）**:
+    - Critical messages (e.g., stream start, state sync) are sent via `ReliableMessageService` with a `messageId`.
+    - 关键消息（如流开始、状态同步）通过 `ReliableMessageService` 发送，包含 `messageId`。
+    - Clients MUST acknowledge these messages via `message:ack` `{ messageId }`.
+    - 客户端必须通过 `message:ack` `{ messageId }` 确认这些消息。
+    - Server automatically resends unacknowledged messages upon user reconnection.
+    - 用户重连时，服务器会自动重发未确认的消息。
+- **Error Handling / 错误处理**:
+    - All WebSocket errors follow a strict JSON structure: `{ code, message, category, details, timestamp }`.
+    - 所有 WebSocket 错误遵循严格的 JSON 结构。
+    - See `WebSocketErrorCode` enum for specific codes (40xx Auth, 42xx Validation, 50xx Server).
+    - 具体代码请参考 `WebSocketErrorCode` 枚举。
 
 ## 3. Key Feature Specifications
 
@@ -108,7 +130,10 @@ The application follows a modular architecture. Each major feature has its own d
 - **Sessions**: Stored in `chat_sessions`. Contains a `title` and link to `User`.
 - **Messages**: Stored in `chat_messages`. Linked to `ChatSession`.
 - **Real-time Streaming**: Implemented via `ChatGateway` using Socket.io. Supports character-by-character streaming to bypass Cloud Run/Proxy buffering.
+- **Real-time Streaming**: Implemented via `ChatGateway` using Socket.io. Supports character-by-character streaming to bypass Cloud Run/Proxy buffering.
 - **Connection Stability**: Configured with optimized `pingInterval` (10s) and `pingTimeout` (20s) to handle mobile network jitters.
+- **Health Monitoring**: `ConnectionHealthService` tracks ping latency. Health scores < 40 trigger warnings (but do not disconnect automatically).
+- **Auto-Title**: Upon the **first message** of a session, the system calls `LlmService` to generate a summary title (< 15 chars) and updates the session title.
 - **Auto-Title**: Upon the **first message** of a session, the system calls `LlmService` to generate a summary title (< 15 chars) and updates the session title.
 - **Message Versioning**: Implemented via `chat_message_histories`. Before updating a message, its current state is archived.
 - **Linked-List Structure**: `chat_messages` use `parent_id` (default 'ROOT') to track sequential relationships and version paths.
@@ -145,6 +170,11 @@ The application follows a modular architecture. Each major feature has its own d
 - **Strategy**: Distributed Rate Limiting via PostgreSQL (Atomic Upsert).
 - **Storage**: `rate_limits` table.
 - **Optimization**: Uses in-memory `blockedCache` to reject repetitive spam without hitting DB when a user is already blocked.
+- **Storage**: `rate_limits` table.
+- **Storage**: `rate_limits` table.
+- **Optimization**: Uses in-memory `blockedCache` to reject repetitive spam without hitting DB when a user is already blocked.
+- **Blocklist / 黑名单**: Automatic 1-hour IP block if > 200 requests/hour (in-memory enforcement via `RateLimitService`).
+- 超过 200 请求/小时自动封锁 IP 1 小时（通过 `RateLimitService` 在内存中执行）。
 - **Implementation**: `RateLimitService` uses raw SQL for atomic operations to handle concurrency correctly.
 
 ## 4. Constraints & Conventions

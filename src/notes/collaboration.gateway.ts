@@ -10,10 +10,15 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
+import { Logger, UsePipes, ValidationPipe, UseFilters } from '@nestjs/common';
 import { PresenceService } from './presence.service';
 import { YjsService } from './yjs.service';
 import { NotesService } from './notes.service';
+import { TokenLifecycleService } from '../chat/token-lifecycle.service';
+import { ConnectionHealthService } from '../chat/connection-health.service';
+import { ReliableMessageService } from '../chat/reliable-message.service';
+import { WebSocketExceptionFilter } from '../common/filters/websocket-exception.filter';
+import { WebSocketErrorCode } from '@tainiex/shared-atlas';
 import type {
     NoteJoinPayload,
     NoteLeavePayload,
@@ -61,6 +66,7 @@ interface AuthenticatedSocket extends Socket {
     pingTimeout: 20000,
     transports: ['websocket', 'polling']
 })
+@UseFilters(new WebSocketExceptionFilter())
 export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
     @WebSocketServer()
     server: Server;
@@ -72,6 +78,9 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
         private readonly presenceService: PresenceService,
         private readonly yjsService: YjsService,
         private readonly notesService: NotesService,
+        private readonly tokenLifecycleService: TokenLifecycleService,
+        private readonly healthService: ConnectionHealthService,
+        private readonly reliableMsgService: ReliableMessageService,
     ) { }
 
     afterInit(server: Server) {
@@ -127,14 +136,44 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
 
             const payload = await this.jwtService.verifyAsync(token);
             client.data.user = payload;
+
+            if (token) {
+                this.tokenLifecycleService.scheduleRefreshNotification(client, token);
+            }
+
+            // Health Monitor Init
+            this.healthService.onConnect(client.id);
+            // Start Active Ping
+            const pingInterval = setInterval(() => {
+                if (!client.connected) {
+                    clearInterval(pingInterval);
+                    return;
+                }
+                const start = Date.now();
+                client.emit('packet:ping', {}, () => {
+                    const latency = Date.now() - start;
+                    this.healthService.recordPong(client.id, latency);
+                });
+            }, 30000);
+
+            // Resend Pending Messages
+            await this.reliableMsgService.resendPending(client, userId);
+
             this.logger.log(`Client connected: ${client.id}, User: ${payload.sub || payload.id}`);
         } catch (error) {
             this.logger.error('Authentication failed:', error.message);
+            client.emit('error', {
+                code: WebSocketErrorCode.AUTH_TOKEN_INVALID,
+                message: 'Authentication failed: ' + error.message,
+                category: 'AUTH'
+            });
             client.disconnect();
         }
     }
 
     async handleDisconnect(client: AuthenticatedSocket) {
+        this.tokenLifecycleService.clearTimer(client.id);
+        this.healthService.onDisconnect(client.id);
         // Clean up all sessions for this client
         this.logger.log(`Client disconnected: ${client.id}`);
 
@@ -272,5 +311,25 @@ export class CollaborationGateway implements OnGatewayInit, OnGatewayConnection,
             position,
             selection
         });
+    }
+
+    @SubscribeMessage('auth:token-refreshed')
+    async handleTokenRefreshed(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() payload: { newToken: string }
+    ) {
+        if (!payload?.newToken) return;
+        await this.tokenLifecycleService.handleTokenRefreshed(client, payload.newToken);
+    }
+
+    @SubscribeMessage('message:ack')
+    handleMessageAck(
+        @ConnectedSocket() client: AuthenticatedSocket,
+        @MessageBody() payload: { messageId: string }
+    ) {
+        const user = client.data.user;
+        if (user && payload?.messageId) {
+            this.reliableMsgService.handleAck(user.id, payload.messageId);
+        }
     }
 }
