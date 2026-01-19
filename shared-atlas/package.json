@@ -1,9 +1,9 @@
 {
     "name": "@tainiex/shared-atlas",
-    "version": "0.0.28",
+    "version": "0.0.29",
     "description": "Shared interfaces and contracts for Tainiex Atlas",
-    "main": "dist/src/index.js",
-    "types": "dist/src/index.d.ts",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "scripts": {
         "build": "tsc",
         "pub": "npm version patch && npm run build && npm publish",
