@@ -26,11 +26,13 @@ export class LoggerService implements NestLoggerService {
           format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
           format.colorize(),
           format.printf(({ timestamp, level, message, context, ...meta }) => {
-            const ctx = context ? `[${context}]` : '';
+            const ctx = context
+              ? `[${typeof context === 'string' ? context : JSON.stringify(context)}]`
+              : '';
             const metaStr = Object.keys(meta).length
               ? JSON.stringify(meta)
               : '';
-            return `${timestamp} ${level} ${ctx} ${message} ${metaStr}`;
+            return `${String(timestamp)} ${String(level)} ${ctx} ${String(message)} ${metaStr}`;
           }),
         );
 

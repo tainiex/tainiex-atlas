@@ -50,7 +50,7 @@ export class InMemoryJobQueue<T> implements IJobQueue<T>, OnModuleDestroy {
     }
   }
 
-  async onModuleDestroy() {
+  onModuleDestroy() {
     this.logger.log(
       `Shutting down job queue... (${this.queue.length} pending, ${this.activeJobs} active)`,
     );

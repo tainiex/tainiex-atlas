@@ -9,19 +9,6 @@ import {
   DistillationResult,
 } from '../worker/worker.interfaces';
 
-// Simple Logger Shim
-class ProcessorLogger {
-  info(message: string, context?: any) {}
-  log(message: string, context?: any) {}
-  error(message: string, trace?: string, context?: string) {
-    console.error(`[Processor Error] ${message}`, trace || '', context || '');
-  }
-  warn(message: string, context?: any) {
-    console.warn(`[Processor Warn] ${message}`, context || '');
-  }
-  debug(message: string, context?: any) {}
-}
-
 /**
  * Pure Business Logic for Distillation.
  * Contains NO worker-thread specific code.

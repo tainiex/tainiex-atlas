@@ -7,7 +7,6 @@ import {
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
-import { plainToInstance } from 'class-transformer';
 
 @Controller('profile')
 export class UsersController {

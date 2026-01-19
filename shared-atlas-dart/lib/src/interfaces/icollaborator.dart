@@ -22,6 +22,7 @@ class ICollaborator {
   /// Current text selection range.
   /// 当前文本选区范围。
   final dynamic selection;
+  final DateTime connectedAt;
 
   ICollaborator({
     required this.userId,
@@ -30,6 +31,7 @@ class ICollaborator {
     required this.color,
     this.cursorPosition,
     this.selection,
+    required this.connectedAt,
   });
 
   factory ICollaborator.fromJson(Map<String, dynamic> json) {
@@ -40,6 +42,7 @@ class ICollaborator {
       color: json['color'] as String,
       cursorPosition: json['cursorPosition'] as dynamic,
       selection: json['selection'] as dynamic,
+      connectedAt: DateTime.parse(json['connectedAt'] as String),
     );
   }
   Map<String, dynamic> toJson() {
@@ -50,6 +53,7 @@ class ICollaborator {
       'color': this.color,
       'cursorPosition': this.cursorPosition,
       'selection': this.selection,
+      'connectedAt': this.connectedAt.toIso8601String(),
     };
   }
 }

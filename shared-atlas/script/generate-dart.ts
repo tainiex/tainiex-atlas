@@ -216,10 +216,10 @@ function generateDartClass(classDec: ClassDeclaration | InterfaceDeclaration, kn
     // If no properties, skip generation (e.g. for Services or empty marker interfaces)
     // Exception: Explicitly empty DTOs might be needed? 
     // Let's Skip for now to avoid syntax errors and useless files.
-    if (properties.length === 0) {
-        console.log(`Skipping ${className} (no properties found)`);
-        return '';
-    }
+    // if (properties.length === 0) {
+    //     console.log(`Skipping ${className} (no properties found)`);
+    //     return '';
+    // }
 
     // Check if any property references a generated type (Enum or Class)
     const needsImport = properties.some(p => {

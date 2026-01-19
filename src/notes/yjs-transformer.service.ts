@@ -38,7 +38,6 @@ export class YjsTransformerService {
           `[Debug] Found 'default' key, attempting to parse as XmlFragment...`,
         );
         const fragment = doc.getXmlFragment('default');
-        const json = fragment.toJSON(); // Convert to JSON string or object
 
         // Tiptap toJSON returns a string representation or object?
         // Y.XmlFragment.toJSON() returns a string of the XML.
@@ -64,7 +63,7 @@ export class YjsTransformerService {
       let yFragment: Y.XmlFragment;
       try {
         yFragment = doc.getXmlFragment('blocks');
-      } catch (e) {
+      } catch (_e) {
         // Ignore error, might be Array type
         yFragment = new Y.XmlFragment(); // Empty dummy
       }
@@ -118,7 +117,7 @@ export class YjsTransformerService {
 
     const savePromises = blocksToSave.map(async (partialBlock) => {
       let toSave = partialBlock;
-      let isUpdate = false;
+      // let isUpdate = false;
 
       if (partialBlock.id && existingMap.has(partialBlock.id)) {
         const existing = existingMap.get(partialBlock.id)!;
@@ -158,7 +157,7 @@ export class YjsTransformerService {
           createdBy: existing.createdBy, // Preserve creator
           lastEditedBy: existing.lastEditedBy, // Ideally updated by user, but...
         };
-        isUpdate = true;
+        // isUpdate = true;
       } else {
         // New block (or re-created Tiptap block)
         if (existingBlocks.length > 0) {
@@ -335,7 +334,7 @@ export class YjsTransformerService {
   async loadBlocksToYDoc(noteId: string, doc: Y.Doc): Promise<void> {
     // Check if doc already has content in 'blocks'
     if (doc.share.has('blocks')) {
-      const existing = doc.share.get('blocks');
+      doc.share.get('blocks');
       // If it's not empty, we assume it's valid?
       // Or maybe we force overwrite if requested?
       // For now, only load if 'blocks' is missing is safe strategy to avoid overwriting live edits.
@@ -365,22 +364,15 @@ export class YjsTransformerService {
 
           // Convert SQL blocks back to Y.js XML
           // Note: This is an approximation. We lost some rich text formatting if we only stored plain text.
-          // But wait, the Block entity has 'content' (text) and 'metadata' (attributes).
-          // Ideally 'content' stores HTML or Markdown?
-          // If it stores plain text, we lose bold/italic unless we stored HTML.
-          // Let's assume content is the text content.
-
-          // Tiptap expects nodes like <paragraph>text</paragraph>
+          // Block entity has 'content' (text) and 'metadata' (attributes).
 
           const nodes = blocks.map((block) => {
             const nodeName = this.mapBlockTypeToNodeName(block.type);
             const xmlElem = new Y.XmlElement(nodeName);
 
             // Restore attributes
-            const attrs = { ...block.metadata, id: block.id }; // Ensure ID is restored!
+            const attrs = { ...block.metadata, id: block.id };
             for (const [key, value] of Object.entries(attrs)) {
-              // Y.js attributes must be strings? Tiptap handles objects sometimes?
-              // Standard Tiptap uses setAttribute which usually strings/nums.
               xmlElem.setAttribute(key, value as any);
             }
 
@@ -400,9 +392,6 @@ export class YjsTransformerService {
         this.logger.log(
           `[Reconstruct] Verification: 'blocks' length is now ${fragment.length}`,
         );
-        this.logger.log(
-          `[Reconstruct] Verification: 'blocks' length is now ${fragment.length}`,
-        );
       } else {
         // Fallback: If SQL is empty, check if 'default' key has legacy data
         if (doc.share.has('default')) {
@@ -411,7 +400,7 @@ export class YjsTransformerService {
           );
 
           const defaultXml = doc.getXmlFragment('default');
-          const blocksXml = doc.getXmlFragment('blocks');
+          doc.getXmlFragment('blocks');
 
           if (defaultXml.length > 0) {
             doc.transact(() => {
@@ -424,7 +413,7 @@ export class YjsTransformerService {
               // WARNING: toJSON returns simple JSON, not Y.Events.
               // We need to handle this carefully.
               // Simplest valid way for plain text/nodes:
-              const content = defaultXml.toJSON(); // Returns string (if text) or array (if fragment)
+              defaultXml.toJSON(); // Returns string (if text) or array (if fragment)
               // Tiptap default is XmlFragment. toJSON returns Array of Objects/Strings.
 
               // Let's rely on standard Tiptap structure being compatible with Y.js JSON insert?

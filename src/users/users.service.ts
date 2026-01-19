@@ -16,9 +16,6 @@ export class UsersService {
   ) {
     const gsaKeyFile = this.configService.get<string>('GSA_KEY_FILE');
     const projectId = this.configService.get<string>('VERTEX_PROJECT_ID');
-    const serviceAccountEmail = this.configService.get<string>(
-      'GCS_SERVICE_ACCOUNT',
-    );
 
     const storageOptions: any = {
       projectId: projectId,

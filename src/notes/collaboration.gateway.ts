@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { Logger, UsePipes, ValidationPipe, UseFilters } from '@nestjs/common';
+import { Logger, UseFilters } from '@nestjs/common';
 import { PresenceService } from './presence.service';
 import { YjsService } from './yjs.service';
 import { NotesService } from './notes.service';
@@ -26,9 +26,11 @@ import type {
   CursorUpdatePayload,
 } from '@tainiex/shared-atlas';
 
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+
 interface AuthenticatedSocket extends Socket {
   data: {
-    user?: any;
+    user?: JwtPayload;
   };
 }
 
@@ -91,7 +93,7 @@ export class CollaborationGateway
     private readonly reliableMsgService: ReliableMessageService,
   ) {}
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     this.logger.log('Collaboration Gateway initialized');
   }
 
@@ -105,7 +107,9 @@ export class CollaborationGateway
    */
   private extractToken(client: AuthenticatedSocket): string | undefined {
     // 1. Try handshake auth (most common for Socket.IO clients)
-    let token: any = client.handshake.auth?.token;
+    let token: string | undefined = client.handshake.auth?.token as
+      | string
+      | undefined;
 
     // 2. Try Authorization header
     if (!token) {
@@ -145,7 +149,7 @@ export class CollaborationGateway
         return;
       }
 
-      const payload = await this.jwtService.verifyAsync(token);
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
       client.data.user = payload;
 
       if (token) {
@@ -168,17 +172,19 @@ export class CollaborationGateway
       }, 30000);
 
       // Resend Pending Messages
-      const userId = payload.sub || payload.id;
-      await this.reliableMsgService.resendPending(client, userId);
+      const userId = payload.sub;
+      this.reliableMsgService.resendPending(client, userId);
 
       this.logger.log(
         `Client connected: ${client.id}, User: ${payload.sub || payload.id}`,
       );
     } catch (error) {
-      this.logger.error('Authentication failed:', error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error('Connection failed:', errorMessage);
       client.emit('error', {
         code: WebSocketErrorCode.AUTH_TOKEN_INVALID,
-        message: 'Authentication failed: ' + error.message,
+        message: 'Authentication failed: ' + errorMessage,
         category: 'AUTH',
       });
       client.disconnect();
@@ -213,7 +219,7 @@ export class CollaborationGateway
     const user = client.data.user;
     if (!user) return;
 
-    const userId = user.sub || user.id;
+    const userId = user.sub;
     const { noteId } = payload;
 
     // Check permission
@@ -242,7 +248,7 @@ export class CollaborationGateway
     }
 
     // Join socket.io room
-    client.join(noteId);
+    await client.join(noteId);
 
     // Notify others
     client.to(noteId).emit('presence:join', result.collaborator);
@@ -267,10 +273,12 @@ export class CollaborationGateway
       'presence:list',
       sessions.map((s) => ({
         userId: s.userId,
+        username: s.username,
+        avatar: s.avatar,
         color: s.color,
         cursorPosition: s.cursorPosition,
         selection: s.selection,
-        // In a real app, you'd fetch user profiles for names/avatars
+        connectedAt: s.connectedAt,
       })),
     );
 
@@ -285,11 +293,11 @@ export class CollaborationGateway
     const user = client.data.user;
     if (!user) return;
 
-    const userId = user.sub || user.id;
+    const userId = user.sub;
     const { noteId } = payload;
 
     await this.presenceService.leave(noteId, userId, client.id);
-    client.leave(noteId);
+    await client.leave(noteId);
 
     client.to(noteId).emit('presence:leave', { userId });
     this.logger.log(`User ${userId} left note ${noteId}`);
@@ -324,7 +332,7 @@ export class CollaborationGateway
     const user = client.data.user;
     if (!user) return;
 
-    const userId = user.sub || user.id;
+    const userId = user.sub;
     const { noteId, position, selection } = payload;
 
     await this.presenceService.updateCursor(
@@ -363,7 +371,7 @@ export class CollaborationGateway
   ) {
     const user = client.data.user;
     if (user && payload?.messageId) {
-      this.reliableMsgService.handleAck(user.id, payload.messageId);
+      this.reliableMsgService.handleAck(user.sub, payload.messageId);
     }
   }
 }

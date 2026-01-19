@@ -8,14 +8,17 @@ import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { User } from '../users/user.entity';
 import { v4 as uuidv4 } from 'uuid';
-import { OAuth2Client } from 'google-auth-library';
+import { OAuth2Client, TokenPayload } from 'google-auth-library';
 import { ConfigService } from '@nestjs/config';
-import { Storage } from '@google-cloud/storage';
+import { Storage, StorageOptions } from '@google-cloud/storage';
 import { InvitationService } from '../invitation/invitation.service';
 import * as jwksClient from 'jwks-rsa';
-import * as jwt from 'jsonwebtoken';
+import { decode, verify } from 'jsonwebtoken';
 
 import { GoogleLoginDto } from '@tainiex/shared-atlas';
+import { AuthResult } from './interfaces/auth-result.interface';
+import { MicrosoftJwtPayload } from './interfaces/microsoft-jwt-payload.interface';
+import { SignupPayload } from './interfaces/signup-payload.interface';
 
 @Injectable()
 export class AuthService {
@@ -91,7 +94,7 @@ export class AuthService {
     await this.usersService.update(userId, { hashedRefreshToken: hash });
   }
 
-  async login(user: any) {
+  async login(user: User) {
     const tokens = await this.generateTokens(user);
     await this.updateRefreshToken(user.id, tokens.refresh_token);
     return tokens;
@@ -130,7 +133,7 @@ export class AuthService {
   async googleLogin(
     dto: GoogleLoginDto,
     isMobile: boolean = false,
-  ): Promise<any> {
+  ): Promise<AuthResult> {
     let idToken = dto.idToken;
 
     try {
@@ -165,7 +168,8 @@ export class AuthService {
           }
 
           idToken = googleTokens.id_token || undefined;
-        } catch (tokenError) {
+        } catch (error) {
+          const tokenError = error as Error;
           console.error(
             `[GoogleLogin] Token exchange failed (isMobile=${isMobile}):`,
             tokenError.message,
@@ -187,6 +191,7 @@ export class AuthService {
               );
               const { tokens } = await mobileClient.getToken({
                 code: dto.code,
+
                 redirect_uri: null as any,
               });
               idToken = tokens.id_token || undefined;
@@ -248,7 +253,9 @@ export class AuthService {
     }
   }
 
-  private async processGoogleLogin(googlePayload: any) {
+  private async processGoogleLogin(
+    googlePayload: TokenPayload,
+  ): Promise<AuthResult> {
     const { email, picture } = googlePayload;
 
     if (!email) {
@@ -299,9 +306,13 @@ export class AuthService {
     return { user, tokens };
   }
 
-  async microsoftLogin(idToken: string): Promise<any> {
+  async microsoftLogin(idToken: string): Promise<AuthResult> {
     // 1. Verify the ID token
-    const decodedHeader: any = jwt.decode(idToken, { complete: true });
+
+    const decodedHeader = decode(idToken, { complete: true }) as {
+      header: { kid: string };
+    } | null;
+
     if (!decodedHeader || !decodedHeader.header || !decodedHeader.header.kid) {
       throw new UnauthorizedException('Invalid Microsoft token header');
     }
@@ -319,10 +330,10 @@ export class AuthService {
 
     const azureClientId = this.configService.get<string>('AZURE_CLIENT_ID');
 
-    let payload: any;
+    let payload: MicrosoftJwtPayload;
     try {
-      payload = await new Promise((resolve, reject) => {
-        jwt.verify(
+      payload = await new Promise<MicrosoftJwtPayload>((resolve, reject) => {
+        verify(
           idToken,
           getKey,
           {
@@ -332,17 +343,19 @@ export class AuthService {
           },
           (err, decoded) => {
             if (err) return reject(err);
-            resolve(decoded);
+            resolve(decoded as MicrosoftJwtPayload);
           },
         );
       });
     } catch (error) {
-      console.error('Microsoft token verification failed:', error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Verification failed';
+      console.error('Microsoft token verification failed:', errorMessage);
       throw new UnauthorizedException('Invalid Microsoft token');
     }
 
     // 2. Extract user info
-    const { oid, name, email, preferred_username } = payload;
+    const { oid, name: _name, email, preferred_username } = payload;
     const userEmail = email || preferred_username;
 
     if (!oid) {
@@ -394,7 +407,7 @@ export class AuthService {
   async microsoftSignup(
     invitationCode: string,
     signupToken: string,
-  ): Promise<any> {
+  ): Promise<AuthResult> {
     // Validate invitation code first
     const isValid = await this.invitationService.validateCode(invitationCode);
     if (!isValid) {
@@ -402,12 +415,12 @@ export class AuthService {
     }
 
     // Verify signup token
-    let payload;
+    let payload: SignupPayload;
     try {
-      payload = await this.jwtService.verifyAsync(signupToken, {
+      payload = await this.jwtService.verifyAsync<SignupPayload>(signupToken, {
         secret: this.configService.get<string>('JWT_SECRET'),
       });
-    } catch (e) {
+    } catch (_e) {
       throw new UnauthorizedException('Invalid or expired signup token');
     }
 
@@ -451,7 +464,7 @@ export class AuthService {
   async googleSignup(
     invitationCode: string,
     signupToken: string,
-  ): Promise<any> {
+  ): Promise<AuthResult> {
     console.log(
       `[GoogleSignup] Attempting signup with code: ${invitationCode}`,
     );
@@ -466,13 +479,15 @@ export class AuthService {
     }
 
     // Verify our own signup token
-    let payload;
+    let payload: SignupPayload;
     try {
-      payload = await this.jwtService.verifyAsync(signupToken, {
+      payload = await this.jwtService.verifyAsync<SignupPayload>(signupToken, {
         secret: this.configService.get<string>('JWT_SECRET'),
       });
     } catch (e) {
-      console.error(`[GoogleSignup] Token verification failed:`, e.message);
+      const errorMessage =
+        e instanceof Error ? e.message : 'Verification failed';
+      console.error(`[GoogleSignup] Token verification failed:`, errorMessage);
       throw new UnauthorizedException('Invalid or expired signup token');
     }
 
@@ -543,10 +558,13 @@ export class AuthService {
     return { user, tokens };
   }
 
-  async validateUser(username: string, pass: string): Promise<any> {
+  async validateUser(
+    username: string,
+    pass: string,
+  ): Promise<Partial<User> | null> {
     const user = await this.usersService.findOne(username);
     if (user && user.password && (await bcrypt.compare(pass, user.password))) {
-      const { password, ...result } = user;
+      const { password: _password, ...result } = user;
       return result;
     }
     return null;
@@ -557,7 +575,7 @@ export class AuthService {
     pass: string,
     invitationCode: string,
     email?: string,
-  ): Promise<any> {
+  ): Promise<Partial<User>> {
     // Validate invitation code
     const isValid = await this.invitationService.validateCode(invitationCode);
     if (!isValid) {
@@ -582,12 +600,12 @@ export class AuthService {
       throw new UnauthorizedException('Invitation code is no longer valid');
     }
 
-    const { password, ...result } = user;
+    const { password: _password, ...result } = user;
     return result;
   }
 
   async logout(userId: string) {
-    await this.usersService.update(userId, { hashedRefreshToken: null as any });
+    await this.usersService.update(userId, { hashedRefreshToken: null });
   }
 
   private async uploadAvatarToGCS(
@@ -603,7 +621,8 @@ export class AuthService {
       const bufferData = Buffer.from(buffer);
 
       const gsaKeyFile = this.configService.get<string>('GSA_KEY_FILE');
-      const storageOptions: any = {};
+
+      const storageOptions: StorageOptions = {};
       if (gsaKeyFile) {
         storageOptions.keyFilename = gsaKeyFile;
       }
@@ -614,6 +633,8 @@ export class AuthService {
       const file = bucket.file(filename);
 
       await file.save(bufferData, {
+        resumable: false,
+        validation: false,
         contentType: 'image/jpeg',
       });
 

@@ -23,9 +23,9 @@ export class User implements IUser {
   @Exclude()
   password?: string;
 
-  @Column({ name: 'hashed_refresh_token', nullable: true })
+  @Column({ name: 'hashed_refresh_token', nullable: true, type: 'varchar' })
   @Exclude()
-  hashedRefreshToken?: string;
+  hashedRefreshToken?: string | null;
 
   @Column({ nullable: true })
   avatar?: string;

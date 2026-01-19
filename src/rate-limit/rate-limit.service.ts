@@ -33,7 +33,9 @@ export class RateLimitService implements OnModuleDestroy {
     private repo: Repository<RateLimitEntry>,
   ) {
     // Start Background Flush (e.g., every 3 seconds)
-    this.flushInterval = setInterval(() => this.flushDirtyCounters(), 3000);
+    this.flushInterval = setInterval(() => {
+      void this.flushDirtyCounters();
+    }, 3000);
   }
 
   onModuleDestroy() {

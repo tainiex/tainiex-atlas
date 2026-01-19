@@ -5,8 +5,6 @@ import type {
 } from '../../../shared-atlas/src/interfaces/vector-store.interface';
 import { LlmService } from '../../llm/llm.service';
 import { MemoryType, MemorySource } from './entities/memory.entity';
-import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
-import { join } from 'path';
 import { WorkerPoolService } from '../worker/worker-pool.service';
 import {
   DistillationConfig,

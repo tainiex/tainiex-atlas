@@ -12,11 +12,7 @@ import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { ChatRole } from '@tainiex/shared-atlas';
-import type {
-  ChatSendPayload,
-  ChatStreamEvent,
-  ChatErrorPayload,
-} from '@tainiex/shared-atlas';
+
 import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
 import { ChatSendDto } from './dto/chat.dto';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
@@ -27,9 +23,11 @@ import { UseFilters } from '@nestjs/common';
 import { WebSocketExceptionFilter } from '../common/filters/websocket-exception.filter';
 import { WebSocketErrorCode } from '@tainiex/shared-atlas';
 
+import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+
 interface AuthenticatedSocket extends Socket {
   data: {
-    user?: any;
+    user?: JwtPayload;
   };
 }
 
@@ -96,7 +94,7 @@ export class ChatGateway
     private readonly reliableMsgService: ReliableMessageService,
   ) {}
 
-  afterInit(server: Server) {
+  afterInit(_server: Server) {
     this.logger.log('WebSocket Gateway initialized successfully');
   }
 
@@ -114,7 +112,9 @@ export class ChatGateway
    */
   private extractToken(client: AuthenticatedSocket): string | undefined {
     // 1. Try handshake auth (most common for Socket.IO clients)
-    let token: any = client.handshake.auth?.token;
+    let token: string | undefined = client.handshake.auth?.token as
+      | string
+      | undefined;
 
     // 2. Try Authorization header
     if (!token) {
@@ -174,7 +174,7 @@ export class ChatGateway
       }
 
       // Verify JWT
-      const payload = await this.jwtService.verifyAsync(token);
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
 
       // Strict ID Check
       const userId = payload.sub || payload.id; // Support both but prefer sub
@@ -213,14 +213,16 @@ export class ChatGateway
       // Or just rely on closure check !client.connected
 
       // Resend Pending Messages
-      await this.reliableMsgService.resendPending(client, userId);
+      this.reliableMsgService.resendPending(client, userId);
     } catch (error) {
-      this.logger.error('Authentication failed:', error.message);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error('Authentication failed:', errorMessage);
       // WebSocketExceptionFilter will handle this if we re-throw, but here we disconnect manually
       // Let's emit error before disconnecting
       client.emit('error', {
         code: WebSocketErrorCode.AUTH_TOKEN_INVALID,
-        message: 'Authentication failed: ' + error.message,
+        message: 'Authentication failed: ' + errorMessage,
         category: 'AUTH',
       });
       client.disconnect();
@@ -240,7 +242,7 @@ export class ChatGateway
   ) {
     const user = client.data.user;
     if (user && payload?.messageId) {
-      this.reliableMsgService.handleAck(user.id, payload.messageId);
+      this.reliableMsgService.handleAck(user.sub, payload.messageId);
     }
   }
 
@@ -279,7 +281,7 @@ export class ChatGateway
       // Stream the response
       const stream = this.chatService.streamMessage(
         sessionId,
-        user.id,
+        user.sub,
         content,
         role || ChatRole.USER,
         model,
@@ -307,14 +309,16 @@ export class ChatGateway
       // Fetch updated session (title might have changed)
       const updatedSession = await this.chatService.getSession(
         sessionId,
-        user.id,
+        user.sub,
       );
       client.emit('chat:stream', { type: 'done', title: updatedSession.title });
     } catch (error) {
       this.logger.error('Chat stream error:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : 'Stream failed';
       client.emit('chat:stream', {
         type: 'error',
-        error: error.message || 'Stream failed',
+        error: errorMessage,
       });
     }
   }

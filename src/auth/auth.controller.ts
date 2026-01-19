@@ -6,9 +6,10 @@ import {
   Get,
   Body,
   Res,
-  BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
-import type { FastifyReply } from 'fastify';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { CookieSerializeOptions } from '@fastify/cookie';
 
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -24,6 +25,9 @@ import {
   LogoutDto,
   LogoutResponse,
 } from '@tainiex/shared-atlas';
+
+import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
+import type { AuthenticatedRefreshRequest } from './interfaces/authenticated-refresh-request.interface';
 
 @Controller('auth')
 @UseGuards(RateLimitGuard) // Apply global guard for this controller (or globally in AppModule)
@@ -43,7 +47,7 @@ export class AuthController {
     if (!user) {
       return { message: 'Invalid credentials' };
     }
-    const tokens = await this.authService.login(user);
+    const tokens = await this.authService.login(user as any);
 
     const cookieDomain = process.env.COOKIE_DOMAIN;
     // In development, use 60s for access token to test refresh logic
@@ -76,7 +80,7 @@ export class AuthController {
   async googleLogin(
     @Body() dto: GoogleLoginDto,
     @Res({ passthrough: true }) res: FastifyReply,
-    @Request() req: any,
+    @Request() req: FastifyRequest,
   ) {
     const headers = req.headers;
     console.log(
@@ -96,17 +100,15 @@ export class AuthController {
     const isMobile = authMode === 'bearer' || isNativeAgent;
 
     console.log(
-      `[AuthController] Mobile Detection: isMobile=${isMobile}, authMode=${authMode}, isNativeAgent=${isNativeAgent}`,
+      `[AuthController] Mobile Detection: isMobile=${isMobile}, authMode=${String(authMode)}, isNativeAgent=${isNativeAgent}`,
     );
 
     const result = await this.authService.googleLogin(dto, isMobile);
 
-    if (result.requiresInvite) {
-      // Return intermediate response asking for invite code
+    if (result.requiresInvite || !result.tokens || !result.user) {
       return result;
     }
 
-    // If login successful (user existed)
     const { user, tokens } = result;
 
     const cookieDomain = process.env.COOKIE_DOMAIN;
@@ -146,7 +148,7 @@ export class AuthController {
   ) {
     const result = await this.authService.microsoftLogin(dto.idToken);
 
-    if (result.requiresInvite) {
+    if (result.requiresInvite || !result.tokens || !result.user) {
       return result;
     }
 
@@ -188,10 +190,16 @@ export class AuthController {
     @Res({ passthrough: true }) res: FastifyReply,
     @Request() req: any,
   ) {
-    const { user, tokens } = await this.authService.microsoftSignup(
+    const result = await this.authService.microsoftSignup(
       dto.invitationCode,
       dto.signupToken,
     );
+
+    if (!result.tokens || !result.user) {
+      throw new UnauthorizedException('Signup failed: No tokens returned');
+    }
+
+    const { user, tokens } = result;
 
     const cookieDomain = process.env.COOKIE_DOMAIN;
     const accessTokenMaxAge =
@@ -229,10 +237,16 @@ export class AuthController {
     @Res({ passthrough: true }) res: FastifyReply,
     @Request() req: any,
   ) {
-    const { user, tokens } = await this.authService.googleSignup(
+    const result = await this.authService.googleSignup(
       dto.invitationCode,
       dto.signupToken,
     );
+
+    if (!result.tokens || !result.user) {
+      throw new UnauthorizedException('Signup failed: No tokens returned');
+    }
+
+    const { user, tokens } = result;
 
     const cookieDomain = process.env.COOKIE_DOMAIN;
     const accessTokenMaxAge =
@@ -267,13 +281,18 @@ export class AuthController {
   @UseGuards(JwtRefreshAuthGuard)
   @Post('refresh')
   async refresh(
-    @Request() req: any,
+    @Request() req: AuthenticatedRefreshRequest,
     @Res({ passthrough: true }) res: FastifyReply,
   ) {
     const userId = req.user.sub;
     const refreshToken = req.user.refreshToken;
 
     const tokens = await this.authService.refreshTokens(userId, refreshToken);
+
+    // Add null check for tokens
+    if (!tokens) {
+      throw new Error('Failed to refresh tokens.');
+    }
 
     const cookieDomain = process.env.COOKIE_DOMAIN;
     const accessTokenMaxAge =
@@ -318,14 +337,14 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('profile')
-  getProfile(@Request() req: any) {
+  getProfile(@Request() req: AuthenticatedRequest) {
     return req.user;
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   async logout(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Res({ passthrough: true }) res: FastifyReply,
     @Body() _body: LogoutDto,
   ): Promise<LogoutResponse> {
@@ -335,7 +354,7 @@ export class AuthController {
     const accessTokenMaxAge =
       process.env.NODE_ENV === 'production' ? 15 * 60 : 60; // Seconds
 
-    const cookieOptions: any = {
+    const cookieOptions: CookieSerializeOptions = {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

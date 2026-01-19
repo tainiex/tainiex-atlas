@@ -9,7 +9,7 @@ import { ReliableMessageService } from './reliable-message.service';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
-  let jwtService: JwtService;
+  let _jwtService: JwtService;
 
   const mockJwtService = {
     verifyAsync: jest.fn(),
@@ -54,7 +54,7 @@ describe('ChatGateway', () => {
     }).compile();
 
     gateway = module.get<ChatGateway>(ChatGateway);
-    jwtService = module.get<JwtService>(JwtService);
+    _jwtService = module.get<JwtService>(JwtService);
   });
 
   it('should be defined', () => {

@@ -136,6 +136,7 @@ export class PresenceService {
         username,
         avatar,
         color,
+        connectedAt: session.connectedAt,
       },
     };
   }
@@ -176,11 +177,11 @@ export class PresenceService {
    * Get all active collaborators for a note.
    * 获取笔记的所有活跃协作者。
    */
-  async getCollaborators(noteId: string): Promise<any[]> {
+  async getCollaborators(noteId: string): Promise<ICollaborator[]> {
     const socketIds = this.noteSessions.get(noteId);
     if (!socketIds) return [];
 
-    const collaborators: any[] = [];
+    const collaborators: ICollaborator[] = [];
     socketIds.forEach((sid) => {
       const sess = this.sessions.get(sid);
       if (sess) {

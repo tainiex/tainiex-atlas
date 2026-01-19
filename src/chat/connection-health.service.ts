@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { Socket } from 'socket.io';
+import { Socket as _Socket } from 'socket.io';
 
 @Injectable()
 export class ConnectionHealthService {

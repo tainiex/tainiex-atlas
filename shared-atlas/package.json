@@ -1,11 +1,12 @@
 {
     "name": "@tainiex/shared-atlas",
-    "version": "0.0.29",
+    "version": "0.0.30",
     "description": "Shared interfaces and contracts for Tainiex Atlas",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "scripts": {
         "build": "tsc",
+        "build:watch": "tsc -w",
         "pub": "npm version patch && npm run build && npm publish",
         "generate:dart": "ts-node script/generate-dart.ts && npm run verify:dart",
         "generate:rust": "ts-node script/generate-rust.ts",

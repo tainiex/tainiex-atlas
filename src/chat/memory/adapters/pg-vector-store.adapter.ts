@@ -5,11 +5,7 @@ import {
   IVectorStore,
   IVectorStoreRecord,
 } from '../../../../shared-atlas/src/interfaces/vector-store.interface';
-import {
-  SemanticMemory,
-  MemorySource,
-  MemoryType,
-} from '../entities/memory.entity';
+import { SemanticMemory } from '../entities/memory.entity';
 
 @Injectable()
 export class PgVectorStoreAdapter implements IVectorStore {

@@ -5,7 +5,6 @@ import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
-import { JwtService } from '@nestjs/jwt';
 import { ChatRole } from '@tainiex/shared-atlas';
 import { ConfigService } from '@nestjs/config';
 import { MemoryService } from './memory/memory.service';
@@ -13,8 +12,8 @@ import { MemoryService } from './memory/memory.service';
 describe('ChatService - Title Generation', () => {
   let service: ChatService;
   let llmService: any;
-  let chatSessionRepo: any;
-  let chatMessageRepo: any;
+  let _chatSessionRepo: any;
+  let _chatMessageRepo: any;
 
   const mockLlmService = {
     generateContent: jest.fn(),
@@ -84,8 +83,8 @@ describe('ChatService - Title Generation', () => {
 
     service = module.get<ChatService>(ChatService);
     llmService = module.get<LlmService>(LlmService);
-    chatSessionRepo = module.get(getRepositoryToken(ChatSession));
-    chatMessageRepo = module.get(getRepositoryToken(ChatMessage));
+    _chatSessionRepo = module.get(getRepositoryToken(ChatSession));
+    _chatMessageRepo = module.get(getRepositoryToken(ChatMessage));
 
     jest.clearAllMocks();
   });
@@ -127,6 +126,7 @@ describe('ChatService - Title Generation', () => {
         ChatRole.USER,
       );
       for await (const _ of generator) {
+        // consume stream
       }
     };
 
@@ -252,7 +252,7 @@ describe('ChatService - Title Generation', () => {
       await service.getSessionMessages('s1', { before: 'A' });
 
       // The key is that we look up the TIME of 'A'
-      const findCall = mockChatMessageRepo.find.mock.calls[0][0];
+      const _findCall = mockChatMessageRepo.find.mock.calls[0][0];
       // We can't strictly assert the 'LessThan' operator value easily without custom matchers,
       // but we can confirm it didn't use `where: { id: LessThan(...) }`
       expect(mockChatMessageRepo.findOne).toHaveBeenCalledWith({

@@ -122,7 +122,7 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         return 'user';
       default:
         this.logger.warn(
-          `[GoogleVertexGaAdapter] Unknown role encountered: ${role}. Defaulting to 'user'.`,
+          `[GoogleVertexGaAdapter] Unknown role encountered: ${role as string}. Defaulting to 'user'.`,
         );
         return 'user';
     }

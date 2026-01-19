@@ -1,6 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { DataSource, Repository, SelectQueryBuilder } from 'typeorm';
+import { Repository } from 'typeorm';
 import { NotesService } from './notes.service';
 import { Note } from './entities/note.entity';
 
@@ -28,7 +28,6 @@ const mockNoteRepository = {
 
 describe('NotesService', () => {
   let service: NotesService;
-  let repository: Repository<Note>;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -42,7 +41,6 @@ describe('NotesService', () => {
     }).compile();
 
     service = module.get<NotesService>(NotesService);
-    repository = module.get<Repository<Note>>(getRepositoryToken(Note));
 
     jest.clearAllMocks();
   });

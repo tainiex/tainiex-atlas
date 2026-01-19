@@ -292,6 +292,7 @@ export interface ICollaborator {
         endBlockId: string;
         endOffset: number;
     };
+    connectedAt: Date;
 }
 
 /**

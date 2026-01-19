@@ -123,7 +123,7 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
         return 'user'; // Fallback
       default:
         this.logger.warn(
-          `[GoogleVertexPreviewAdapter] Unknown role encountered: ${role}. Defaulting to 'user'.`,
+          `[GoogleVertexPreviewAdapter] Unknown role encountered: ${role as string}. Defaulting to 'user'.`,
         );
         return 'user';
     }

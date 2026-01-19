@@ -40,7 +40,9 @@ export class YjsService {
   ) {
     // Start periodic persistence
     // 启动定期持久化
-    setInterval(() => this.persistPendingUpdates(), this.BATCH_INTERVAL);
+    setInterval(() => {
+      void this.persistPendingUpdates();
+    }, this.BATCH_INTERVAL);
   }
 
   /**

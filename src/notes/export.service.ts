@@ -60,12 +60,14 @@ export class ExportService {
         return `- ${block.content}`;
       case BlockType.NUMBERED_LIST:
         return `1. ${block.content}`;
-      case BlockType.TODO_LIST:
+      case BlockType.TODO_LIST: {
         const checked = block.metadata?.checked ? '[x]' : '[ ]';
         return `${checked} ${block.content}`;
-      case BlockType.CODE:
+      }
+      case BlockType.CODE: {
         const lang = block.metadata?.language || '';
         return `\`\`\`${lang}\n${block.content}\n\`\`\``;
+      }
       case BlockType.QUOTE:
         return `> ${block.content}`;
       case BlockType.DIVIDER:

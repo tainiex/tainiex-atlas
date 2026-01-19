@@ -483,7 +483,7 @@ export class ChatService {
     }
   }
 
-  private async generateAiResponse(sessionId: string, session: ChatSession) {
+  private async generateAiResponse(sessionId: string, _session: ChatSession) {
     try {
       const history = await this.contextManager.getContext(sessionId);
       const previousMessages = history.slice(0, -1);
@@ -509,7 +509,7 @@ export class ChatService {
 
   private async updateSessionTitle(
     session: ChatSession,
-    lastUserContent: string,
+    _lastUserContent: string,
   ) {
     try {
       // Get last few messages for context if available

@@ -60,7 +60,7 @@ export class InvitationService implements OnModuleInit {
     }
     if (new Date() > invitation.expiresAt) {
       console.log(
-        `[InvitationService] Code expired: ${code}, expiresAt: ${invitation.expiresAt}`,
+        `[InvitationService] Code expired: ${code}, expiresAt: ${invitation.expiresAt.toISOString()}`,
       );
       return false;
     }
