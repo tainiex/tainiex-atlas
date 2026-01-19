@@ -9,7 +9,7 @@ Add this to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  shared_atlas_dart: ^0.0.25-w4yu
+  shared_atlas_dart: ^0.0.25-jq22d
 ```
 
 ## Usage

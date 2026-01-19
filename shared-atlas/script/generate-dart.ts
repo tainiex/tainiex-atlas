@@ -480,7 +480,11 @@ async function main() {
     const packageJsonPath = path.join(__dirname, '../package.json');
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'));
     const baseVersion = packageJson.version || '0.0.1';
-    const buildSuffix = generateBuildSuffix();
+    // Use Seconds since 2025-01-01 Base36 for short unique (approx 5 chars)
+    // 1735689600000 is 2025-01-01
+    const epoch = 1735689600000;
+    const seconds = Math.floor((Date.now() - epoch) / 1000);
+    const buildSuffix = seconds.toString(36);
     const version = `${baseVersion}-${buildSuffix}`;
     console.log(`Using version: ${version}`);
 
