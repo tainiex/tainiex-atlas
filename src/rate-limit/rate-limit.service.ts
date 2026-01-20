@@ -1,7 +1,8 @@
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RateLimitEntry } from './rate-limit.entity';
+import { LoggerService } from '../common/logger/logger.service';
 
 interface LocalRateLimit {
   points: number;
@@ -15,8 +16,6 @@ interface LocalRateLimit {
  */
 @Injectable()
 export class RateLimitService implements OnModuleDestroy {
-  private readonly logger = new Logger(RateLimitService.name);
-
   // In-Memory State
   private localOneStorage = new Map<string, LocalRateLimit>();
 
@@ -31,7 +30,9 @@ export class RateLimitService implements OnModuleDestroy {
   constructor(
     @InjectRepository(RateLimitEntry)
     private repo: Repository<RateLimitEntry>,
+    private logger: LoggerService,
   ) {
+    this.logger.setContext(RateLimitService.name);
     // Start Background Flush (e.g., every 3 seconds)
     this.flushInterval = setInterval(() => {
       void this.flushDirtyCounters();

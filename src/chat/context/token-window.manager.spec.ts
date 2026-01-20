@@ -3,6 +3,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { TokenWindowContextManager } from './token-window.manager';
 import { ChatMessage } from '../chat-message.entity';
 import { ChatRole } from '@tainiex/shared-atlas';
+import { LoggerService } from '../../common/logger/logger.service';
 
 describe('TokenWindowContextManager', () => {
   let manager: TokenWindowContextManager;
@@ -13,12 +14,24 @@ describe('TokenWindowContextManager', () => {
   };
 
   beforeEach(async () => {
+    const mockLoggerService = {
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      setContext: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         TokenWindowContextManager,
         {
           provide: getRepositoryToken(ChatMessage),
           useValue: mockRepo,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
         },
       ],
     }).compile();

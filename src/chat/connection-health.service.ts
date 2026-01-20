@@ -1,15 +1,18 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Socket as _Socket } from 'socket.io';
+import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class ConnectionHealthService {
-  private readonly logger = new Logger(ConnectionHealthService.name);
-
   private healthScores = new Map<string, number>(); // clientId -> score (0-100)
   private latencyHistory = new Map<string, number[]>(); // Last N latencies
 
   // Alert threshold
   private readonly CRITICAL_SCORE = 40;
+
+  constructor(private readonly logger: LoggerService) {
+    this.logger.setContext(ConnectionHealthService.name);
+  }
 
   /**
    * Records a latency measurement from a ping/pong exchange.

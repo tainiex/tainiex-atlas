@@ -1,20 +1,22 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { GraphNode, GraphNodeType } from './entities/graph-node.entity';
 import { GraphEdge, GraphRelationType } from './entities/graph-edge.entity';
+import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class GraphService {
-  private readonly logger = new Logger(GraphService.name);
-
   constructor(
     @InjectRepository(GraphNode)
     private nodeRepo: Repository<GraphNode>,
     @InjectRepository(GraphEdge)
     private edgeRepo: Repository<GraphEdge>,
     private dataSource: DataSource,
-  ) {}
+    private logger: LoggerService,
+  ) {
+    this.logger.setContext(GraphService.name);
+  }
 
   async upsertNode(
     name: string,

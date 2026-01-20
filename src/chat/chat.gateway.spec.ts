@@ -8,6 +8,7 @@ import { TokenLifecycleService } from './token-lifecycle.service';
 import { ConnectionHealthService } from './connection-health.service';
 import { ReliableMessageService } from './reliable-message.service';
 import { ChatRole } from '@tainiex/shared-atlas';
+import { LoggerService } from '../common/logger/logger.service';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
@@ -53,15 +54,34 @@ describe('ChatGateway', () => {
       handleAck: jest.fn(),
     };
 
+    const mockLoggerService = {
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      setContext: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ChatGateway,
         { provide: JwtService, useValue: mockJwtService },
         { provide: ChatService, useValue: mockChatService },
+        { provide: LoggerService, useValue: mockLoggerService },
         { provide: RateLimitService, useValue: mockRateLimitService },
         { provide: TokenLifecycleService, useValue: mockTokenLifecycleService },
         { provide: ConnectionHealthService, useValue: mockHealthService },
         { provide: ReliableMessageService, useValue: mockReliableMsgService },
+        {
+          provide: 'LoggerService',
+          useValue: {
+            log: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn(),
+            debug: jest.fn(),
+            setContext: jest.fn(),
+          },
+        },
       ],
     }).compile();
 

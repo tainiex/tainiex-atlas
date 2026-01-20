@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { Socket } from 'socket.io';
+import { LoggerService } from '../common/logger/logger.service';
 
 interface PendingMessage {
   id: string;
@@ -15,14 +16,16 @@ interface PendingMessage {
  */
 @Injectable()
 export class ReliableMessageService {
-  private readonly logger = new Logger(ReliableMessageService.name);
-
   // UserId -> Messages[]
   // Using UserId maps better to reconnection scenarios than ClientId
   private pendingMessages = new Map<string, PendingMessage[]>();
 
   private readonly MESSAGE_TIMEOUT = 30000; // 30s
   private readonly MAX_RETRIES = 3;
+
+  constructor(private readonly logger: LoggerService) {
+    this.logger.setContext(ReliableMessageService.name);
+  }
 
   /**
    * Sends a message requiring acknowledgement.

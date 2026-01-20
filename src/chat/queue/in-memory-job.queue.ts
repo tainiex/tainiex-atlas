@@ -1,13 +1,17 @@
-import { Injectable, OnModuleDestroy, Logger } from '@nestjs/common';
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
 import { IJobQueue } from './job-queue.interface';
+import { LoggerService } from '../../common/logger/logger.service';
 
 @Injectable()
 export class InMemoryJobQueue<T> implements IJobQueue<T>, OnModuleDestroy {
   private queue: T[] = [];
   private isProcessing = false;
   private handler: ((job: T) => Promise<void>) | null = null;
-  private logger = new Logger(InMemoryJobQueue.name);
   private activeJobs = 0;
+
+  constructor(private logger: LoggerService) {
+    this.logger.setContext(InMemoryJobQueue.name);
+  }
 
   async add(job: T): Promise<void> {
     this.queue.push(job);

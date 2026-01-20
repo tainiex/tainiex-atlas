@@ -19,6 +19,7 @@ import { GoogleLoginDto } from '@tainiex/shared-atlas';
 import { AuthResult } from './interfaces/auth-result.interface';
 import { MicrosoftJwtPayload } from './interfaces/microsoft-jwt-payload.interface';
 import { SignupPayload } from './interfaces/signup-payload.interface';
+import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class AuthService {
@@ -33,7 +34,9 @@ export class AuthService {
     private jwtService: JwtService,
     private configService: ConfigService,
     private invitationService: InvitationService,
+    private logger: LoggerService,
   ) {
+    this.logger.setContext(AuthService.name);
     this.googleClientId =
       this.configService.get<string>('GOOGLE_CLIENT_ID') || '';
     this.googleClientSecret =
@@ -160,12 +163,12 @@ export class AuthService {
               redirect_uri: null as any,
             });
             googleTokens = response.tokens;
-            console.log('[GoogleLogin] Mobile token exchange successful.');
+            this.logger.log('[GoogleLogin] Mobile token exchange successful.');
           } else {
             // Standard Web Flow (uses postmessage or configured URI)
             const response = await this.googleClient.getToken(dto.code);
             googleTokens = response.tokens;
-            console.log('[GoogleLogin] Standard token exchange successful.');
+            this.logger.log('[GoogleLogin] Standard token exchange successful.');
           }
 
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
@@ -234,7 +237,7 @@ export class AuthService {
       // Verify the ID token
       // For mobile, audience might be different (Android/iOS Client ID)
       // For web, it's the Web Client ID
-      console.log('[GoogleLogin] Verifying ID token...');
+      this.logger.log('[GoogleLogin] Verifying ID token...');
       const ticket = await this.googleClient.verifyIdToken({
         idToken: idToken,
         audience: [
@@ -251,7 +254,7 @@ export class AuthService {
 
       return await this.processGoogleLogin(googlePayload);
     } catch (error) {
-      console.error('[GoogleLogin] Error:', error);
+      this.logger.error('[GoogleLogin] Error:', error);
       if (error instanceof UnauthorizedException) {
         throw error;
       }
@@ -360,7 +363,7 @@ export class AuthService {
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Verification failed';
-      console.error('Microsoft token verification failed:', errorMessage);
+      this.logger.error('Microsoft token verification failed:', errorMessage);
       throw new UnauthorizedException('Invalid Microsoft token');
     }
 
@@ -497,7 +500,7 @@ export class AuthService {
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : 'Verification failed';
-      console.error(`[GoogleSignup] Token verification failed:`, errorMessage);
+      this.logger.error(`[GoogleSignup] Token verification failed:`, errorMessage);
       throw new UnauthorizedException('Invalid or expired signup token');
     }
 
@@ -510,12 +513,12 @@ export class AuthService {
     }
 
     const { email, picture } = payload;
-    console.log(`[GoogleSignup] Token verified for email: ${email}`);
+    this.logger.log(`[GoogleSignup] Token verified for email: ${email}`);
 
     // Double check if user exists
     let user = await this.usersService.findOneByEmail(email);
     if (user) {
-      console.log(`[GoogleSignup] User already exists, logging in: ${user.id}`);
+      this.logger.log(`[GoogleSignup] User already exists, logging in: ${user.id}`);
       const tokens = await this.generateTokens(user);
       await this.updateRefreshToken(user.id, tokens.refresh_token);
 
@@ -650,7 +653,7 @@ export class AuthService {
 
       return filename;
     } catch (error) {
-      console.error('Failed to upload avatar to GCS:', error);
+      this.logger.error('Failed to upload avatar to GCS:', error);
       return null;
     }
   }

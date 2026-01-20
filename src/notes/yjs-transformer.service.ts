@@ -1,21 +1,23 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Block } from './entities/block.entity';
 import { Note } from './entities/note.entity';
-import * as Y from 'yjs';
+import *  as Y from 'yjs';
 import { BlockType } from '@tainiex/shared-atlas';
+import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class YjsTransformerService {
-  private readonly logger = new Logger(YjsTransformerService.name);
-
   constructor(
     @InjectRepository(Block)
     private blockRepository: Repository<Block>,
     @InjectRepository(Note)
     private noteRepository: Repository<Note>,
-  ) {}
+    private logger: LoggerService,
+  ) {
+    this.logger.setContext(YjsTransformerService.name);
+  }
 
   /**
    * Sync Y.js document state to Blocks table.

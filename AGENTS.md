@@ -18,12 +18,12 @@ This document serves as the authoritative guide for AI agents working on the `ta
 - **Database**: PostgreSQL (via TypeORM)
 - **Package Manager**: pnpm
 - **Debug Directory**: Save all debug artifacts (scripts, logs, temp files) to the .llm directory.
-- **Logging**:
-  - **NestJS Built-in Logger**: Controlled by `NODE_ENV` environment variable
-    - `production`: Only outputs `error` and `warn` logs
-    - `development`: Outputs all logs (`log`, `error`, `warn`, `debug`, `verbose`)
-  - **Custom LoggerService**: Controlled by `LOG_LEVEL` environment variable (`debug` | `info` | `warn` | `error`)
-  - **Configuration**: Set in `src/main.ts` during application bootstrap
+- **Logging**: Unified Winston-based `LoggerService` for all application logging
+  - **Format**: Development: colored console with PID (`[Nest] PID - Timestamp Level [Context] Message`); Production: JSON
+  - **Configuration**: `LOG_LEVEL` environment variable (`debug` | `info` | `warn` | `error`)
+  - **Global Registration**: Set in `src/main.ts` via `app.useLogger(customLogger)`
+  - **Usage**: Inject `LoggerService` in constructors, call `this.logger.setContext(ClassName.name)`
+  - **Exception**: `WebSocketExceptionFilter` uses NestJS Logger (filters can't use DI)
 
 
 ## 2. Architecture & Design

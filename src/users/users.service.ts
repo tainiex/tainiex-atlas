@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { ConfigService } from '@nestjs/config';
 import { Storage, StorageOptions } from '@google-cloud/storage';
+import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class UsersService {
@@ -13,7 +14,9 @@ export class UsersService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
     private configService: ConfigService,
+    private logger: LoggerService,
   ) {
+    this.logger.setContext(UsersService.name);
     const gsaKeyFile = this.configService.get<string>('GSA_KEY_FILE');
     const projectId = this.configService.get<string>('VERTEX_PROJECT_ID');
 
@@ -26,7 +29,7 @@ export class UsersService {
     }
 
     this.storage = new Storage(storageOptions);
-    console.log(`[UsersService] Storage initialized for project: ${projectId}`);
+    this.logger.log(`[UsersService] Storage initialized for project: ${projectId}`);
   }
 
   async findOne(username: string): Promise<User | null> {

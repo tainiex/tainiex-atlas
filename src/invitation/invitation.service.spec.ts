@@ -5,6 +5,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { InvitationCode } from './invitation-code.entity';
 import { Repository } from 'typeorm';
 import { User } from '../users/user.entity';
+import { LoggerService } from '../common/logger/logger.service';
 
 describe('InvitationService', () => {
   let service: InvitationService;
@@ -28,12 +29,24 @@ describe('InvitationService', () => {
     // Mock count to return enough codes so onModuleInit doesn't generate more
     mockRepo.count.mockResolvedValue(100);
 
+    const mockLoggerService = {
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      setContext: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         InvitationService,
         {
           provide: getRepositoryToken(InvitationCode),
           useValue: mockRepo,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
         },
       ],
     }).compile();

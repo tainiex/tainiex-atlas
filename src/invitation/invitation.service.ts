@@ -4,13 +4,17 @@ import { Repository } from 'typeorm';
 import { InvitationCode } from './invitation-code.entity';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from '../users/user.entity';
+import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class InvitationService implements OnModuleInit {
   constructor(
     @InjectRepository(InvitationCode)
     private invitationRepository: Repository<InvitationCode>,
-  ) {}
+    private logger: LoggerService,
+  ) {
+    this.logger.setContext(InvitationService.name);
+  }
 
   async onModuleInit() {
     await this.ensureInvitationCodes();
@@ -37,7 +41,7 @@ export class InvitationService implements OnModuleInit {
       }
 
       await this.invitationRepository.save(codes);
-      console.log(`[InvitationService] Generated ${codes.length} codes.`);
+      this.logger.log(`[InvitationService] Generated ${codes.length} codes.`);
     }
   }
 
@@ -51,11 +55,11 @@ export class InvitationService implements OnModuleInit {
       where: { code },
     });
     if (!invitation) {
-      console.log(`[InvitationService] Code not found: ${code}`);
+      this.logger.log(`[InvitationService] Code not found: ${code}`);
       return false;
     }
     if (invitation.isUsed) {
-      console.log(`[InvitationService] Code already used: ${code}`);
+      this.logger.log(`[InvitationService] Code already used: ${code}`);
       return false;
     }
     if (new Date() > invitation.expiresAt) {

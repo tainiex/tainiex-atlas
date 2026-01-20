@@ -1,5 +1,6 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import type { ICollaborator } from '@tainiex/shared-atlas';
+import { LoggerService } from '../common/logger/logger.service';
 
 /**
  * Local session interface for in-memory storage.
@@ -29,7 +30,6 @@ interface LocalSession {
  */
 @Injectable()
 export class PresenceService {
-  private readonly logger = new Logger(PresenceService.name);
   private readonly MAX_CONCURRENT_EDITORS = 5;
 
   // In-memory stores
@@ -62,7 +62,9 @@ export class PresenceService {
     '#1DD1A1',
   ];
 
-  constructor() {}
+  constructor(private readonly logger: LoggerService) {
+    this.logger.setContext(PresenceService.name);
+  }
 
   /**
    * User joins a note editing session.

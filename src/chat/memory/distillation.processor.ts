@@ -4,6 +4,7 @@ import { DataSource } from 'typeorm';
 import { GraphNode } from '../../graph/entities/graph-node.entity';
 import { GraphEdge } from '../../graph/entities/graph-edge.entity';
 import { GraphService } from '../../graph/graph.service';
+import { LoggerService } from '../../common/logger/logger.service';
 import {
   DistillationPayload,
   DistillationResult,
@@ -94,7 +95,9 @@ export async function processDistillation(
 
           const nodeRepo = dataSource.getRepository(GraphNode);
           const edgeRepo = dataSource.getRepository(GraphEdge);
-          const graphService = new GraphService(nodeRepo, edgeRepo, dataSource);
+          // Create a LoggerService instance for the worker thread
+          const logger = new LoggerService(null as any);
+          const graphService = new GraphService(nodeRepo, edgeRepo, dataSource, logger);
 
           // Ingest Graph Data
           for (const m of memories) {
@@ -117,13 +120,13 @@ export async function processDistillation(
             }
           }
         } catch (dbError) {
-          console.error('[Processor] Graph Ingestion Failed:', dbError);
+          this.logger.error('[Processor] Graph Ingestion Failed:', dbError);
         }
       }
 
       return { result: memories };
     } catch (error: any) {
-      console.error('[Processor] Generation Error:', error);
+      this.logger.error('[Processor] Generation Error:', error);
       return { error: (error as Error).message };
     }
   } catch (err: any) {

@@ -13,7 +13,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { ChatRole } from '@tainiex/shared-atlas';
 
-import { Logger, UsePipes, ValidationPipe } from '@nestjs/common';
+import { UsePipes, ValidationPipe } from '@nestjs/common';
 import { ChatSendDto } from './dto/chat.dto';
 import { RateLimitService } from '../rate-limit/rate-limit.service';
 import { TokenLifecycleService } from './token-lifecycle.service';
@@ -24,6 +24,7 @@ import { WebSocketExceptionFilter } from '../common/filters/websocket-exception.
 import { WebSocketErrorCode } from '@tainiex/shared-atlas';
 
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { LoggerService } from '../common/logger/logger.service';
 
 export interface AuthenticatedSocket extends Socket {
   data: {
@@ -89,12 +90,9 @@ export interface AuthenticatedSocket extends Socket {
 })
 @UseFilters(new WebSocketExceptionFilter())
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
-
-  private readonly logger = new Logger(ChatGateway.name);
 
   constructor(
     private readonly jwtService: JwtService,
@@ -103,7 +101,10 @@ export class ChatGateway
     private readonly tokenLifecycleService: TokenLifecycleService,
     private readonly healthService: ConnectionHealthService,
     private readonly reliableMsgService: ReliableMessageService,
-  ) {}
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(ChatGateway.name);
+  }
 
   afterInit(_server: Server) {
     this.logger.log('WebSocket Gateway initialized successfully');

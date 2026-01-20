@@ -2,7 +2,8 @@ import { ConfigService } from '@nestjs/config';
 import { Storage, StorageOptions } from '@google-cloud/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { StorageStrategy } from './storage.strategy.interface';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+import { LoggerService } from '../logger/logger.service';
 
 /**
  * GcsStorageStrategy
@@ -16,9 +17,12 @@ export class GcsStorageStrategy implements StorageStrategy {
   private storage: Storage;
   private bucketName: string;
   private serviceAccountEmail: string | undefined;
-  private readonly logger = new Logger(GcsStorageStrategy.name);
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private logger: LoggerService,
+  ) {
+    this.logger.setContext(GcsStorageStrategy.name);
     const gsaKeyFile = this.configService.get<string>('GSA_KEY_FILE');
     const projectId = this.configService.get<string>('VERTEX_PROJECT_ID');
     this.serviceAccountEmail = this.configService.get<string>(

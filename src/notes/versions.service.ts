@@ -6,6 +6,7 @@ import { BlockVersion } from './entities/block-version.entity';
 import { Note } from './entities/note.entity';
 import { NoteSnapshot } from './entities/note-snapshot.entity';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { LoggerService } from '../common/logger/logger.service';
 
 /**
  * VersionsService - handles version control, history, and snapshots.
@@ -22,7 +23,10 @@ export class VersionsService {
     private noteRepository: Repository<Note>,
     @InjectRepository(NoteSnapshot)
     private noteSnapshotRepository: Repository<NoteSnapshot>,
-  ) {}
+    private logger: LoggerService,
+  ) {
+    this.logger.setContext(VersionsService.name);
+  }
 
   /**
    * Get history of a specific block.
@@ -129,7 +133,7 @@ export class VersionsService {
    */
   @Cron(CronExpression.EVERY_DAY_AT_3AM)
   async handleDailySnapshots() {
-    console.log('[VersionsService] Starting daily smart snapshots...');
+    this.logger.log('[VersionsService] Starting daily smart snapshots...');
 
     // Find notes updated in the last 24 hours that don't have a snapshot today
     const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000);
@@ -143,11 +147,11 @@ export class VersionsService {
     for (const note of notesToSnapshot) {
       try {
         await this.createNoteSnapshot(note.id);
-        console.log(`[VersionsService] Created snapshot for note: ${note.id}`);
+        this.logger.log(`[VersionsService] Created snapshot for note: ${note.id}`);
       } catch (error) {
-        console.error(
+        this.logger.error(
           `[VersionsService] Failed to snapshot note ${note.id}:`,
-          error instanceof Error ? error.message : String(error),
+          error instanceof Error ? error.stack : String(error),
         );
       }
     }

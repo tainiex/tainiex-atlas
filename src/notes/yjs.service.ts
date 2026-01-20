@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { DocumentState } from './entities/document-state.entity';
 import { YjsTransformerService } from './yjs-transformer.service';
 import * as Y from 'yjs';
+import { LoggerService } from '../common/logger/logger.service';
 
 /**
  * YjsService - manages Y.js document states for collaborative editing.
@@ -37,7 +38,9 @@ export class YjsService {
     @InjectRepository(DocumentState)
     private documentStateRepository: Repository<DocumentState>,
     private yjsTransformerService: YjsTransformerService,
+    private logger: LoggerService,
   ) {
+    this.logger.setContext(YjsService.name);
     // Start periodic persistence
     // 启动定期持久化
     setInterval(() => {
@@ -183,7 +186,7 @@ export class YjsService {
    * 持久化文档到数据库。
    */
   private async persistDocument(noteId: string, doc: Y.Doc): Promise<void> {
-    console.log(`[Debug] persistDocument called for note: ${noteId}`);
+    this.logger.log(`[Debug] persistDocument called for note: ${noteId}`);
     const documentState = Y.encodeStateAsUpdate(doc);
     const stateVector = Y.encodeStateVector(doc);
 
@@ -207,7 +210,7 @@ export class YjsService {
       );
     }
 
-    console.log(`[YjsService] Persisted document state for note: ${noteId}`);
+    this.logger.log(`[YjsService] Persisted document state for note: ${noteId}`);
   }
 
   /**

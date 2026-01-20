@@ -6,6 +6,7 @@ import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
+import { LoggerService } from '../common/logger/logger.service';
 import { ChatRole } from '@tainiex/shared-atlas';
 import { ConfigService } from '@nestjs/config';
 import { MemoryService } from './memory/memory.service';
@@ -57,10 +58,23 @@ describe('ChatService - Title Generation', () => {
     add: jest.fn(),
   };
 
+  const mockLoggerService = {
+    log: jest.fn(),
+    error: jest.fn(),
+    warn: jest.fn(),
+    debug: jest.fn(),
+    verbose: jest.fn(),
+    setContext: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ChatService,
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
         {
           provide: getRepositoryToken(ChatSession),
           useValue: mockChatSessionRepo,

@@ -9,13 +9,17 @@ import { ConfigService } from '@nestjs/config';
 
 import { LlmService } from './llm.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { LoggerService } from '../common/logger/logger.service';
 
 @Controller('llm')
 export class LlmController {
   constructor(
     private readonly llmService: LlmService,
     private readonly configService: ConfigService,
-  ) {}
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(LlmController.name);
+  }
 
   @UseGuards(JwtAuthGuard)
   @Get('models')
@@ -37,7 +41,7 @@ export class LlmController {
       const models = await this.llmService.listRemoteModels();
       return { models };
     } catch (error) {
-      console.error('Remote Model Fetch Error:', error);
+      this.logger.error('Remote Model Fetch Error:', error);
       // Avoid returning full error object as it may contain circular references
       return {
         error: 'Failed to fetch models',

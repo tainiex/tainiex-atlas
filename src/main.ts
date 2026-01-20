@@ -7,6 +7,7 @@ import {
   ClassSerializerInterceptor,
   LogLevel,
   ValidationPipe,
+  LoggerService as NestLoggerService,
 } from '@nestjs/common';
 import {
   FastifyAdapter,
@@ -15,27 +16,49 @@ import {
 import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
 import { ConfigurationService } from './common/config/configuration.service';
+import { LoggerService } from './common/logger/logger.service';
+import { createWinstonLogger } from './common/logger/logger.factory';
 
 async function bootstrap() {
-  // Get configuration service to determine log levels
-  const tempApp = await NestFactory.createApplicationContext(AppModule);
-  const configService = tempApp.get(ConfigurationService);
+  // Create a Winston logger instance for NestJS framework logs using shared factory
+  // 使用共享工厂为 NestJS 框架日志创建 Winston logger 实例
+  const winstonLogger = createWinstonLogger();
 
-  const logLevels: LogLevel[] = configService.isProduction
-    ? ['error', 'warn'] // Production: Only errors and warnings
-    : ['log', 'error', 'warn', 'debug', 'verbose']; // Development: All logs
+  // Create NestJS LoggerService wrapper for Winston
+  class WinstonLogger implements NestLoggerService {
+    log(message: any, context?: string) {
+      winstonLogger.info(message, { context });
+    }
+    error(message: any, trace?: string, context?: string) {
+      winstonLogger.error(message, { context, trace });
+    }
+    warn(message: any, context?: string) {
+      winstonLogger.warn(message, { context });
+    }
+    debug(message: any, context?: string) {
+      winstonLogger.debug(message, { context });
+    }
+    verbose(message: any, context?: string) {
+      winstonLogger.verbose(message, { context });
+    }
+  }
 
-  await tempApp.close();
+  const customLogger = new WinstonLogger();
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      logger: configService.isProduction ? false : true,
+      logger: false, // Disable Fastify logger, use Winston LoggerService instead
     }),
     {
-      logger: logLevels,
+      logger: customLogger, // Use Winston logger for NestJS framework
     },
   );
+
+  // Also get the injected LoggerService for application use
+  const appLogger = app.get(LoggerService);
+  appLogger.setContext('NestApplication');
+  app.useLogger(appLogger);
 
   await app.register(fastifyCookie);
   await app.register(fastifyMultipart);
@@ -60,23 +83,22 @@ async function bootstrap() {
         methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
         credentials: true,
       });
-      console.log(`CORS enabled for origins: ${corsOrigin}`);
+      appLogger.log(`CORS enabled for origins: ${corsOrigin}`);
     } else if (!appConfigService.isProduction) {
       // Allow all in development/debug if not explicitly set
       app.enableCors({ origin: '*' });
-      console.log('CORS enabled for all origins (Development Mode)');
+      appLogger.log('CORS enabled for all origins (Development Mode)');
     } else {
-      console.log('CORS disabled (Production Mode: No CORS_ORIGIN set)');
+      appLogger.log('CORS disabled (Production Mode: No CORS_ORIGIN set)');
     }
 
-    console.log('Environment PORT:', process.env.PORT);
     const port = appConfigService.port;
-    console.log('Configured Port:', port);
+    appLogger.log(`Starting server on port ${port}...`);
 
     await app.listen(port, '0.0.0.0');
-    console.log(`Application is running on: ${await app.getUrl()}`);
+    appLogger.log(`Application is running on: ${await app.getUrl()}`);
   } catch (error) {
-    console.error('Bootstrap failed:', error);
+    appLogger.error('Bootstrap failed:', error instanceof Error ? error.stack : String(error));
     process.exit(1);
   }
 }

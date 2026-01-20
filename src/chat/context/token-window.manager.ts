@@ -1,18 +1,21 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ChatMessage } from '../chat-message.entity';
 import { IContextManager } from './context-manager.interface';
+import { LoggerService } from '../../common/logger/logger.service';
 
 @Injectable()
 export class TokenWindowContextManager implements IContextManager {
-  private readonly logger = new Logger(TokenWindowContextManager.name);
   private readonly DEFAULT_MAX_TOKENS = 4000; // Conservative default for most models
 
   constructor(
     @InjectRepository(ChatMessage)
     private chatMessageRepository: Repository<ChatMessage>,
-  ) {}
+    private logger: LoggerService,
+  ) {
+    this.logger.setContext(TokenWindowContextManager.name);
+  }
 
   async getContext(
     sessionId: string,

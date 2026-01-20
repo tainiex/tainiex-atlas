@@ -1,14 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Socket } from 'socket.io';
+import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class TokenLifecycleService {
-  private readonly logger = new Logger(TokenLifecycleService.name);
   private readonly REFRESH_BUFFER = 5 * 60 * 1000; // 5 minutes
   private tokenTimers = new Map<string, NodeJS.Timeout>();
 
-  constructor(private readonly jwtService: JwtService) {}
+  constructor(
+    private readonly jwtService: JwtService,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(TokenLifecycleService.name);
+  }
 
   /**
    * Schedules a notification for the client to refresh their token.

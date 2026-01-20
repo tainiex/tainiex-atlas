@@ -1,48 +1,19 @@
 import {
   Injectable,
   LoggerService as NestLoggerService,
-  Scope,
 } from '@nestjs/common';
-import { createLogger, format, transports, Logger } from 'winston';
+import { Logger } from 'winston';
 import { ConfigurationService } from '../config/configuration.service';
+import { createWinstonLogger } from './logger.factory';
 
-@Injectable({ scope: Scope.TRANSIENT })
+@Injectable()
 export class LoggerService implements NestLoggerService {
   private logger: Logger;
   private context?: string;
 
   constructor(private readonly configService: ConfigurationService) {
-    const isProduction = this.configService.isProduction;
-    const logLevel = this.configService.logLevel;
-
-    // Production: JSON format for structured logging
-    // Development: Human-readable colored output
-    const logFormat = isProduction
-      ? format.combine(
-          format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-          format.errors({ stack: true }),
-          format.json(),
-        )
-      : format.combine(
-          format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-          format.colorize(),
-          format.printf(({ timestamp, level, message, context, ...meta }) => {
-            const ctx = context
-              ? `[${typeof context === 'string' ? context : JSON.stringify(context)}]`
-              : '';
-            const metaStr = Object.keys(meta).length
-              ? JSON.stringify(meta)
-              : '';
-            return `${String(timestamp)} ${String(level)} ${ctx} ${String(message)} ${metaStr}`;
-          }),
-        );
-
-    this.logger = createLogger({
-      level: logLevel,
-      format: logFormat,
-      transports: [new transports.Console()],
-      exitOnError: false,
-    });
+    // Use shared Winston logger factory
+    this.logger = createWinstonLogger();
   }
 
   setContext(context: string) {

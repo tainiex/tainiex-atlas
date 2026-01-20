@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { NotesService } from './notes.service';
 import { Note } from './entities/note.entity';
+import { LoggerService } from '../common/logger/logger.service';
 
 // Mock QueryBuilder
 const mockQueryBuilder = {
@@ -29,12 +30,24 @@ describe('NotesService', () => {
   let service: NotesService;
 
   beforeEach(async () => {
+    const mockLoggerService = {
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      setContext: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         NotesService,
         {
           provide: getRepositoryToken(Note),
           useValue: mockNoteRepository,
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
         },
       ],
     }).compile();

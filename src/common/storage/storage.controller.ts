@@ -18,6 +18,7 @@ import {
   UploadFileQueryDto,
   GetSignedUrlQueryDto,
 } from '@tainiex/shared-atlas';
+import { LoggerService } from '../logger/logger.service';
 
 /**
  * StorageController
@@ -29,7 +30,12 @@ import {
 @Controller('storage')
 @UseGuards(JwtAuthGuard)
 export class StorageController {
-  constructor(private readonly storageService: StorageService) {}
+  constructor(
+    private readonly storageService: StorageService,
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(StorageController.name);
+  }
 
   /**
    * Upload a file.
@@ -93,7 +99,7 @@ export class StorageController {
         },
       };
     } catch (error: any) {
-      console.error('[StorageController] Upload failed:', error);
+      this.logger.error('[StorageController] Upload failed:', error);
       throw new HttpException(
         'File upload failed',
         HttpStatus.INTERNAL_SERVER_ERROR,
@@ -146,7 +152,7 @@ export class StorageController {
         expiresIn: expirationSeconds,
       };
     } catch (error) {
-      console.error('[StorageController] GetSignedUrl failed:', error);
+      this.logger.error('[StorageController] GetSignedUrl failed:', error);
       throw new HttpException(
         'Failed to generate signed URL',
         HttpStatus.INTERNAL_SERVER_ERROR,

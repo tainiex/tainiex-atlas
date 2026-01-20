@@ -204,7 +204,7 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
     history: ChatMessage[],
     message: string,
   ): AsyncGenerator<string> {
-    console.log('[GoogleVertexPreviewAdapter] streamChat called');
+    this.logger.log('[GoogleVertexPreviewAdapter] streamChat called');
     const projectId = this.configService.get<string>('VERTEX_PROJECT_ID');
     const location = this.configService.get<string>(
       'VERTEX_LOCATION',
@@ -328,7 +328,7 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
               yield text;
             }
           } catch (e) {
-            console.error('[GoogleVertexPreviewAdapter] JSON parse error:', e);
+            this.logger.error('[GoogleVertexPreviewAdapter] JSON parse error:', e);
           }
 
           startIdx = objEnd + 1;
@@ -337,7 +337,7 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
         buffer = buffer.substring(startIdx);
       }
 
-      console.log('[GoogleVertexPreviewAdapter] Stream complete');
+      this.logger.log('[GoogleVertexPreviewAdapter] Stream complete');
     } catch (error) {
       this.logger.error(
         '[GoogleVertexPreviewAdapter] streamChat failed:',

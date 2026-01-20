@@ -5,6 +5,7 @@ import { Block } from './entities/block.entity';
 import { Note } from './entities/note.entity';
 import * as Y from 'yjs';
 import { BlockType } from '@tainiex/shared-atlas';
+import { LoggerService } from '../common/logger/logger.service';
 
 describe('YjsTransformerService', () => {
   let service: YjsTransformerService;
@@ -22,11 +23,20 @@ describe('YjsTransformerService', () => {
       findOne: jest.fn(),
     };
 
+    const mockLoggerService = {
+      log: jest.fn(),
+      error: jest.fn(),
+      warn: jest.fn(),
+      debug: jest.fn(),
+      setContext: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         YjsTransformerService,
         { provide: getRepositoryToken(Block), useValue: blockRepositoryMock },
         { provide: getRepositoryToken(Note), useValue: noteRepositoryMock },
+        { provide: LoggerService, useValue: mockLoggerService },
       ],
     }).compile();
 

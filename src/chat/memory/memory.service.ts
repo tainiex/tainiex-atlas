@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import type {
   IVectorStore,
   IVectorStoreRecord,
@@ -13,11 +13,10 @@ import {
 } from '../worker/worker.interfaces';
 import { ConfigService } from '@nestjs/config';
 import { GraphService } from '../../graph/graph.service';
+import { LoggerService } from '../../common/logger/logger.service';
 
 @Injectable()
 export class MemoryService {
-  private readonly logger = new Logger(MemoryService.name);
-
   private queue: { verify: () => void; task: () => Promise<void> }[] = [];
   private activeWorkers = 0;
   private readonly maxWorkers: number;
@@ -29,7 +28,9 @@ export class MemoryService {
     private configService: ConfigService,
     private graphService: GraphService,
     private workerPool: WorkerPoolService,
+    private logger: LoggerService,
   ) {
+    this.logger.setContext(MemoryService.name);
     this.maxWorkers = parseInt(
       this.configService.get('DISTILLATION_CONCURRENCY') || '4',
       10,
@@ -208,7 +209,7 @@ export class MemoryService {
 
     // Push to queue
     this.queue.push({
-      verify: () => {}, // Placeholder if we need cancellation later
+      verify: () => { }, // Placeholder if we need cancellation later
       task: async () => this.runDistillationTask(userId, sessionId, messages),
     });
 

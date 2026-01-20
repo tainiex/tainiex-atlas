@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StorageService } from '../common/storage/storage.service';
 import { BlocksService } from './blocks.service';
 import { NotesService } from './notes.service';
+import { LoggerService } from '../common/logger/logger.service';
 
 /**
  * Accepted MIME types for different file categories.
@@ -74,7 +75,10 @@ export class UploadController {
     private readonly storageService: StorageService,
     private readonly blocksService: BlocksService,
     private readonly notesService: NotesService,
-  ) {}
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(UploadController.name);
+  }
 
   /**
    * Upload an image for a note.
@@ -220,7 +224,7 @@ export class UploadController {
         },
       };
     } catch (error) {
-      console.error('[UploadController] Upload failed:', error);
+      this.logger.error('[UploadController] Upload failed:', error);
       throw new HttpException(
         'File upload failed',
         HttpStatus.INTERNAL_SERVER_ERROR,

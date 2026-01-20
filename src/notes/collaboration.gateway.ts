@@ -10,7 +10,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
-import { Logger, UseFilters } from '@nestjs/common';
+import { UseFilters } from '@nestjs/common';
 import { PresenceService } from './presence.service';
 import { YjsService } from './yjs.service';
 import { NotesService } from './notes.service';
@@ -27,6 +27,7 @@ import type {
 } from '@tainiex/shared-atlas';
 
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
+import { LoggerService } from '../common/logger/logger.service';
 
 interface AuthenticatedSocket extends Socket {
   data: {
@@ -98,12 +99,9 @@ interface AuthenticatedSocket extends Socket {
 })
 @UseFilters(new WebSocketExceptionFilter())
 export class CollaborationGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
-
-  private readonly logger = new Logger(CollaborationGateway.name);
 
   constructor(
     private readonly jwtService: JwtService,
@@ -113,7 +111,10 @@ export class CollaborationGateway
     private readonly tokenLifecycleService: TokenLifecycleService,
     private readonly healthService: ConnectionHealthService,
     private readonly reliableMsgService: ReliableMessageService,
-  ) {}
+    private readonly logger: LoggerService,
+  ) {
+    this.logger.setContext(CollaborationGateway.name);
+  }
 
   afterInit(_server: Server) {
     this.logger.log('Collaboration Gateway initialized');

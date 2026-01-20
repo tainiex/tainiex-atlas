@@ -2,8 +2,8 @@ import {
   Catch,
   ArgumentsHost,
   HttpException,
-  Logger,
   ExceptionFilter,
+  Logger,
 } from '@nestjs/common';
 import { WsException } from '@nestjs/websockets';
 import { WebSocketErrorCode, WsErrorResponse } from '@tainiex/shared-atlas';
@@ -60,14 +60,10 @@ export class WebSocketExceptionFilter implements ExceptionFilter {
     // Context logging
     // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
     const userId = client?.data?.user?.id || 'anonymous';
+    const errorStack = (exception as Error).stack;
     this.logger.error(
       `WebSocket Error [User: ${userId}]: ${structuredError.message}`,
-      {
-        code: structuredError.code,
-        category: structuredError.category,
-
-        stack: (exception as Error).stack,
-      },
+      errorStack,
     );
 
     return structuredError;

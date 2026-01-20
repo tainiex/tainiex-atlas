@@ -2,7 +2,6 @@ import {
   Injectable,
   Inject,
   BadRequestException,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -19,11 +18,10 @@ import type {
   ChatMessage as LlmMessage,
   LlmRole,
 } from '../llm/adapters/llm-adapter.interface';
+import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
 export class ChatService {
-  private logger = new Logger(ChatService.name);
-
   constructor(
     @InjectRepository(ChatSession)
     private chatSessionRepository: Repository<ChatSession>,
@@ -38,7 +36,9 @@ export class ChatService {
     @Inject('IJobQueue')
     private backfillQueue: IJobQueue<{ sessionId: string; userId: string }>,
     private configService: ConfigService,
+    private logger: LoggerService,
   ) {
+    this.logger.setContext(ChatService.name);
     // Register Queue Processor
     this.backfillQueue.process(async (job) => {
       await this.processBackfillJob(job.sessionId, job.userId);
@@ -235,13 +235,13 @@ export class ChatService {
     model?: string,
     parentId?: string,
   ): AsyncGenerator<string> {
-    console.log('[ChatService] streamMessage called:', {
+    this.logger.debug(`[ChatService] streamMessage called: ${JSON.stringify({
       sessionId,
       userId,
       content,
       role,
       parentId,
-    });
+    })}`);
 
     // 1. Verify session
     const session = await this.chatSessionRepository.findOne({
@@ -272,12 +272,12 @@ export class ChatService {
       };
     }
 
-    console.log(
+    this.logger.debug(
       `[ChatService] Distillation Progress: ${msgCount}/${DISTILL_THRESHOLD}`,
     );
 
     if (shouldDistill) {
-      console.log(
+      this.logger.debug(
         '[ChatService] Triggering Memory Distillation (Buffered 10 msgs)',
       );
       // Run in background to not block response
@@ -311,7 +311,7 @@ export class ChatService {
             context,
           );
         } catch (e) {
-          console.error('[ChatService] Distillation trigger failed', e);
+          this.logger.error('[ChatService] Distillation trigger failed', e);
         }
       })();
     }
@@ -389,28 +389,22 @@ export class ChatService {
 
     let titlePromise: Promise<any> | null = null;
     if (shouldUpdateTitle) {
-      console.log(
-        '[ChatService] Triggering title update. MessageCount:',
-        messageCount,
+      this.logger.debug(
+        `[ChatService] Triggering title update. MessageCount: ${messageCount}`,
       );
       titlePromise = this.updateSessionTitle(session, content);
     } else {
-      console.log(
-        '[ChatService] Skipping title update. MessageCount:',
-        messageCount,
-        'Length:',
-        content.length,
-        'CurrentTitle:',
-        session.title,
+      this.logger.debug(
+        `[ChatService] Skipping title update. MessageCount: ${messageCount} Length: ${content.length} CurrentTitle: ${session.title}`,
       );
     }
 
     if (role !== ChatRole.USER) {
-      console.log('[ChatService] Role is not USER, skipping AI response');
+      this.logger.log('[ChatService] Role is not USER, skipping AI response');
       return;
     }
 
-    console.log('[ChatService] Preparing to call LLM service...');
+    this.logger.log('[ChatService] Preparing to call LLM service...');
     // 5. Stream AI Response
     const history = await this.contextManager.getContext(sessionId);
     const previousMessages = history.filter((m) => m.id !== userMessage.id);
@@ -433,7 +427,7 @@ export class ChatService {
           }
         }
       } catch (e) {
-        console.error('[ChatService] Memory retrieval failed', e);
+        this.logger.error('[ChatService] Memory retrieval failed', e);
       }
 
       let effectiveHistory: LlmMessage[] = previousMessages.map((m) => ({
@@ -451,10 +445,8 @@ export class ChatService {
         ];
       }
 
-      console.log(
-        '[ChatService] Calling llmService.streamChat with',
-        effectiveHistory.length,
-        'messages (including system)',
+      this.logger.debug(
+        `[ChatService] Calling llmService.streamChat with ${effectiveHistory.length} messages (including system)`,
       );
       const stream = this.llmService.streamChat(
         effectiveHistory,
@@ -462,15 +454,15 @@ export class ChatService {
         model,
       );
 
-      console.log('[ChatService] Stream obtained, starting iteration...');
+      this.logger.log('[ChatService] Stream obtained, starting iteration...');
       for await (const chunk of stream) {
         fullAiResponse += chunk;
         yield chunk;
       }
     } catch (error) {
-      console.error('[ChatService] Stream AI Error:', error);
+      this.logger.error('[ChatService] Stream AI Error:', error);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      console.error('[ChatService] Error stack:', error.stack);
+      this.logger.error('[ChatService] Error stack:', error.stack);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       yield `data: [Error: ${error.message}]\n\n`;
       throw error;
@@ -513,7 +505,7 @@ export class ChatService {
         await this.chatMessageRepository.save(aiMessage);
       }
     } catch (error) {
-      console.error('Failed to generate AI response:', error);
+      this.logger.error('Failed to generate AI response:', error);
     }
   }
 
@@ -552,25 +544,25 @@ ${contextText}
 Title:`;
 
       const title = await this.llmService.generateContent(prompt);
-      console.log('[ChatService] Generated Title:', title);
+      this.logger.log('[ChatService] Generated Title:', title);
 
       if (title) {
         session.title = title.substring(0, 100); // Increased limit
         await this.chatSessionRepository.save(session);
       }
     } catch (error) {
-      console.error('Failed to auto-generate title:', error);
+      this.logger.error('Failed to auto-generate title:', error);
     }
   }
 
   async regenerateAllTitles() {
-    console.log('[ChatService] Starting batch title regeneration...');
+    this.logger.log('[ChatService] Starting batch title regeneration...');
     const sessions = await this.chatSessionRepository.find({
       where: { title: 'New Chat', isDeleted: false },
       order: { updatedAt: 'DESC' },
     });
 
-    console.log(
+    this.logger.debug(
       `[ChatService] Found ${sessions.length} sessions with default title.`,
     );
 
@@ -582,7 +574,7 @@ Title:`;
       if (count > 0) {
         await this.updateSessionTitle(session, '');
         processed++;
-        console.log(
+        this.logger.debug(
           `[ChatService] Updated title for session ${session.id} (${processed}/${sessions.length})`,
         );
       }
@@ -645,12 +637,12 @@ Title:`;
     newContent: string,
     model?: string,
   ): AsyncGenerator<string> {
-    console.log('[ChatService] updateMessageAndRegenerate called:', {
+    this.logger.debug(`[ChatService] updateMessageAndRegenerate called: ${JSON.stringify({
       sessionId,
       userId,
       messageId,
       newContent,
-    });
+    })}`);
 
     // 1. Verify Access
     const session = await this.chatSessionRepository.findOne({
@@ -685,7 +677,7 @@ Title:`;
       },
     );
 
-    console.log('[ChatService] User message updated and archived');
+    this.logger.log('[ChatService] User message updated and archived');
 
     // 3. Find AI reply (child message with parent_id = messageId)
     const aiReply = await this.chatMessageRepository.findOne({
@@ -699,7 +691,7 @@ Title:`;
 
     // 4. If AI reply exists, archive and delete it
     if (aiReply) {
-      console.log(
+      this.logger.debug(
         '[ChatService] Found existing AI reply, archiving and deleting...',
       );
 
@@ -721,7 +713,7 @@ Title:`;
         },
       );
 
-      console.log('[ChatService] Old AI reply archived and deleted');
+      this.logger.log('[ChatService] Old AI reply archived and deleted');
     }
 
     // 5. Get context (from updated message backwards)
@@ -731,31 +723,29 @@ Title:`;
     // Filter out the message we just edited (it's already updated)
     const previousMessages = history.filter((m) => m.id !== messageId);
 
-    console.log(
-      '[ChatService] Got context with',
-      previousMessages.length,
-      'previous messages',
+    this.logger.debug(
+      `[ChatService] Got context with ${previousMessages.length} previous messages`,
     );
 
     // 6. Stream new AI response
     let fullAiResponse = '';
     try {
-      console.log('[ChatService] Calling llmService.streamChat...');
+      this.logger.log('[ChatService] Calling llmService.streamChat...');
       const stream = this.llmService.streamChat(
         previousMessages.map((m) => ({ role: m.role, message: m.content })),
         newContent, // The updated user message content
         model,
       );
 
-      console.log('[ChatService] Stream obtained, starting iteration...');
+      this.logger.log('[ChatService] Stream obtained, starting iteration...');
       for await (const chunk of stream) {
         fullAiResponse += chunk;
         yield chunk;
       }
     } catch (error) {
-      console.error('[ChatService] Stream AI Error:', error);
+      this.logger.error('[ChatService] Stream AI Error:', error);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      console.error('[ChatService] Error stack:', error.stack);
+      this.logger.error('[ChatService] Error stack:', error.stack);
       // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       yield `data: [Error: ${error.message}]\n\n`;
       throw error;
@@ -770,7 +760,7 @@ Title:`;
         parentId: messageId, // Reply to the updated user message
       });
       await this.chatMessageRepository.save(newAiMessage);
-      console.log('[ChatService] New AI message saved');
+      this.logger.log('[ChatService] New AI message saved');
     }
 
     // 8. Update session timestamp
@@ -882,7 +872,7 @@ Title:`;
         backfill_complete: true,
       };
       await this.chatSessionRepository.save(session);
-      console.log(`[ChatService] Backfill complete for session ${sessionId}`);
+      this.logger.log(`[ChatService] Backfill complete for session ${sessionId}`);
     }
   }
 
