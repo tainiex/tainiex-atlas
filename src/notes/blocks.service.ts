@@ -58,7 +58,8 @@ export class BlocksService {
             parentBlockId: createBlockDto.parentBlockId || null,
           },
         )
-        .getRawOne();
+
+        .getRawOne<{ max: number }>();
 
       position = (maxPosition?.max ?? -1) + 1;
     }
@@ -67,7 +68,7 @@ export class BlocksService {
       noteId,
       type: createBlockDto.type,
       content: createBlockDto.content,
-      metadata: createBlockDto.metadata || {},
+      metadata: (createBlockDto.metadata || {}) as Record<string, any>,
       parentBlockId: createBlockDto.parentBlockId,
       position,
       createdBy: userId,
@@ -133,7 +134,7 @@ export class BlocksService {
       block.content = updateBlockDto.content;
     }
     if (updateBlockDto.metadata !== undefined) {
-      block.metadata = updateBlockDto.metadata;
+      block.metadata = updateBlockDto.metadata as Record<string, any>;
     }
 
     block.lastEditedBy = userId;
@@ -224,7 +225,8 @@ export class BlocksService {
 
     let diff: any = undefined;
     let content: string | undefined = block.content;
-    let metadata: any = block.metadata;
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+    let metadata: Record<string, any> | undefined = block.metadata;
 
     if (useDiff) {
       // Get previous version to calculate diff
@@ -243,6 +245,7 @@ export class BlocksService {
         if (contentChanged || metadataChanged) {
           diff = {
             content: contentChanged ? block.content : undefined,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             metadata: metadataChanged ? block.metadata : undefined,
           };
         }
@@ -256,8 +259,10 @@ export class BlocksService {
       blockId,
       versionNumber,
       content,
+
       metadata,
       changeType,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       diff,
       createdBy: userId,
     });

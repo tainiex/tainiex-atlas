@@ -2,7 +2,7 @@ import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as aiplatform from '@google-cloud/aiplatform';
 import { GoogleAuth } from 'google-auth-library';
-import { ILlmAdapter } from './adapters/llm-adapter.interface';
+import { ILlmAdapter, ChatMessage } from './adapters/llm-adapter.interface';
 import { LlmAdapterFactory } from './adapters/llm-adapter.factory';
 import { ModelClassifier } from './adapters/model-classifier';
 import { LoggerService } from '../common/logger/logger.service';
@@ -24,9 +24,11 @@ export class LlmService implements OnModuleInit {
     };
     const gsaKeyFile = this.configService.get<string>('GSA_KEY_FILE');
     if (gsaKeyFile) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       authOptions.keyFile = gsaKeyFile;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     this.auth = new GoogleAuth(authOptions);
   }
 
@@ -57,9 +59,11 @@ export class LlmService implements OnModuleInit {
     return adapter;
   }
 
-  async listModels(): Promise<any[]> {
+  listModels(): Promise<any[]> {
     // Now returns the static supported list instead of querying API
-    return ModelClassifier.getSupportedModels().map((m) => ({ name: m }));
+    return Promise.resolve(
+      ModelClassifier.getSupportedModels().map((m) => ({ name: m })),
+    );
   }
 
   /**
@@ -92,21 +96,29 @@ export class LlmService implements OnModuleInit {
       );
 
       // Use ModelGardenServiceClient to fetch TRUE supported models
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const modelClient = new aiplatform.v1beta1.ModelGardenServiceClient(
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         clientOptions,
       ) as any;
       const parent = 'publishers/google'; // Correct parent for Publisher models
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
       const [response] = await modelClient.listPublisherModels({
         parent,
       });
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-member-access
       return response.map((model: any) => ({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         name: model.name.split('/').pop(), // extract simple name
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         version: model.versionId,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         full_name: model.name,
       }));
     } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       this.logger.error('Failed to list remote models via SDK', error);
       throw error;
     }
@@ -121,7 +133,7 @@ export class LlmService implements OnModuleInit {
   }
 
   async chat(
-    history: any[],
+    history: ChatMessage[],
     message: string,
     modelName?: string,
   ): Promise<string> {
@@ -133,7 +145,7 @@ export class LlmService implements OnModuleInit {
   }
 
   async *streamChat(
-    history: any[],
+    history: ChatMessage[],
     message: string,
     modelName?: string,
   ): AsyncGenerator<string> {

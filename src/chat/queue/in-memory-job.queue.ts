@@ -14,12 +14,13 @@ export class InMemoryJobQueue<T> implements IJobQueue<T>, OnModuleDestroy {
     this.logger.debug(
       `Job added using InMemoryQueue. Queue length: ${this.queue.length}`,
     );
-    this.processNext();
+    void this.processNext();
+    return Promise.resolve();
   }
 
   process(handler: (job: T) => Promise<void>): void {
     this.handler = handler;
-    this.processNext();
+    void this.processNext();
   }
 
   private async processNext() {
@@ -45,7 +46,7 @@ export class InMemoryJobQueue<T> implements IJobQueue<T>, OnModuleDestroy {
       this.activeJobs--;
       // Recursively process next
       if (this.queue.length > 0) {
-        this.processNext();
+        void this.processNext();
       }
     }
   }

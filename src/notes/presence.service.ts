@@ -68,17 +68,17 @@ export class PresenceService {
    * User joins a note editing session.
    * 用户加入笔记编辑会话。
    */
-  async join(
+  join(
     noteId: string,
     userId: string,
     username: string,
     socketId: string,
     avatar?: string,
-  ): Promise<{
+  ): {
     success: boolean;
     collaborator?: ICollaborator;
     error?: string;
-  }> {
+  } {
     // Check concurrent editors limit
     const currentEditors = this.noteSessions.get(noteId) || new Set();
 
@@ -145,7 +145,7 @@ export class PresenceService {
    * User leaves a note editing session.
    * 用户离开笔记编辑会话。
    */
-  async leave(noteId: string, userId: string, socketId: string): Promise<void> {
+  leave(noteId: string, userId: string, socketId: string): void {
     this.removeSessionInternal(socketId);
   }
 
@@ -153,7 +153,7 @@ export class PresenceService {
    * Update user's cursor position.
    * 更新用户光标位置。
    */
-  async updateCursor(
+  updateCursor(
     noteId: string,
     userId: string,
     socketId: string,
@@ -164,7 +164,7 @@ export class PresenceService {
       endBlockId: string;
       endOffset: number;
     },
-  ): Promise<void> {
+  ): void {
     const session = this.sessions.get(socketId);
     if (session) {
       session.cursorPosition = cursorPosition;
@@ -177,7 +177,7 @@ export class PresenceService {
    * Get all active collaborators for a note.
    * 获取笔记的所有活跃协作者。
    */
-  async getCollaborators(noteId: string): Promise<ICollaborator[]> {
+  getCollaborators(noteId: string): ICollaborator[] {
     const socketIds = this.noteSessions.get(noteId);
     if (!socketIds) return [];
 
@@ -230,9 +230,9 @@ export class PresenceService {
    * Remove session by socket ID (used on disconnect).
    * 根据 Socket ID 移除会话（用于断开连接时）。
    */
-  async removeSessionBySocketId(
+  removeSessionBySocketId(
     socketId: string,
-  ): Promise<{ noteId: string; userId: string } | null> {
+  ): { noteId: string; userId: string } | null {
     return this.removeSessionInternal(socketId);
   }
 

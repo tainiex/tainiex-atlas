@@ -210,14 +210,14 @@ export class YjsTransformerService {
 
   private parseYArrayToBlocks(
     noteId: string,
-    yBlocks: Y.Array<Y.Map<any>>,
+    yBlocks: Y.Array<Y.Map<unknown>>,
   ): Partial<Block>[] {
     const blocks: Partial<Block>[] = [];
     yBlocks.forEach((yBlock, index) => {
-      const id = yBlock.get('id');
+      const id = yBlock.get('id') as string;
       const type = yBlock.get('type') as BlockType;
-      const content = yBlock.get('content')?.toString() || '';
-      const props = yBlock.get('props') || {};
+      const content = (yBlock.get('content') as string)?.toString() || '';
+      const props = (yBlock.get('props') as Record<string, unknown>) || {};
 
       if (id && type) {
         blocks.push({
@@ -371,9 +371,17 @@ export class YjsTransformerService {
             const xmlElem = new Y.XmlElement(nodeName);
 
             // Restore attributes
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const attrs = { ...block.metadata, id: block.id };
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             for (const [key, value] of Object.entries(attrs)) {
-              xmlElem.setAttribute(key, value as any);
+              if (value !== undefined && value !== null) {
+                const valStr =
+                  typeof value === 'object'
+                    ? JSON.stringify(value)
+                    : String(value as any);
+                xmlElem.setAttribute(key, valStr);
+              }
             }
 
             // Restore content

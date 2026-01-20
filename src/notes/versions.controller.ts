@@ -10,6 +10,8 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { VersionsService } from './versions.service';
 
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
+
 /**
  * VersionsController - handles version history and restoration.
  * VersionsController - 处理版本历史和恢复。
@@ -40,7 +42,7 @@ export class VersionsController {
    */
   @Post('blocks/:blockId/rollback/:versionId')
   async rollbackBlock(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('blockId') blockId: string,
     @Param('versionId') versionId: string,
   ) {

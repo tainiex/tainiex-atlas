@@ -61,23 +61,31 @@ export class ExportService {
       case BlockType.NUMBERED_LIST:
         return `1. ${block.content}`;
       case BlockType.TODO_LIST: {
-        const checked = block.metadata?.checked ? '[x]' : '[ ]';
+        const metadata = block.metadata as { checked?: boolean } | undefined;
+        const checked = metadata?.checked ? '[x]' : '[ ]';
         return `${checked} ${block.content}`;
       }
       case BlockType.CODE: {
-        const lang = block.metadata?.language || '';
+        const metadata = block.metadata as { language?: string } | undefined;
+        const lang = metadata?.language || '';
         return `\`\`\`${lang}\n${block.content}\n\`\`\``;
       }
       case BlockType.QUOTE:
         return `> ${block.content}`;
       case BlockType.DIVIDER:
         return `---`;
-      case BlockType.IMAGE:
-        return `![${block.metadata?.filename || 'image'}](${block.content})`;
-      case BlockType.VIDEO:
-        return `[Video: ${block.metadata?.filename || 'video'}](${block.content})`;
-      case BlockType.FILE:
-        return `[File: ${block.metadata?.filename || 'attachment'}](${block.content})`;
+      case BlockType.IMAGE: {
+        const metadata = block.metadata as { filename?: string } | undefined;
+        return `![${metadata?.filename || 'image'}](${block.content})`;
+      }
+      case BlockType.VIDEO: {
+        const metadata = block.metadata as { filename?: string } | undefined;
+        return `[Video: ${metadata?.filename || 'video'}](${block.content})`;
+      }
+      case BlockType.FILE: {
+        const metadata = block.metadata as { filename?: string } | undefined;
+        return `[File: ${metadata?.filename || 'attachment'}](${block.content})`;
+      }
       case BlockType.CALLOUT:
         return `:::info\n${block.content}\n:::`;
       case BlockType.TEXT:

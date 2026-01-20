@@ -60,7 +60,9 @@ describe('GoogleVertexGaAdapter', () => {
       providers: [
         {
           provide: GoogleVertexGaAdapter,
-          useFactory: (config, auth, logger) =>
+
+          useFactory: (config: any, auth: any, logger: any) =>
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
             new GoogleVertexGaAdapter(config, auth, logger, 'gemini-pro'),
           inject: [ConfigService, GoogleAuth, LoggerService],
         },

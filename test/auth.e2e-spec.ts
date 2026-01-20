@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
 import { AppModule } from './../src/app.module';
-import { InvitationService } from './../src/invitation/invitation.service';
 import { InvitationCode } from './../src/invitation/invitation-code.entity';
 import { Repository } from 'typeorm';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -10,7 +9,6 @@ import cookieParser from 'cookie-parser';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
-  let invitationService: InvitationService;
   let invitationRepo: Repository<InvitationCode>;
 
   beforeAll(async () => {
@@ -22,7 +20,6 @@ describe('AuthController (e2e)', () => {
     app.use(cookieParser());
     await app.init();
 
-    invitationService = moduleFixture.get<InvitationService>(InvitationService);
     invitationRepo = moduleFixture.get<Repository<InvitationCode>>(
       getRepositoryToken(InvitationCode),
     );
@@ -47,6 +44,7 @@ describe('AuthController (e2e)', () => {
     const testPass = 'Password123!';
 
     // 2. Register
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     await request(app.getHttpServer())
       .post('/auth/signup')
       .send({
@@ -58,6 +56,7 @@ describe('AuthController (e2e)', () => {
       .expect(201);
 
     // 3. Login
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const loginResponse = await request(app.getHttpServer())
       .post('/auth/login')
       .send({
@@ -78,15 +77,18 @@ describe('AuthController (e2e)', () => {
     if (!accessTokenCookie) throw new Error('Access token cookie not found');
 
     // 4. Access Profile using Cookie
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     const profileResponse = await request(app.getHttpServer())
       .get('/auth/profile')
       .set('Cookie', [accessTokenCookie])
       .expect(200);
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     expect(profileResponse.body.username).toBe(testUser);
   });
 
   it('should fail to register with invalid code', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     await request(app.getHttpServer())
       .post('/auth/signup')
       .send({

@@ -3,10 +3,13 @@ import { ThrottlerGuard } from '@nestjs/throttler';
 
 @Injectable()
 export class UserThrottlerGuard extends ThrottlerGuard {
-  protected async getTracker(req: Record<string, any>): Promise<string> {
+  protected getTracker(req: Record<string, any>): Promise<string> {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (req.user && req.user.id) {
-      return req.user.id;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      return Promise.resolve(req.user.id);
     }
-    return req.ips.length ? req.ips[0] : req.ip; // Fallback to IP
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+    return Promise.resolve(req.ips.length ? req.ips[0] : req.ip); // Fallback to IP
   }
 }

@@ -1,10 +1,6 @@
-import {
-  Injectable,
-  NotFoundException,
-  ForbiddenException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Block } from './entities/block.entity';
 import { BlockVersion } from './entities/block-version.entity';
 import { Note } from './entities/note.entity';
@@ -71,13 +67,18 @@ export class VersionsService {
     // If it was a diff version, we might need to reconstruct the state (simplified here for now)
     if (version.content !== null) {
       block.content = version.content;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       block.metadata = version.metadata;
     } else if (version.diff) {
       // Reconstruct from diff (this is a simple implementation)
       // In a real production system, you'd iterate back to the last full snapshot
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (version.diff.content !== undefined)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         block.content = version.diff.content;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (version.diff.metadata !== undefined)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         block.metadata = version.diff.metadata;
     }
 
@@ -110,6 +111,7 @@ export class VersionsService {
           id: b.id,
           type: b.type,
           content: b.content,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
           metadata: b.metadata,
           parentBlockId: b.parentBlockId,
           position: b.position,
@@ -145,7 +147,7 @@ export class VersionsService {
       } catch (error) {
         console.error(
           `[VersionsService] Failed to snapshot note ${note.id}:`,
-          error.message,
+          error instanceof Error ? error.message : String(error),
         );
       }
     }

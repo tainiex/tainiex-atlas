@@ -11,6 +11,7 @@ import {
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import type { CookieSerializeOptions } from '@fastify/cookie';
 
+import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { JwtRefreshAuthGuard } from './jwt-refresh-auth.guard';
@@ -47,7 +48,7 @@ export class AuthController {
     if (!user) {
       return { message: 'Invalid credentials' };
     }
-    const tokens = await this.authService.login(user as any);
+    const tokens = await this.authService.login(user as User);
 
     const cookieDomain = process.env.COOKIE_DOMAIN;
     // In development, use 60s for access token to test refresh logic
@@ -144,7 +145,7 @@ export class AuthController {
   async microsoftLogin(
     @Body() dto: MicrosoftLoginDto,
     @Res({ passthrough: true }) res: FastifyReply,
-    @Request() req: any,
+    @Request() req: FastifyRequest,
   ) {
     const result = await this.authService.microsoftLogin(dto.idToken);
 
@@ -188,7 +189,7 @@ export class AuthController {
   async microsoftSignup(
     @Body() dto: SocialSignupDto,
     @Res({ passthrough: true }) res: FastifyReply,
-    @Request() req: any,
+    @Request() req: FastifyRequest,
   ) {
     const result = await this.authService.microsoftSignup(
       dto.invitationCode,
@@ -235,7 +236,7 @@ export class AuthController {
   async googleSignup(
     @Body() dto: SocialSignupDto,
     @Res({ passthrough: true }) res: FastifyReply,
-    @Request() req: any,
+    @Request() req: FastifyRequest,
   ) {
     const result = await this.authService.googleSignup(
       dto.invitationCode,

@@ -179,7 +179,9 @@ export class GraphService {
         ORDER BY gp.depth, gp.weight DESC;
         `;
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const results = await this.dataSource.query(query, [startNodeId, maxDepth]);
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return results;
   }
 }

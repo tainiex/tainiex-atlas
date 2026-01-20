@@ -156,6 +156,7 @@ export class AuthService {
             // Explicitly set redirect_uri to null for mobile
             const response = await mobileClient.getToken({
               code: dto.code,
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
               redirect_uri: null as any,
             });
             googleTokens = response.tokens;
@@ -167,6 +168,7 @@ export class AuthService {
             console.log('[GoogleLogin] Standard token exchange successful.');
           }
 
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           idToken = googleTokens.id_token || undefined;
         } catch (error) {
           const tokenError = error as Error;
@@ -192,6 +194,7 @@ export class AuthService {
               const { tokens } = await mobileClient.getToken({
                 code: dto.code,
 
+                // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 redirect_uri: null as any,
               });
               idToken = tokens.id_token || undefined;
@@ -199,10 +202,15 @@ export class AuthService {
                 '[GoogleLogin] Retry: Mobile token exchange successful.',
               );
             } catch (mobileError) {
-              console.error('[GoogleLogin] Retry failed:', mobileError.message);
+              console.error(
+                '[GoogleLogin] Retry failed:',
+                (mobileError as Error).message,
+              );
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
               if (mobileError.response?.data) {
                 console.error(
                   '[GoogleLogin] Mobile error details:',
+                  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
                   JSON.stringify(mobileError.response.data),
                 );
               }
@@ -248,7 +256,7 @@ export class AuthService {
         throw error;
       }
       throw new UnauthorizedException(
-        `Google login process failed: ${error.message}`,
+        `Google login process failed: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }
@@ -322,8 +330,10 @@ export class AuthService {
     });
 
     const getKey = (header, callback) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
       client.getSigningKey(header.kid, (err, key) => {
         const signingKey = key?.getPublicKey();
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
         callback(null, signingKey);
       });
     };

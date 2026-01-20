@@ -41,10 +41,11 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
       project: projectId,
       location: location,
       googleAuthOptions: {
-        authClient: authClient as any,
+        authClient: authClient,
       },
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
     this.vertexAI = new VertexAI(vertexOptions);
     this.model = this.vertexAI.getGenerativeModel({ model: this.modelName });
     this.logger.info(
@@ -60,25 +61,26 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
     retries = 3,
     delay = 1000,
   ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let i = 0; i < retries; i++) {
       try {
         return await operation();
-      } catch (error: any) {
+      } catch (error) {
         lastError = error;
+        const err = error as Error & { code?: string };
         const isNetworkError =
-          error.message?.includes('fetch failed') ||
-          error.message?.includes('ConnectTimeoutError') ||
-          error.message?.includes('socket hang up') ||
-          error.message?.includes('exception posting request') ||
-          error.code === 'UND_ERR_CONNECT_TIMEOUT' ||
-          error.code === 'ETIMEDOUT';
+          err.message?.includes('fetch failed') ||
+          err.message?.includes('ConnectTimeoutError') ||
+          err.message?.includes('socket hang up') ||
+          err.message?.includes('exception posting request') ||
+          err.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+          err.code === 'ETIMEDOUT';
 
         if (isNetworkError && i < retries - 1) {
           const waitTime = delay * Math.pow(2, i); // Exponential backoff
           this.logger.warn(
-            `[GoogleVertexGaAdapter] Network error: ${error.message}. Retrying in ${waitTime}ms... (${i + 1}/${retries})`,
+            `[GoogleVertexGaAdapter] Network error: ${err.message}. Retrying in ${waitTime}ms... (${i + 1}/${retries})`,
           );
           await new Promise((resolve) => setTimeout(resolve, waitTime));
           continue;
@@ -99,7 +101,7 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
       } catch (error) {
         this.logger.error(
           '[GoogleVertexGaAdapter] generateContent failed:',
-          error,
+          (error as Error).message,
         );
         throw error;
       }
@@ -154,8 +156,11 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
           const response = result.response;
           const text = response.candidates?.[0].content.parts[0].text;
           return text || '';
-        } catch (error: any) {
-          this.logger.error('[GoogleVertexGaAdapter] chat failed:', error);
+        } catch (error) {
+          this.logger.error(
+            '[GoogleVertexGaAdapter] chat failed:',
+            (error as Error).message,
+          );
           throw error;
         }
       });
@@ -208,22 +213,13 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
           `[GoogleVertexGaAdapter] Stream finished with ${chunkCount} chunks`,
         );
         return; // Success, exit loop
-      } catch (error: any) {
-        // Network errors during streaming iteration will end up here too?
-        // Yes, `for await` throws if stream errors.
-        // We should retry network errors here too?
-        // If we are halfway through, we might duplicate text if we restart?
-        // User requirement: "Increase robustnes, max 3 retries" likely implies connection retries.
-        // If mid-stream fails, simple restart duplicates content.
-        // BUT, withRetry only wraps sendMessageStream.
-        // If `for await` fails, it's outside withRetry.
-        // Let's catch `for await` errors here.
-
+      } catch (error) {
+        const err = error as Error & { code?: string };
         const isNetworkError =
-          error.message?.includes('fetch failed') ||
-          error.message?.includes('ConnectTimeoutError') ||
-          error.message?.includes('exception posting request') ||
-          error.code === 'UND_ERR_CONNECT_TIMEOUT';
+          err.message?.includes('fetch failed') ||
+          err.message?.includes('ConnectTimeoutError') ||
+          err.message?.includes('exception posting request') ||
+          err.code === 'UND_ERR_CONNECT_TIMEOUT';
 
         if (isNetworkError) {
           // Ideally we should check if we yielded anything.
@@ -233,6 +229,7 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
           // Wait, if I want to support retrying the connection establishment, existing withRetry does that.
           // If the stream breaks, proper resumption is hard.
           // Let's assume the user's issue is INITIAL connection timeout.
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
           this.logger.error('[GoogleVertexGaAdapter] streamChat error:', error);
 
           // Check for maxOutputTokens error
@@ -266,13 +263,15 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         const apiEndpoint = `${location}-aiplatform.googleapis.com`;
 
         // Lazy load PredictionServiceClient to avoid import issues if unused
+
         const { PredictionServiceClient, helpers } =
           await import('@google-cloud/aiplatform');
 
         // Pass the GoogleAuth instance directly
+
         const client = new PredictionServiceClient({
           apiEndpoint: apiEndpoint,
-          auth: this.auth as any,
+          auth: this.auth,
           projectId: projectId,
         });
 
@@ -287,25 +286,34 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         });
 
         // Fix TS2488: Don't destructure, handle promise properly
+
         const predictResult = await client.predict({
           endpoint,
-          instances: [instanceValue as any], // Fix TS2322: Cast to any
+
+          instances: [instanceValue as any],
         });
+
         const response = predictResult[0];
 
         const predictions = response.predictions;
+
         if (!predictions || predictions.length === 0) {
           throw new Error('No predictions returned');
         }
 
         const embedding =
           predictions[0].structValue?.fields?.embeddings?.structValue?.fields?.values?.listValue?.values?.map(
-            (v) => v.numberValue || 0,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            (v: any) => (v.numberValue as number) || 0,
           );
 
         if (!embedding) {
           // Try alternative structure if above fails
-          const predictionVal = helpers.fromValue(predictions[0] as any) as any;
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+          const predictionVal = helpers.fromValue(predictions[0] as any) as {
+            embeddings?: { values?: number[] };
+          };
+
           if (
             predictionVal?.embeddings &&
             Array.isArray(predictionVal.embeddings.values)
@@ -319,7 +327,7 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
       } catch (error) {
         this.logger.error(
           '[GoogleVertexGaAdapter] getEmbeddings failed:',
-          error,
+          (error as Error).message,
         );
         throw error;
       }

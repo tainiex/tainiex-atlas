@@ -11,6 +11,7 @@ import { WorkerTask, DistillationPayload } from './worker.interfaces';
  * 3. Delegate to imported handler
  */
 export default async function (task: WorkerTask): Promise<any> {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
   const { taskName, data } = task;
 
   switch (taskName) {

@@ -3,6 +3,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { SearchService } from './search.service';
 import { SearchResultDto } from '@tainiex/shared-atlas';
 
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
+
 /**
  * SearchController - handles searching within notes.
  * SearchController - 处理笔记内的搜索。
@@ -18,7 +20,7 @@ export class SearchController {
    */
   @Get()
   async search(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Query('q') query: string,
   ): Promise<SearchResultDto> {
     return this.searchService.search(req.user.id, query);

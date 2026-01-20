@@ -40,18 +40,14 @@ export class RateLimitService implements OnModuleDestroy {
 
   onModuleDestroy() {
     clearInterval(this.flushInterval);
-    this.flushDirtyCounters(); // Force flush on shutdown
+    void this.flushDirtyCounters(); // Force flush on shutdown
   }
 
   /**
    * Checks if a key is allowed.
    * Use Memory-First approach.
    */
-  async isAllowed(
-    key: string,
-    limit: number,
-    durationSeconds: number,
-  ): Promise<boolean> {
+  isAllowed(key: string, limit: number, durationSeconds: number): boolean {
     // 0. Check Blocklist
     if (this.blockedIPs.has(key)) {
       this.logger.debug(`Blocked IP attempted connection: ${key}`);

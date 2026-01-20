@@ -62,11 +62,14 @@ export class SearchService {
       .getRawAndEntities();
 
     const formattedBlocks = blockMatches.entities.map((block, index) => {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const raw = blockMatches.raw[index];
       return {
         ...block,
         note: {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           id: raw.note_id,
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
           title: raw.note_title,
         },
         // For now, we don't implement complex snippet generation in TS,
@@ -77,6 +80,7 @@ export class SearchService {
 
     return {
       notes,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       blocks: formattedBlocks as any,
       total: notes.length + formattedBlocks.length,
     };

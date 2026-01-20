@@ -25,7 +25,7 @@ import { WebSocketErrorCode } from '@tainiex/shared-atlas';
 
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 
-interface AuthenticatedSocket extends Socket {
+export interface AuthenticatedSocket extends Socket {
   data: {
     user?: JwtPayload;
   };
@@ -149,7 +149,7 @@ export class ChatGateway
     try {
       // 0. Rate Limiting Check (Database)
       const ip = client.handshake.address;
-      const isAllowed = await this.rateLimitService.isAllowed(
+      const isAllowed = this.rateLimitService.isAllowed(
         ip,
         ChatGateway.RATE_LIMIT_POINTS,
         ChatGateway.RATE_LIMIT_DURATION,

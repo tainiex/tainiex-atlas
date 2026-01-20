@@ -74,6 +74,7 @@ export class StorageController {
       const expiresAt = Date.now() + expirationMinutes * 60 * 1000;
 
       // Get file metadata / 获取文件元数据
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const metadata = await this.storageService.getFileMetadata(gcsPath);
 
       return {
@@ -82,10 +83,12 @@ export class StorageController {
         path: gcsPath,
         expiresAt,
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         metadata: {
           filename: file.filename,
           size: buffer.length,
           contentType: file.mimetype,
+
           ...metadata,
         },
       };

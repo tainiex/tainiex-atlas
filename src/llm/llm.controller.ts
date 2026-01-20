@@ -1,6 +1,5 @@
 import {
   Controller,
-  Post,
   Get,
   Body,
   UseGuards,
@@ -40,7 +39,10 @@ export class LlmController {
     } catch (error) {
       console.error('Remote Model Fetch Error:', error);
       // Avoid returning full error object as it may contain circular references
-      return { error: 'Failed to fetch models', message: error.message };
+      return {
+        error: 'Failed to fetch models',
+        message: (error as Error).message,
+      };
     }
   }
 }

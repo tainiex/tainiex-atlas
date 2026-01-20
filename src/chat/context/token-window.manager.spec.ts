@@ -26,7 +26,10 @@ describe('TokenWindowContextManager', () => {
     manager = module.get<TokenWindowContextManager>(TokenWindowContextManager);
 
     // Mock findOne implementation for Linked List Traversal
-    mockRepo.findOne.mockImplementation(async ({ where, order }) => {
+
+    mockRepo.findOne.mockImplementation(async ({ where, order }: any) => {
+      await Promise.resolve();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (where.sessionId && order?.createdAt === 'DESC') {
         // Return the latest message (highest ID) in the mock set for this session
         // We assume mock resolved value is set before this runs
@@ -34,6 +37,7 @@ describe('TokenWindowContextManager', () => {
         // We need access to the data source.
         return null; // dynamic return based on current test data
       }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (where.id) {
         return null;
       }
@@ -68,11 +72,16 @@ describe('TokenWindowContextManager', () => {
     ] as ChatMessage[];
 
     // Mock findOne implementation
-    mockRepo.findOne.mockImplementation(async (query) => {
+
+    mockRepo.findOne.mockImplementation(async (query: any) => {
+      await Promise.resolve();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (query.where.sessionId && query.order?.createdAt === 'DESC') {
         return mockMessages[0]; // Return latest
       }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (query.where.id) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         return mockMessages.find((m) => m.id === query.where.id);
       }
       return null;
@@ -117,11 +126,15 @@ describe('TokenWindowContextManager', () => {
       },
     ] as ChatMessage[];
 
-    mockRepo.findOne.mockImplementation(async (query) => {
+    mockRepo.findOne.mockImplementation(async (query: any) => {
+      await Promise.resolve();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (query.where.sessionId && query.order?.createdAt === 'DESC') {
         return mockMessages[0]; // Return latest
       }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (query.where.id) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         return mockMessages.find((m) => m.id === query.where.id);
       }
       return null;
@@ -156,11 +169,15 @@ describe('TokenWindowContextManager', () => {
       }, // 2 tokens
     ] as ChatMessage[];
 
-    mockRepo.findOne.mockImplementation(async (query) => {
+    mockRepo.findOne.mockImplementation(async (query: any) => {
+      await Promise.resolve();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (query.where.sessionId && query.order?.createdAt === 'DESC') {
         return mockMessages[0]; // Return latest
       }
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (query.where.id) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         return mockMessages.find((m) => m.id === query.where.id);
       }
       return null;

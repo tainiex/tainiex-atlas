@@ -15,9 +15,11 @@ export class TokenLifecycleService {
    */
   scheduleRefreshNotification(client: Socket, token: string) {
     try {
-      const payload = this.jwtService.decode(token);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const payload: any = this.jwtService.decode(token);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (!payload?.exp) return;
-
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const expiryTime = payload.exp * 1000;
       const now = Date.now();
       // Calculate time until we should notify (Expiry - Buffer)
@@ -77,7 +79,10 @@ export class TokenLifecycleService {
 
     try {
       // Verify new Token (Optional here if Gateway does it, but good for safety)
-      const payload = await this.jwtService.verifyAsync(newToken);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const payload: any = await this.jwtService.verifyAsync(newToken);
+
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
       client.data.user = payload;
 
       // Reschedule

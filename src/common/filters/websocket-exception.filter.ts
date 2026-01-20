@@ -15,7 +15,6 @@ export class WebSocketExceptionFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost) {
     const client = host.switchToWs().getClient<Socket>();
-    const data = host.switchToWs().getData();
 
     const error = this.handleError(exception, client);
 
@@ -30,16 +29,19 @@ export class WebSocketExceptionFilter implements ExceptionFilter {
       const err = exception.getError();
       structuredError = {
         code: WebSocketErrorCode.INTERNAL_ERROR, // Default, ideally WsException should carry code
+
         message:
           typeof err === 'string'
             ? err
-            : (err as any).message || 'WebSocket Error',
+            : (err as Error).message || 'WebSocket Error',
         category: 'SERVER', // Default
         timestamp: new Date().toISOString(),
       };
 
       // Try to extract code if present
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       if (typeof err === 'object' && (err as any).code) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
         structuredError.code = (err as any).code;
       }
     } else if (exception instanceof HttpException) {
@@ -56,13 +58,15 @@ export class WebSocketExceptionFilter implements ExceptionFilter {
     }
 
     // Context logging
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
     const userId = client?.data?.user?.id || 'anonymous';
     this.logger.error(
       `WebSocket Error [User: ${userId}]: ${structuredError.message}`,
       {
         code: structuredError.code,
         category: structuredError.category,
-        stack: (exception as any).stack,
+
+        stack: (exception as Error).stack,
       },
     );
 
@@ -71,6 +75,7 @@ export class WebSocketExceptionFilter implements ExceptionFilter {
 
   private categorizeError(error: any): WsErrorResponse {
     // JWT Errors
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (error.name === 'JsonWebTokenError') {
       return {
         code: WebSocketErrorCode.AUTH_TOKEN_INVALID,
@@ -80,6 +85,7 @@ export class WebSocketExceptionFilter implements ExceptionFilter {
       };
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (error.name === 'TokenExpiredError') {
       return {
         code: WebSocketErrorCode.AUTH_TOKEN_EXPIRED,
@@ -90,11 +96,13 @@ export class WebSocketExceptionFilter implements ExceptionFilter {
     }
 
     // Database Errors (PostgreSQL)
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
     if (error.code?.startsWith('23')) {
       return {
         code: WebSocketErrorCode.DATABASE_ERROR,
         message: 'Database operation failed',
         category: 'SERVER',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
         details: { dbCode: error.code },
         timestamp: new Date().toISOString(),
       };
@@ -105,6 +113,7 @@ export class WebSocketExceptionFilter implements ExceptionFilter {
       code: WebSocketErrorCode.INTERNAL_ERROR,
       message: 'An unexpected error occurred',
       category: 'SERVER',
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
       details: { original: error.message },
       timestamp: new Date().toISOString(),
     };

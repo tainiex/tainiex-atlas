@@ -1,5 +1,5 @@
 import { ConfigService } from '@nestjs/config';
-import { Storage } from '@google-cloud/storage';
+import { Storage, StorageOptions } from '@google-cloud/storage';
 import { v4 as uuidv4 } from 'uuid';
 import { StorageStrategy } from './storage.strategy.interface';
 import { Injectable, Logger } from '@nestjs/common';
@@ -30,7 +30,7 @@ export class GcsStorageStrategy implements StorageStrategy {
       this.logger.warn('GCS_BUCKET_NAME not configured');
     }
 
-    const storageOptions: any = {
+    const storageOptions: StorageOptions = {
       projectId: projectId,
     };
 
@@ -126,7 +126,9 @@ export class GcsStorageStrategy implements StorageStrategy {
 
       return url;
     } catch (error: any) {
-      this.logger.error(`SignedURL Error for ${filename}: ${error.message}`);
+      this.logger.error(
+        `SignedURL Error for ${filename}: ${(error as Error).message}`,
+      );
       return null;
     }
   }
@@ -144,7 +146,9 @@ export class GcsStorageStrategy implements StorageStrategy {
       this.logger.log(`Deleted file: ${filename}`);
       return true;
     } catch (error: any) {
-      this.logger.error(`Delete Error for ${filename}: ${error.message}`);
+      this.logger.error(
+        `Delete Error for ${filename}: ${(error as Error).message}`,
+      );
       return false;
     }
   }
@@ -162,7 +166,7 @@ export class GcsStorageStrategy implements StorageStrategy {
       return exists;
     } catch (error: any) {
       this.logger.error(
-        `Exists check failed for ${filename}: ${error.message}`,
+        `Exists check failed for ${filename}: ${(error as Error).message}`,
       );
       return false;
     }
@@ -186,7 +190,7 @@ export class GcsStorageStrategy implements StorageStrategy {
       };
     } catch (error: any) {
       this.logger.error(
-        `Metadata fetch failed for ${filename}: ${error.message}`,
+        `Metadata fetch failed for ${filename}: ${(error as Error).message}`,
       );
       return null;
     }

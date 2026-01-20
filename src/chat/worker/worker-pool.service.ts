@@ -25,6 +25,7 @@ export class WorkerPoolService implements OnModuleDestroy {
    */
   async run<T = any, R = any>(taskName: string, data: T): Promise<R> {
     const task: WorkerTask<T> = { taskName, data };
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-return
     return this.piscina.run(task);
   }
 

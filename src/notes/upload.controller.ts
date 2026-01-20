@@ -11,6 +11,7 @@ import type { FastifyRequest } from 'fastify';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StorageService } from '../common/storage/storage.service';
 import { BlocksService } from './blocks.service';
+import { NotesService } from './notes.service';
 
 /**
  * Accepted MIME types for different file categories.
@@ -49,6 +50,19 @@ const SIZE_LIMITS = {
   file: 50 * 1024 * 1024, // 50MB
 };
 
+interface UploadedFile {
+  buffer: Buffer;
+  originalname: string;
+  mimetype: string;
+  size: number;
+}
+
+interface RequestWithUser extends FastifyRequest {
+  user: {
+    id: string;
+  };
+}
+
 /**
  * UploadController - handles file uploads for notes.
  * UploadController - 处理笔记的文件上传。
@@ -59,6 +73,7 @@ export class UploadController {
   constructor(
     private readonly storageService: StorageService,
     private readonly blocksService: BlocksService,
+    private readonly notesService: NotesService,
   ) {}
 
   /**
@@ -67,7 +82,7 @@ export class UploadController {
    */
   @Post('image/:noteId')
   async uploadImage(
-    @Req() req: FastifyRequest,
+    @Req() req: RequestWithUser,
     @Param('noteId') noteId: string,
   ) {
     const file = await req.file();
@@ -75,13 +90,13 @@ export class UploadController {
       throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
     }
     const buffer = await file.toBuffer();
-    const mappedFile = {
+    const mappedFile: UploadedFile = {
       buffer,
       originalname: file.filename,
       mimetype: file.mimetype,
       size: buffer.length,
     };
-    return this.handleUpload(req['user'].id, noteId, mappedFile, 'image');
+    return this.handleUpload(req.user.id, noteId, mappedFile, 'image');
   }
 
   /**
@@ -90,7 +105,7 @@ export class UploadController {
    */
   @Post('video/:noteId')
   async uploadVideo(
-    @Req() req: FastifyRequest,
+    @Req() req: RequestWithUser,
     @Param('noteId') noteId: string,
   ) {
     const file = await req.file();
@@ -98,13 +113,13 @@ export class UploadController {
       throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
     }
     const buffer = await file.toBuffer();
-    const mappedFile = {
+    const mappedFile: UploadedFile = {
       buffer,
       originalname: file.filename,
       mimetype: file.mimetype,
       size: buffer.length,
     };
-    return this.handleUpload(req['user'].id, noteId, mappedFile, 'video');
+    return this.handleUpload(req.user.id, noteId, mappedFile, 'video');
   }
 
   /**
@@ -113,7 +128,7 @@ export class UploadController {
    */
   @Post('file/:noteId')
   async uploadFile(
-    @Req() req: FastifyRequest,
+    @Req() req: RequestWithUser,
     @Param('noteId') noteId: string,
   ) {
     const file = await req.file();
@@ -121,13 +136,13 @@ export class UploadController {
       throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
     }
     const buffer = await file.toBuffer();
-    const mappedFile = {
+    const mappedFile: UploadedFile = {
       buffer,
       originalname: file.filename,
       mimetype: file.mimetype,
       size: buffer.length,
     };
-    return this.handleUpload(req['user'].id, noteId, mappedFile, 'file');
+    return this.handleUpload(req.user.id, noteId, mappedFile, 'file');
   }
 
   /**
@@ -137,8 +152,8 @@ export class UploadController {
   private async handleUpload(
     userId: string,
     noteId: string,
-    file: any,
-    type: 'image' | 'video' | 'file',
+    file: UploadedFile,
+    type: keyof typeof ACCEPTED_MIME_TYPES,
   ) {
     if (!file) {
       throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
@@ -161,10 +176,7 @@ export class UploadController {
     }
 
     // Check if user can edit this note
-    const canEdit = await this.blocksService['notesService'].canEdit(
-      noteId,
-      userId,
-    );
+    const canEdit = await this.notesService.canEdit(noteId, userId);
     if (!canEdit) {
       throw new HttpException('Cannot edit this note', HttpStatus.FORBIDDEN);
     }
@@ -188,6 +200,7 @@ export class UploadController {
       const expiresAt = Date.now() + expirationMinutes * 60 * 1000;
 
       // Get file metadata
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const metadata = await this.storageService.getFileMetadata(gcsPath);
 
       return {
@@ -197,10 +210,12 @@ export class UploadController {
         gcsPath, // Keep 'gcsPath' for backward compatibility if any
         expiresAt,
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         metadata: {
           filename: file.originalname,
           size: file.size,
           contentType: file.mimetype,
+
           ...metadata,
         },
       };

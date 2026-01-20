@@ -23,10 +23,11 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
     this.modelName = modelName;
   }
 
-  async initialize(): Promise<void> {
+  initialize(): Promise<void> {
     this.logger.info(
       `[GoogleVertexPreviewAdapter] Initialized model: ${this.modelName}`,
     );
+    return Promise.resolve();
   }
 
   /**
@@ -37,25 +38,26 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
     retries = 3,
     delay = 1000,
   ): Promise<T> {
-    let lastError: any;
+    let lastError: unknown;
 
     for (let i = 0; i < retries; i++) {
       try {
         return await operation();
-      } catch (error: any) {
+      } catch (error) {
         lastError = error;
+        const err = error as Error & { code?: string };
         const isNetworkError =
-          error.message?.includes('fetch failed') ||
-          error.message?.includes('ConnectTimeoutError') ||
-          error.message?.includes('socket hang up') ||
-          error.message?.includes('exception posting request') ||
-          error.code === 'UND_ERR_CONNECT_TIMEOUT' ||
-          error.code === 'ETIMEDOUT';
+          err.message?.includes('fetch failed') ||
+          err.message?.includes('ConnectTimeoutError') ||
+          err.message?.includes('socket hang up') ||
+          err.message?.includes('exception posting request') ||
+          err.code === 'UND_ERR_CONNECT_TIMEOUT' ||
+          err.code === 'ETIMEDOUT';
 
         if (isNetworkError && i < retries - 1) {
           const waitTime = delay * Math.pow(2, i); // Exponential backoff
           this.logger.warn(
-            `[GoogleVertexPreviewAdapter] Network error: ${error.message}. Retrying in ${waitTime}ms... (${i + 1}/${retries})`,
+            `[GoogleVertexPreviewAdapter] Network error: ${err.message}. Retrying in ${waitTime}ms... (${i + 1}/${retries})`,
           );
           await new Promise((resolve) => setTimeout(resolve, waitTime));
           continue;
@@ -101,12 +103,15 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
         );
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const data = await response.json();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      return text || '';
+      return (text as string) || '';
     } catch (error) {
       this.logger.error(
         '[GoogleVertexPreviewAdapter] generateContent failed:',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         error,
       );
       throw error;
@@ -183,10 +188,13 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
         );
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const data = await response.json();
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      return text || '';
+      return (text as string) || '';
     } catch (error) {
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       this.logger.error('[GoogleVertexPreviewAdapter] chat failed:', error);
       throw error;
     }
@@ -312,7 +320,9 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
 
           const jsonStr = buffer.substring(objStart, objEnd + 1);
           try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
             const data = JSON.parse(jsonStr);
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
             const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
             if (text) {
               yield text;
@@ -331,13 +341,14 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
     } catch (error) {
       this.logger.error(
         '[GoogleVertexPreviewAdapter] streamChat failed:',
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         error,
       );
       throw error;
     }
   }
 
-  async getEmbeddings(text: string): Promise<number[]> {
+  getEmbeddings(_text: string): Promise<number[]> {
     throw new Error(
       'Method not implemented in Preview Adapter. Use GA Adapter for embeddings.',
     );

@@ -191,15 +191,13 @@ export class CollaborationGateway
     }
   }
 
-  async handleDisconnect(client: AuthenticatedSocket) {
+  handleDisconnect(client: AuthenticatedSocket) {
     this.tokenLifecycleService.clearTimer(client.id);
     this.healthService.onDisconnect(client.id);
     // Clean up all sessions for this client
     this.logger.log(`Client disconnected: ${client.id}`);
 
-    const removed = await this.presenceService.removeSessionBySocketId(
-      client.id,
-    );
+    const removed = this.presenceService.removeSessionBySocketId(client.id);
 
     if (removed) {
       client
@@ -230,7 +228,7 @@ export class CollaborationGateway
     }
 
     // Join session
-    const result = await this.presenceService.join(
+    const result = this.presenceService.join(
       noteId,
       userId,
       user.username || 'Anonymous',
@@ -268,7 +266,7 @@ export class CollaborationGateway
     });
 
     // Send list of current collaborators to the joining user
-    const sessions = await this.presenceService.getCollaborators(noteId);
+    const sessions = this.presenceService.getCollaborators(noteId);
     client.emit(
       'presence:list',
       sessions.map((s) => ({
@@ -296,7 +294,7 @@ export class CollaborationGateway
     const userId = user.sub;
     const { noteId } = payload;
 
-    await this.presenceService.leave(noteId, userId, client.id);
+    this.presenceService.leave(noteId, userId, client.id);
     await client.leave(noteId);
 
     client.to(noteId).emit('presence:leave', { userId });
@@ -325,7 +323,7 @@ export class CollaborationGateway
   }
 
   @SubscribeMessage('cursor:update')
-  async handleCursorUpdate(
+  handleCursorUpdate(
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: CursorUpdatePayload,
   ) {
@@ -335,7 +333,7 @@ export class CollaborationGateway
     const userId = user.sub;
     const { noteId, position, selection } = payload;
 
-    await this.presenceService.updateCursor(
+    this.presenceService.updateCursor(
       noteId,
       userId,
       client.id,

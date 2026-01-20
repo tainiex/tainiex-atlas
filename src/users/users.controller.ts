@@ -8,13 +8,19 @@ import {
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
 
+interface RequestWithUser {
+  user: {
+    id: string;
+  };
+}
+
 @Controller('profile')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @UseGuards(JwtAuthGuard)
   @Get()
-  async getProfile(@Request() req) {
+  async getProfile(@Request() req: RequestWithUser) {
     // req.user is populated by JwtStrategy
     const userId = req.user.id;
     const user = await this.usersService.findOneById(userId);

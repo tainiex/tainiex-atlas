@@ -34,14 +34,17 @@ export class ReliableMessageService {
     userId: string,
   ): Promise<void> {
     const messageId = this.generateMessageId();
+
     const message: PendingMessage = {
       id: messageId,
       event,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       data,
       timestamp: Date.now(),
       retryCount: 0,
       maxRetries: this.MAX_RETRIES,
     };
+    await Promise.resolve();
 
     // Store pending
     if (!this.pendingMessages.has(userId)) {

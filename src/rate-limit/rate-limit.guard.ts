@@ -9,6 +9,24 @@ import { Reflector } from '@nestjs/core';
 import { RateLimitService } from './rate-limit.service';
 import { RATE_LIMIT_KEY, RateLimitOptions } from './rate-limit.decorator';
 import { WsException } from '@nestjs/websockets';
+import { FastifyRequest } from 'fastify';
+
+interface RequestWithUser extends FastifyRequest {
+  user?: {
+    id: string;
+  };
+}
+
+interface WsClient {
+  handshake?: {
+    address?: string;
+  };
+  data?: {
+    user?: {
+      id: string;
+    };
+  };
+}
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
@@ -17,7 +35,7 @@ export class RateLimitGuard implements CanActivate {
     private rateLimitService: RateLimitService,
   ) {}
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  canActivate(context: ExecutionContext): boolean | Promise<boolean> {
     // 1. Get metadata (Decorator options)
     const rateLimit = this.reflector.getAllAndOverride<RateLimitOptions>(
       RATE_LIMIT_KEY,
@@ -34,8 +52,8 @@ export class RateLimitGuard implements CanActivate {
     let ip = '';
 
     if (type === 'http') {
-      const req = context.switchToHttp().getRequest();
-      ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+      const req = context.switchToHttp().getRequest<RequestWithUser>();
+      ip = req.ip || (req.headers['x-forwarded-for'] as string) || 'unknown';
       // Use User ID if available, else IP
       key = req.user ? `user:${req.user.id}` : `ip:${ip}`;
       // Add handler name to key to isolate limits per endpoint?
@@ -44,7 +62,7 @@ export class RateLimitGuard implements CanActivate {
       const handlerName = context.getHandler().name;
       key = `${key}:${handlerName}`;
     } else if (type === 'ws') {
-      const client = context.switchToWs().getClient();
+      const client = context.switchToWs().getClient<WsClient>();
       const data = client.data || {};
       ip = client.handshake?.address || 'unknown';
       key = data.user ? `user:${data.user.id}` : `ip:${ip}`;
@@ -55,7 +73,7 @@ export class RateLimitGuard implements CanActivate {
     }
 
     // 3. Check Rate Limit
-    const isAllowed = await this.rateLimitService.isAllowed(
+    const isAllowed = this.rateLimitService.isAllowed(
       key,
       rateLimit.points,
       rateLimit.duration,

@@ -17,6 +17,8 @@ import type {
   MoveBlockDto,
 } from '@tainiex/shared-atlas';
 
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
+
 /**
  * BlocksController - handles HTTP requests for block operations.
  * BlocksController - 处理块操作的HTTP请求。
@@ -31,7 +33,10 @@ export class BlocksController {
    * GET /api/notes/:noteId/blocks
    */
   @Get('notes/:noteId/blocks')
-  async findByNote(@Req() req, @Param('noteId') noteId: string) {
+  async findByNote(
+    @Req() req: AuthenticatedRequest,
+    @Param('noteId') noteId: string,
+  ) {
     return this.blocksService.findByNote(noteId, req.user.id);
   }
 
@@ -41,7 +46,7 @@ export class BlocksController {
    */
   @Post('notes/:noteId/blocks')
   async create(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('noteId') noteId: string,
     @Body() createBlockDto: CreateBlockDto,
   ) {
@@ -54,7 +59,7 @@ export class BlocksController {
    */
   @Patch('blocks/:id')
   async update(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() updateBlockDto: UpdateBlockDto,
   ) {
@@ -66,7 +71,7 @@ export class BlocksController {
    * DELETE /api/blocks/:id
    */
   @Delete('blocks/:id')
-  async delete(@Req() req, @Param('id') id: string) {
+  async delete(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     await this.blocksService.delete(id, req.user.id);
     return { message: 'Block deleted successfully' };
   }
@@ -77,7 +82,7 @@ export class BlocksController {
    */
   @Post('blocks/:id/move')
   async move(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() moveBlockDto: MoveBlockDto,
   ) {

@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, LessThan, MoreThan } from 'typeorm';
+import { Repository, LessThan, MoreThan, FindOptionsWhere } from 'typeorm';
 import { ChatSession } from './chat-session.entity';
 import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
@@ -15,6 +15,10 @@ import { MemoryService } from './memory/memory.service';
 import type { IJobQueue } from './queue/job-queue.interface';
 import { ChatRole, CHAT_ROOT_PARENT_ID } from '@tainiex/shared-atlas';
 import type { IContextManager } from './context/context-manager.interface';
+import type {
+  ChatMessage as LlmMessage,
+  LlmRole,
+} from '../llm/adapters/llm-adapter.interface';
 
 @Injectable()
 export class ChatService {
@@ -130,7 +134,7 @@ export class ChatService {
     const limit = Math.min(options?.limit || 20, 100);
 
     // 构建查询条件
-    const where: any = { sessionId };
+    const where: FindOptionsWhere<ChatMessage> = { sessionId };
 
     if (options?.before) {
       // 必须先获取 cursor 消息的创建时间
@@ -247,7 +251,10 @@ export class ChatService {
 
     // [NEW] Trigger Distillation (Buffered)
     // Check session metadata for message count
-    const currentMetadata = session.metadata || {};
+    const currentMetadata = (session.metadata || {}) as {
+      msg_count_since_distill?: number;
+      [key: string]: any;
+    };
     const msgCount = (currentMetadata.msg_count_since_distill || 0) + 1;
     const DISTILL_THRESHOLD = parseInt(
       this.configService.get('DISTILL_THRESHOLD') || '20',
@@ -274,7 +281,7 @@ export class ChatService {
         '[ChatService] Triggering Memory Distillation (Buffered 10 msgs)',
       );
       // Run in background to not block response
-      (async () => {
+      void (async () => {
         try {
           // Fetch recent context for distillation
           // Note: We want the last 30 messages to analyze the recent conversation flow
@@ -297,6 +304,7 @@ export class ChatService {
           // Let's add the current message to context manually.
           context.push({ role, content });
 
+          // eslint-disable-next-line @typescript-eslint/await-thenable
           await this.memoryService.distillConversation(
             userId,
             sessionId,
@@ -428,17 +436,17 @@ export class ChatService {
         console.error('[ChatService] Memory retrieval failed', e);
       }
 
-      let effectiveHistory = previousMessages.map((m) => ({
-        role: m.role,
+      let effectiveHistory: LlmMessage[] = previousMessages.map((m) => ({
+        role: m.role as unknown as LlmRole,
         message: m.content,
       }));
 
       if (systemPromptAddon) {
         effectiveHistory = [
           {
-            role: 'system',
+            role: 'system' as LlmRole,
             message: `You are a helpful AI assistant.${systemPromptAddon}`,
-          } as any,
+          },
           ...effectiveHistory,
         ];
       }
@@ -461,7 +469,9 @@ export class ChatService {
       }
     } catch (error) {
       console.error('[ChatService] Stream AI Error:', error);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       console.error('[ChatService] Error stack:', error.stack);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       yield `data: [Error: ${error.message}]\n\n`;
       throw error;
     }
@@ -744,7 +754,9 @@ Title:`;
       }
     } catch (error) {
       console.error('[ChatService] Stream AI Error:', error);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       console.error('[ChatService] Error stack:', error.stack);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       yield `data: [Error: ${error.message}]\n\n`;
       throw error;
     }
@@ -814,7 +826,7 @@ Title:`;
     }
 
     const lastProcessedId =
-      session.metadata?.last_backfilled_message_id || null;
+      (session.metadata?.last_backfilled_message_id as string | null) || null;
 
     this.logger.log(
       `[Backfill] Worker processing backfill for ${sessionId}. LastID: ${lastProcessedId}`,
@@ -826,7 +838,7 @@ Title:`;
       lastId: string | null,
       limit: number,
     ) => {
-      const where: any = { sessionId: sid };
+      const where: FindOptionsWhere<ChatMessage> = { sessionId: sid };
       if (lastId) {
         where.id = MoreThan(lastId);
       }

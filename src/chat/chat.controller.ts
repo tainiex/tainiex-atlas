@@ -16,6 +16,7 @@ import { GetMessagesResponse, GetMessagesDto } from '@tainiex/shared-atlas';
 
 import { ChatService } from './chat.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
 
 @Controller('chat')
 @UseGuards(JwtAuthGuard)
@@ -26,29 +27,35 @@ export class ChatController {
   ) {}
 
   @Post('sessions')
-  async createSession(@Request() req: any) {
+  async createSession(@Request() req: AuthenticatedRequest) {
     return this.chatService.createSession(req.user.id);
   }
 
   @Get('sessions')
-  async getUserSessions(@Request() req: any) {
+  async getUserSessions(@Request() req: AuthenticatedRequest) {
     return this.chatService.getUserSessions(req.user.id);
   }
 
   @Get('sessions/:id')
-  async getSession(@Request() req: any, @Param('id') sessionId: string) {
+  async getSession(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') sessionId: string,
+  ) {
     return this.chatService.getSession(sessionId, req.user.id);
   }
 
   @Delete('sessions/:id')
-  async deleteSession(@Request() req: any, @Param('id') sessionId: string) {
+  async deleteSession(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') sessionId: string,
+  ) {
     await this.chatService.deleteSession(sessionId, req.user.id);
     return { success: true };
   }
 
   @Patch('sessions/:id')
   async updateSession(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Param('id') sessionId: string,
     @Body() body: { title: string },
   ) {
@@ -63,7 +70,7 @@ export class ChatController {
 
   @Get('sessions/:id/messages')
   async getMessages(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Param('id') sessionId: string,
     @Query() query: GetMessagesDto,
   ): Promise<GetMessagesResponse> {
@@ -76,7 +83,7 @@ export class ChatController {
     }
 
     // [NEW] Trigger Lazy Backfill Check (Zero-cost, piggybacking on session load)
-    this.chatService.checkAndTriggerBackfill(sessionId, exists);
+    void this.chatService.checkAndTriggerBackfill(sessionId, exists);
 
     if (leafMessageId) {
       const path = await this.chatService.getHistoryPath(
@@ -101,7 +108,7 @@ export class ChatController {
 
   @Patch('sessions/:sessionId/messages/:messageId')
   async updateMessage(
-    @Request() req: any,
+    @Request() req: AuthenticatedRequest,
     @Param('sessionId') sessionId: string,
     @Param('messageId') messageId: string,
     @Body() body: { content: string },

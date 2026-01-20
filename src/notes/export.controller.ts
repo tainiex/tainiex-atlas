@@ -11,6 +11,8 @@ import type { FastifyReply } from 'fastify';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ExportService } from './export.service';
 
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
+
 /**
  * ExportController - handles downloading notes in different formats.
  * ExportController - 处理以不同格式下载笔记。
@@ -27,7 +29,7 @@ export class ExportController {
   @Get(':noteId/markdown')
   @Header('Content-Type', 'text/markdown')
   async exportMarkdown(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('noteId') noteId: string,
     @Res() res: FastifyReply,
   ) {
@@ -51,7 +53,7 @@ export class ExportController {
   @Get(':noteId/html')
   @Header('Content-Type', 'text/html')
   async exportHtml(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('noteId') noteId: string,
     @Res() res: FastifyReply,
   ) {

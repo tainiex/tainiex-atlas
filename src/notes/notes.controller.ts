@@ -14,6 +14,8 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { NotesService } from './notes.service';
 import type { CreateNoteDto, UpdateNoteDto } from '@tainiex/shared-atlas';
 
+import type { AuthenticatedRequest } from '../auth/interfaces/authenticated-request.interface';
+
 /**
  * NotesController - handles HTTP requests for note operations.
  * NotesController - 处理笔记操作的HTTP请求。
@@ -28,7 +30,10 @@ export class NotesController {
    * POST /api/notes
    */
   @Post()
-  async create(@Req() req, @Body() createNoteDto: CreateNoteDto) {
+  async create(
+    @Req() req: AuthenticatedRequest,
+    @Body() createNoteDto: CreateNoteDto,
+  ) {
     return this.notesService.create(req.user.id, createNoteDto);
   }
 
@@ -38,7 +43,7 @@ export class NotesController {
    */
   @Get()
   async findAll(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Query('parentId') parentId?: string,
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
@@ -55,7 +60,7 @@ export class NotesController {
    * GET /api/notes/:id
    */
   @Get(':id')
-  async findOne(@Req() req, @Param('id') id: string) {
+  async findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     // console.log(`[NotesController] Reading note ${id} for user ${req.user.id}`);
     return this.notesService.findOne(id, req.user.id);
   }
@@ -66,7 +71,7 @@ export class NotesController {
    */
   @Patch(':id')
   async update(
-    @Req() req,
+    @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
     @Body() updateNoteDto: UpdateNoteDto,
   ) {
@@ -78,7 +83,7 @@ export class NotesController {
    * DELETE /api/notes/:id
    */
   @Delete(':id')
-  async delete(@Req() req, @Param('id') id: string) {
+  async delete(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     await this.notesService.delete(id, req.user.id);
     return { message: 'Note deleted successfully' };
   }
@@ -88,7 +93,7 @@ export class NotesController {
    * POST /api/notes/:id/duplicate
    */
   @Post(':id/duplicate')
-  async duplicate(@Req() req, @Param('id') id: string) {
+  async duplicate(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     return this.notesService.duplicate(id, req.user.id);
   }
 }

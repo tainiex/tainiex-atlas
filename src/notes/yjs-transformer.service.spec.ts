@@ -8,8 +8,8 @@ import { BlockType } from '@tainiex/shared-atlas';
 
 describe('YjsTransformerService', () => {
   let service: YjsTransformerService;
-  let blockRepositoryMock: any;
-  let noteRepositoryMock: any;
+  let blockRepositoryMock: Record<string, jest.Mock>;
+  let noteRepositoryMock: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     blockRepositoryMock = {

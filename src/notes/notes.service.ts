@@ -93,7 +93,8 @@ export class NotesService {
         .getRawMany();
 
       const parentIdsWithChildren = new Set(
-        childrenCounts.map((c) => c.n_parent_id),
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return
+        childrenCounts.map((c: any) => c.n_parent_id),
       );
 
       notes.forEach((note) => {

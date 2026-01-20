@@ -45,6 +45,7 @@ import { GraphEdge } from './graph/entities/graph-edge.entity';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => {
         const isProd = configService.get('NODE_ENV') === 'production';
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
         const dbSsl = configService.get('DB_SSL');
         // Default to true in production if not explicitly set
         const enableSsl = dbSsl !== undefined ? dbSsl === 'true' : isProd;

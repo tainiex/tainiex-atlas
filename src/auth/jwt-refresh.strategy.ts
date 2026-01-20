@@ -13,8 +13,8 @@ export class JwtRefreshStrategy extends PassportStrategy(
   constructor(private configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
-        (request: any) => {
-          return request?.cookies?.refresh_token;
+        (request: FastifyRequest) => {
+          return request?.cookies?.refresh_token || null;
         },
         ExtractJwt.fromBodyField('refreshToken'),
         ExtractJwt.fromAuthHeaderAsBearerToken(),

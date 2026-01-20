@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './user.entity';
 import { ConfigService } from '@nestjs/config';
-import { Storage } from '@google-cloud/storage';
+import { Storage, StorageOptions } from '@google-cloud/storage';
 
 @Injectable()
 export class UsersService {
@@ -17,7 +17,7 @@ export class UsersService {
     const gsaKeyFile = this.configService.get<string>('GSA_KEY_FILE');
     const projectId = this.configService.get<string>('VERTEX_PROJECT_ID');
 
-    const storageOptions: any = {
+    const storageOptions: StorageOptions = {
       projectId: projectId,
     };
 
@@ -88,7 +88,7 @@ export class UsersService {
     } catch (error) {
       console.error(
         `[UsersService] SignedURL Error for ${filename}:`,
-        error.message,
+        (error as Error).message,
       );
       // Return null so the caller knows it failed, but we should ideally return the path
       // if we want the frontend to at least see something (though it won't load)
