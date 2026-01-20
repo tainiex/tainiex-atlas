@@ -14,18 +14,23 @@ import {
 } from '@nestjs/platform-fastify';
 import fastifyCookie from '@fastify/cookie';
 import fastifyMultipart from '@fastify/multipart';
+import { ConfigurationService } from './common/config/configuration.service';
 
 async function bootstrap() {
-  // Configure logger based on environment
-  const isProduction = process.env.NODE_ENV === 'production';
-  const logLevels: LogLevel[] = isProduction
+  // Get configuration service to determine log levels
+  const tempApp = await NestFactory.createApplicationContext(AppModule);
+  const configService = tempApp.get(ConfigurationService);
+
+  const logLevels: LogLevel[] = configService.isProduction
     ? ['error', 'warn'] // Production: Only errors and warnings
     : ['log', 'error', 'warn', 'debug', 'verbose']; // Development: All logs
+
+  await tempApp.close();
 
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({
-      logger: isProduction ? false : true, // Simple logger config for Fastify
+      logger: configService.isProduction ? false : true,
     }),
     {
       logger: logLevels,
@@ -39,29 +44,16 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.enableShutdownHooks();
   try {
-    const configService = app.get(ConfigService);
-    const globalPrefix = configService.get<string>('API_PREFIX', 'api');
+    // Re-fetch config service from the actual app instance
+    const appConfigService = app.get(ConfigurationService);
+    const globalPrefix = appConfigService.apiPrefix;
     app.setGlobalPrefix(globalPrefix);
 
     // CORS Configuration
-    const corsOrigin = configService.get<string>('CORS_ORIGIN');
-    const isProd = configService.get('NODE_ENV') === 'production';
+    const corsOrigin = appConfigService.corsOrigin;
 
     if (corsOrigin) {
-      const origins = corsOrigin.split(',').map((origin) => {
-        const trimmed = origin.trim();
-        if (trimmed === '*') return trimmed;
-        // If containing wildcard but not just '*', convert to Regex
-        if (trimmed.includes('*')) {
-          // Escape regex special chars except *
-          const regexString =
-            '^' +
-            trimmed.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*') +
-            '$';
-          return new RegExp(regexString);
-        }
-        return trimmed;
-      });
+      const origins = appConfigService.parseCorsOrigins();
 
       app.enableCors({
         origin: origins,
@@ -69,7 +61,7 @@ async function bootstrap() {
         credentials: true,
       });
       console.log(`CORS enabled for origins: ${corsOrigin}`);
-    } else if (!isProd) {
+    } else if (!appConfigService.isProduction) {
       // Allow all in development/debug if not explicitly set
       app.enableCors({ origin: '*' });
       console.log('CORS enabled for all origins (Development Mode)');
@@ -78,7 +70,7 @@ async function bootstrap() {
     }
 
     console.log('Environment PORT:', process.env.PORT);
-    const port = configService.get<number>('PORT', 2020);
+    const port = appConfigService.port;
     console.log('Configured Port:', port);
 
     await app.listen(port, '0.0.0.0');

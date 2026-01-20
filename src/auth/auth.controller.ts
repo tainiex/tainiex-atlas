@@ -9,7 +9,6 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { FastifyReply, FastifyRequest } from 'fastify';
-import type { CookieSerializeOptions } from '@fastify/cookie';
 
 import { User } from '../users/user.entity';
 import { AuthService } from './auth.service';
@@ -29,11 +28,15 @@ import {
 
 import type { AuthenticatedRequest } from './interfaces/authenticated-request.interface';
 import type { AuthenticatedRefreshRequest } from './interfaces/authenticated-refresh-request.interface';
+import { ConfigurationService } from '../common/config/configuration.service';
 
 @Controller('auth')
 @UseGuards(RateLimitGuard) // Apply global guard for this controller (or globally in AppModule)
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(
+    private authService: AuthService,
+    private configService: ConfigurationService,
+  ) { }
 
   @Post('login')
   @RateLimit(5, 60) // Limit: 5 requests per 60 seconds
@@ -50,29 +53,10 @@ export class AuthController {
     }
     const tokens = await this.authService.login(user as User);
 
-    const cookieDomain = process.env.COOKIE_DOMAIN;
-    // In development, use 60s for access token to test refresh logic
-    // 在开发环境中，使用 60 秒以测试刷新逻辑
-    const accessTokenMaxAge =
-      process.env.NODE_ENV === 'production' ? 15 * 60 : 60; // Seconds
-
-    res.setCookie('access_token', tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: accessTokenMaxAge,
-      path: '/',
-    });
-
-    res.setCookie('refresh_token', tokens.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-      path: '/',
-    });
+    // Use unified cookie configuration
+    const cookieConfig = this.configService.getCookieConfig();
+    res.setCookie('access_token', tokens.access_token, cookieConfig.access);
+    res.setCookie('refresh_token', tokens.refresh_token, cookieConfig.refresh);
 
     return tokens;
   }
@@ -112,27 +96,9 @@ export class AuthController {
 
     const { user, tokens } = result;
 
-    const cookieDomain = process.env.COOKIE_DOMAIN;
-    const accessTokenMaxAge =
-      process.env.NODE_ENV === 'production' ? 15 * 60 : 60; // Seconds
-
-    res.setCookie('access_token', tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: accessTokenMaxAge,
-      path: '/',
-    });
-
-    res.setCookie('refresh_token', tokens.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-      path: '/',
-    });
+    const cookieConfig = this.configService.getCookieConfig();
+    res.setCookie('access_token', tokens.access_token, cookieConfig.access);
+    res.setCookie('refresh_token', tokens.refresh_token, cookieConfig.refresh);
 
     if (isMobile) {
       return { user, tokens };
@@ -155,27 +121,9 @@ export class AuthController {
 
     const { user, tokens } = result;
 
-    const cookieDomain = process.env.COOKIE_DOMAIN;
-    const accessTokenMaxAge =
-      process.env.NODE_ENV === 'production' ? 15 * 60 : 60; // Seconds
-
-    res.setCookie('access_token', tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: accessTokenMaxAge,
-      path: '/',
-    });
-
-    res.setCookie('refresh_token', tokens.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-      path: '/',
-    });
+    const cookieConfig = this.configService.getCookieConfig();
+    res.setCookie('access_token', tokens.access_token, cookieConfig.access);
+    res.setCookie('refresh_token', tokens.refresh_token, cookieConfig.refresh);
 
     const authMode = req.headers['x-auth-mode'];
     if (authMode === 'bearer') {
@@ -202,27 +150,9 @@ export class AuthController {
 
     const { user, tokens } = result;
 
-    const cookieDomain = process.env.COOKIE_DOMAIN;
-    const accessTokenMaxAge =
-      process.env.NODE_ENV === 'production' ? 15 * 60 : 60; // Seconds
-
-    res.setCookie('access_token', tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: accessTokenMaxAge,
-      path: '/',
-    });
-
-    res.setCookie('refresh_token', tokens.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: 7 * 24 * 60 * 60, // 7 days
-      path: '/',
-    });
+    const cookieConfig = this.configService.getCookieConfig();
+    res.setCookie('access_token', tokens.access_token, cookieConfig.access);
+    res.setCookie('refresh_token', tokens.refresh_token, cookieConfig.refresh);
 
     const authMode = req.headers['x-auth-mode'];
     if (authMode === 'bearer') {
@@ -249,27 +179,9 @@ export class AuthController {
 
     const { user, tokens } = result;
 
-    const cookieDomain = process.env.COOKIE_DOMAIN;
-    const accessTokenMaxAge =
-      process.env.NODE_ENV === 'production' ? 15 * 60 : 60; // Seconds
-
-    res.setCookie('access_token', tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: accessTokenMaxAge,
-      path: '/',
-    });
-
-    res.setCookie('refresh_token', tokens.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-      path: '/',
-    });
+    const cookieConfig = this.configService.getCookieConfig();
+    res.setCookie('access_token', tokens.access_token, cookieConfig.access);
+    res.setCookie('refresh_token', tokens.refresh_token, cookieConfig.refresh);
 
     const authMode = req.headers['x-auth-mode'];
     if (authMode === 'bearer') {
@@ -295,28 +207,9 @@ export class AuthController {
       throw new Error('Failed to refresh tokens.');
     }
 
-    const cookieDomain = process.env.COOKIE_DOMAIN;
-    const accessTokenMaxAge =
-      process.env.NODE_ENV === 'production' ? 15 * 60 : 60; // Seconds
-
-    // 设置新的 cookies
-    res.setCookie('access_token', tokens.access_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: accessTokenMaxAge,
-      path: '/',
-    });
-
-    res.setCookie('refresh_token', tokens.refresh_token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
-      path: '/',
-    });
+    const cookieConfig = this.configService.getCookieConfig();
+    res.setCookie('access_token', tokens.access_token, cookieConfig.access);
+    res.setCookie('refresh_token', tokens.refresh_token, cookieConfig.refresh);
 
     const authMode = req.headers['x-auth-mode'];
     if (authMode === 'bearer') {
@@ -351,21 +244,9 @@ export class AuthController {
   ): Promise<LogoutResponse> {
     await this.authService.logout(req.user.id);
 
-    const cookieDomain = process.env.COOKIE_DOMAIN;
-    const accessTokenMaxAge =
-      process.env.NODE_ENV === 'production' ? 15 * 60 : 60; // Seconds
-
-    const cookieOptions: CookieSerializeOptions = {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      domain: cookieDomain,
-      maxAge: accessTokenMaxAge,
-      path: '/',
-    };
-
-    res.clearCookie('access_token', cookieOptions);
-    res.clearCookie('refresh_token', cookieOptions);
+    const cookieConfig = this.configService.getCookieConfig();
+    res.clearCookie('access_token', cookieConfig.access);
+    res.clearCookie('refresh_token', cookieConfig.refresh);
 
     return { message: 'Logged out successfully' };
   }

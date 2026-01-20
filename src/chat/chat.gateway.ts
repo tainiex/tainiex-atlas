@@ -36,24 +36,35 @@ export interface AuthenticatedSocket extends Socket {
     origin: (requestOrigin, callback) => {
       // Strict CORS check: Only allow origins defined in environment variables
       // This prevents CSRF and WebSocket Hijacking attacks
-      // Parse allowed origins and convert wildcards to regex
       const rawConfig = process.env.CORS_ORIGIN || '';
-      // Robust parsing: split by comma, trim spaces, AND remove surrounding quotes if any
+
+      // Use the same parsing logic as ConfigurationService
       const allowedOrigins = rawConfig
         .split(',')
-        .map((o) => o.trim().replace(/^['"]|['"]$/g, ''));
+        .map((origin) => {
+          const trimmed = origin.trim().replace(/^['"]|['"]$/g, '');
+
+          if (trimmed === '*')
+            return { type: 'wildcard' as const, value: trimmed };
+
+          if (trimmed.includes('*')) {
+            const regexString =
+              '^' +
+              trimmed
+                .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+                .replace(/\*/g, '.*') +
+              '$';
+            return { type: 'regex' as const, value: new RegExp(regexString) };
+          }
+
+          return { type: 'exact' as const, value: trimmed };
+        })
+        .filter((origin) => origin.value);
 
       const isAllowed = allowedOrigins.some((origin) => {
-        // Exact match
-        if (origin === requestOrigin) return true;
-        // Wildcard match (simple implementation: convert * to .*)
-        if (origin.includes('*')) {
-          // Normalize origin for regex (escape dots, convert * to .*)
-          const regex = new RegExp(
-            `^${origin.replace(/\./g, '\\.').replace(/\*/g, '.*')}$`,
-          );
-          return regex.test(requestOrigin);
-        }
+        if (origin.type === 'wildcard' && origin.value === '*') return true;
+        if (origin.type === 'exact') return origin.value === requestOrigin;
+        if (origin.type === 'regex') return origin.value.test(requestOrigin);
         return false;
       });
 
@@ -62,7 +73,7 @@ export interface AuthenticatedSocket extends Socket {
       } else {
         console.warn(
           `[CORS] Rejected Origin: ${requestOrigin}. Configured: ${rawConfig}`,
-        ); // Use console.warn for immediate visibility in standard logs
+        );
         callback(new Error('Not allowed by CORS'));
       }
     },

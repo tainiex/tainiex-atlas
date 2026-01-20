@@ -32,9 +32,11 @@ import { SemanticMemory } from './chat/memory/entities/memory.entity';
 import { GraphModule } from './graph/graph.module';
 import { GraphNode } from './graph/entities/graph-node.entity';
 import { GraphEdge } from './graph/entities/graph-edge.entity';
+import { AppConfigModule } from './common/config/config.module';
 
 @Module({
   imports: [
+    AppConfigModule, // Import global config module first
     LoggerModule,
     HealthModule,
     ConfigModule.forRoot({
@@ -100,4 +102,4 @@ import { GraphEdge } from './graph/entities/graph-edge.entity';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

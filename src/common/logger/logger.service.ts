@@ -4,15 +4,16 @@ import {
   Scope,
 } from '@nestjs/common';
 import { createLogger, format, transports, Logger } from 'winston';
+import { ConfigurationService } from '../config/configuration.service';
 
 @Injectable({ scope: Scope.TRANSIENT })
 export class LoggerService implements NestLoggerService {
   private logger: Logger;
   private context?: string;
 
-  constructor() {
-    const isProduction = process.env.NODE_ENV === 'production';
-    const logLevel = process.env.LOG_LEVEL?.toLowerCase() || 'info';
+  constructor(private readonly configService: ConfigurationService) {
+    const isProduction = this.configService.isProduction;
+    const logLevel = this.configService.logLevel;
 
     // Production: JSON format for structured logging
     // Development: Human-readable colored output

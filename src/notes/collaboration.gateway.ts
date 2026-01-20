@@ -49,23 +49,45 @@ interface AuthenticatedSocket extends Socket {
   cors: {
     origin: (requestOrigin, callback) => {
       const rawConfig = process.env.CORS_ORIGIN || '';
+
+      // Use the same parsing logic as ConfigurationService
       const allowedOrigins = rawConfig
         .split(',')
-        .map((o) => o.trim().replace(/^['"]|['"]$/g, ''));
-      const isAllowed =
-        !requestOrigin ||
-        allowedOrigins.some((origin) => {
-          if (origin === requestOrigin) return true;
-          if (origin.includes('*')) {
-            const regex = new RegExp(
-              `^${origin.replace(/\./g, '\\.').replace(/\*/g, '.*')}$`,
-            );
-            return regex.test(requestOrigin);
+        .map((origin) => {
+          const trimmed = origin.trim().replace(/^['"]|['"]$/g, '');
+
+          if (trimmed === '*')
+            return { type: 'wildcard' as const, value: trimmed };
+
+          if (trimmed.includes('*')) {
+            const regexString =
+              '^' +
+              trimmed
+                .replace(/[.+^${}()|[\]\\]/g, '\\$&')
+                .replace(/\*/g, '.*') +
+              '$';
+            return { type: 'regex' as const, value: new RegExp(regexString) };
           }
-          return false;
-        });
-      if (isAllowed) callback(null, true);
-      else callback(new Error('Not allowed by CORS'));
+
+          return { type: 'exact' as const, value: trimmed };
+        })
+        .filter((origin) => origin.value);
+
+      const isAllowed = allowedOrigins.some((origin) => {
+        if (origin.type === 'wildcard' && origin.value === '*') return true;
+        if (origin.type === 'exact') return origin.value === requestOrigin;
+        if (origin.type === 'regex') return origin.value.test(requestOrigin);
+        return false;
+      });
+
+      if (!requestOrigin || isAllowed) {
+        callback(null, true);
+      } else {
+        console.warn(
+          `[CORS] Rejected Origin: ${requestOrigin}. Configured: ${rawConfig}`,
+        );
+        callback(new Error('Not allowed by CORS'));
+      }
     },
     credentials: true,
   },
