@@ -25,6 +25,13 @@ import { WebSocketErrorCode } from '@tainiex/shared-atlas';
 
 import { JwtPayload } from '../auth/interfaces/jwt-payload.interface';
 import { LoggerService } from '../common/logger/logger.service';
+import { WebSocketStateMachineService } from '../common/websocket/websocket-state-machine.service';
+import { WebSocketMachineRegistry } from '../common/websocket/websocket-machine-registry.service';
+import {
+  WebSocketStates,
+  WebSocketEventTypes,
+  ClientEventTypes,
+} from '../common/websocket/websocket-state-machine.types';
 
 export interface AuthenticatedSocket extends Socket {
   data: {
@@ -102,6 +109,8 @@ export class ChatGateway
     private readonly healthService: ConnectionHealthService,
     private readonly reliableMsgService: ReliableMessageService,
     private readonly logger: LoggerService,
+    private readonly machineService: WebSocketStateMachineService,
+    private readonly machineRegistry: WebSocketMachineRegistry,
   ) {
     this.logger.setContext(ChatGateway.name);
   }
@@ -158,90 +167,136 @@ export class ChatGateway
   }
 
   async handleConnection(client: AuthenticatedSocket) {
-    try {
-      // 0. Rate Limiting Check (Database)
-      const ip = client.handshake.address;
-      const isAllowed = this.rateLimitService.isAllowed(
-        ip,
-        ChatGateway.RATE_LIMIT_POINTS,
-        ChatGateway.RATE_LIMIT_DURATION,
+    const ip = client.handshake.address;
+
+    // 0. Rate Limiting Check (before creating state machine)
+    const isAllowed = this.rateLimitService.isAllowed(
+      ip,
+      ChatGateway.RATE_LIMIT_POINTS,
+      ChatGateway.RATE_LIMIT_DURATION,
+    );
+    if (!isAllowed) {
+      this.logger.warn(
+        `Connection rejected: Rate limit exceeded for IP ${ip}`,
       );
-      if (!isAllowed) {
-        this.logger.warn(
-          `Connection rejected: Rate limit exceeded for IP ${ip}`,
-        );
-        client.disconnect(true);
-        return;
-      }
+      client.disconnect(true);
+      return;
+    }
 
-      // 1. Extract Token using robust helper
-      const token = this.extractToken(client);
+    // 1. Extract Token
+    const token = this.machineService.extractToken(client);
 
-      if (!token) {
-        this.logger.warn(
-          'Connection rejected: No token provided in auth, headers, or cookies',
-        );
-        client.disconnect();
-        return;
-      }
-
-      // Verify JWT
-      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
-
-      // Strict ID Check
-      const userId = payload.sub || payload.id; // Support both but prefer sub
-      if (!userId) {
-        throw new Error('Invalid token payload: User ID missing');
-      }
-
-      payload.id = userId; // Ensure .id is available for legacy code if needed
-      client.data.user = payload;
-
-      this.logger.log(
-        `Client connected: ${client.id}, User: ${userId} (Via ${client.handshake.auth.token ? 'socket.auth' : client.handshake.headers.authorization ? 'header' : 'cookie'})`,
+    if (!token) {
+      this.logger.warn(
+        'Connection rejected: No token provided in auth, headers, or cookies',
       );
-
-      // Schedule token refresh notification
-      if (token) {
-        this.tokenLifecycleService.scheduleRefreshNotification(client, token);
-      }
-
-      // Health Monitor Init
-      this.healthService.onConnect(client.id);
-      // Start Active Ping
-      const pingInterval = setInterval(() => {
-        if (!client.connected) {
-          clearInterval(pingInterval);
-          return;
-        }
-        const start = Date.now();
-        client.emit('packet:ping', {}, () => {
-          // Expecting immediate ack
-          const latency = Date.now() - start;
-          this.healthService.recordPong(client.id, latency);
-        });
-      }, 30000); // 30s
-      // Store interval in client data to clear later?
-      // Or just rely on closure check !client.connected
-
-      // Resend Pending Messages
-      this.reliableMsgService.resendPending(client, userId);
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error('Authentication failed:', errorMessage);
-      // WebSocketExceptionFilter will handle this if we re-throw, but here we disconnect manually
-      // Let's emit error before disconnecting
-      client.emit('error', {
+      client.emit(ClientEventTypes.ERROR, {
         code: WebSocketErrorCode.AUTH_TOKEN_INVALID,
-        message: 'Authentication failed: ' + errorMessage,
+        message: 'No authentication token provided',
         category: 'AUTH',
       });
       client.disconnect();
+      return;
+    }
+
+    // 2. Create and Start State Machine
+    const actor = this.machineRegistry.create(client.id);
+
+    // 3. Subscribe to State Changes
+    actor.subscribe((snapshot) => {
+      this.logger.debug(
+        `[${client.id}] State: ${JSON.stringify(snapshot.value)}`,
+      );
+
+      // Handle Ready State (Authentication Successful)
+      if (snapshot.matches(WebSocketStates.READY)) {
+        const user = snapshot.context.user;
+        if (user) {
+          client.data.user = user;
+
+          this.logger.log(
+            `Client connected: ${client.id}, User: ${user.sub} (Via ${client.handshake.auth.token ? 'socket.auth' : client.handshake.headers.authorization ? 'header' : 'cookie'})`,
+          );
+
+          // Schedule token refresh notification
+          this.tokenLifecycleService.scheduleRefreshNotification(
+            client,
+            token,
+          );
+
+          // Health Monitor Init
+          this.healthService.onConnect(client.id);
+
+          // Start Active Ping
+          const pingInterval = setInterval(() => {
+            if (!client.connected) {
+              clearInterval(pingInterval);
+              return;
+            }
+            const start = Date.now();
+            client.emit(ClientEventTypes.PACKET_PING, {}, () => {
+              const latency = Date.now() - start;
+              this.healthService.recordPong(client.id, latency);
+            });
+          }, 30000); // 30s
+
+          // Resend Pending Messages
+          this.reliableMsgService.resendPending(client, user.sub);
+        }
+      }
+
+      // Handle Error State
+      if (snapshot.matches(WebSocketStates.ERROR)) {
+        this.logger.error(
+          `WebSocket authentication error for ${client.id}: ${snapshot.context.error}`,
+        );
+        // Error emission is handled by state machine action
+        // Just disconnect the client
+        client.disconnect();
+      }
+    });
+
+    // 4. Start State Machine and Begin Authentication
+    actor.send({ type: WebSocketEventTypes.CONNECT, client, token, ip });
+
+    // 5. Perform JWT Verification (Async)
+    try {
+      const payload = await this.jwtService.verifyAsync<JwtPayload>(token);
+
+      // Strict ID Check
+      const userId = payload.sub || payload.id;
+      if (!userId) {
+        actor.send({
+          type: WebSocketEventTypes.AUTH_FAILED,
+          error: 'Invalid token payload: User ID missing',
+        });
+        return;
+      }
+
+      payload.id = userId; // Ensure .id is available for legacy code
+
+      // Calculate token expiration
+      const expiresAt = payload.exp ? payload.exp * 1000 : Date.now() + 15 * 60 * 1000;
+
+      // Send success event to state machine
+      actor.send({ type: WebSocketEventTypes.AUTH_SUCCESS, user: payload, expiresAt });
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error('JWT verification failed:', errorMessage);
+
+      actor.send({
+        type: WebSocketEventTypes.AUTH_FAILED,
+        error: 'Authentication failed: ' + errorMessage,
+      });
     }
   }
 
   handleDisconnect(client: AuthenticatedSocket) {
+    // Clean up state machine
+    this.machineRegistry.remove(client.id);
+
+    // Clean up other services
     this.tokenLifecycleService.clearTimer(client.id);
     this.healthService.onDisconnect(client.id);
     this.logger.log(`Client disconnected: ${client.id}`);
@@ -279,7 +334,7 @@ export class ChatGateway
     try {
       const user = client.data.user;
       if (!user) {
-        client.emit('chat:error', { error: 'Unauthorized' });
+        client.emit(ClientEventTypes.CHAT_ERROR, { error: 'Unauthorized' });
         return;
       }
 
@@ -310,7 +365,7 @@ export class ChatGateway
           break;
         }
         chunkCount++;
-        client.emit('chat:stream', {
+        client.emit(ClientEventTypes.CHAT_STREAM, {
           type: 'chunk',
           data: chunk,
         });
@@ -323,12 +378,12 @@ export class ChatGateway
         sessionId,
         user.sub,
       );
-      client.emit('chat:stream', { type: 'done', title: updatedSession.title });
+      client.emit(ClientEventTypes.CHAT_STREAM, { type: 'done', title: updatedSession.title });
     } catch (error) {
       this.logger.error('Chat stream error:', error);
       const errorMessage =
         error instanceof Error ? error.message : 'Stream failed';
-      client.emit('chat:stream', {
+      client.emit(ClientEventTypes.CHAT_STREAM, {
         type: 'error',
         error: errorMessage,
       });

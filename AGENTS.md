@@ -38,6 +38,7 @@ The application follows a modular architecture. Each major feature has its own d
 - **src/notes/**: Core notes system, block-level storage, templates, and **Collaboration Gateway**.
 - **src/llm/**: Integration with Google Vertex AI (Gemini).
 - **`src/invitation/`**: Invitation code generation and validation system.
+- **docs/**: Architecture design documents (naming: `arch-design-XXX-description.md`)
 - **`shared-atlas/`**: Shared interfaces and DTOs (e.g., `IUser`).
   - Request parameter structs (DTOs)
   - Response structs
@@ -117,6 +118,20 @@ The application follows a modular architecture. Each major feature has its own d
     - 所有 WebSocket 错误遵循严格的 JSON 结构。
     - See `WebSocketErrorCode` enum for specific codes (40xx Auth, 42xx Validation, 50xx Server).
     - 具体代码请参考 `WebSocketErrorCode` 枚举。
+
+### 2.5. State Machine Architecture / 状态机架构
+
+- **Library**: XState (v5.x) for managing complex state transitions
+- **库**: XState (v5.x) 用于管理复杂状态转换
+- **Primary Usage**: WebSocket connection lifecycle, authentication flows, collaboration session states
+- **主要用途**: WebSocket 连接生命周期、身份验证流程、协作会话状态
+- **Location**: `src/common/websocket/websocket-state-machine.service.ts`
+- **Benefits**:
+    - **Visualization**: XState visualizer for debugging state flows / 使用 XState 可视化工具调试状态流转
+    - **Type Safety**: Full TypeScript inference for states and events / 完整的 TypeScript 类型推断（状态和事件）
+    - **Testability**: Machine snapshots for deterministic testing / 通过状态机快照实现确定性测试
+- **Documentation**: See `docs/arch-design-001-websocket-state-machine.md` for detailed design
+- **文档**: 参见 `docs/arch-design-001-websocket-state-machine.md` 了解详细设计
 
 ## 3. Key Feature Specifications
 

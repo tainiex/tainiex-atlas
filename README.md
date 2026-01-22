@@ -448,6 +448,8 @@ tainiex-atlas/
 │   │   └── llm.service.ts
 │   ├── app.module.ts      # Root application module
 │   └── main.ts            # Application entry point
+├── docs/                  # Architecture design documents
+│   └── arch-design-XXX-*.md  # Numbered design docs (XXX = 001, 002, ...)
 ├── shared-lib/            # Shared TypeScript interfaces
 │   └── src/
 │       └── interfaces/
@@ -557,6 +559,21 @@ The project uses ESLint and Prettier for code quality:
 - **Global Validation**: `ValidationPipe` is enabled globally. ALL controller endpoints MUST use DTOs with `class-validator` decorators. Use of `any` or raw objects in controllers is forbidden.
 - **Scalability**: Socket.io adapter will transition to Redis in the future; currently using in-memory adapter (aware of horizontal scaling limitation).
 - **Logging**: Production logs must use structured JSON format (Winston/Pino) for observability in cloud environments.
+
+### Architecture Documentation / 架构文档规范
+
+All architecture design documents are stored in the `docs/` directory following a standardized naming convention:
+
+**Format**: `arch-design-<序号>-<描述>.md`
+
+- `序号` (Number): Three-digit number (001, 002, 003, ...)
+- `描述` (Description): Brief English description with hyphens
+
+**Examples**:
+- `arch-design-001-websocket-state-machine.md`
+- `arch-design-002-graph-rag-architecture.md`
+
+These documents capture design decisions, trade-offs, and implementation details for complex features.
 
 ### Database Migrations
 

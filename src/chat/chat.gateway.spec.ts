@@ -9,6 +9,8 @@ import { ConnectionHealthService } from './connection-health.service';
 import { ReliableMessageService } from './reliable-message.service';
 import { ChatRole } from '@tainiex/shared-atlas';
 import { LoggerService } from '../common/logger/logger.service';
+import { WebSocketStateMachineService } from '../common/websocket/websocket-state-machine.service';
+import { WebSocketMachineRegistry } from '../common/websocket/websocket-machine-registry.service';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
@@ -28,6 +30,15 @@ describe('ChatGateway', () => {
     resendPending: jest.Mock;
     handleAck: jest.Mock;
   };
+  let mockMachineService: {
+    extractToken: jest.Mock;
+    createMachine: jest.Mock;
+  };
+  let mockMachineRegistry: {
+    create: jest.Mock;
+    get: jest.Mock;
+    remove: jest.Mock;
+  };
 
   beforeEach(async () => {
     mockJwtService = {
@@ -38,7 +49,7 @@ describe('ChatGateway', () => {
       getSession: jest.fn(),
     };
     mockRateLimitService = {
-      isAllowed: jest.fn().mockResolvedValue(true),
+      isAllowed: jest.fn().mockReturnValue(true),
     };
     mockTokenLifecycleService = {
       scheduleRefreshNotification: jest.fn(),
@@ -52,6 +63,54 @@ describe('ChatGateway', () => {
     mockReliableMsgService = {
       resendPending: jest.fn().mockResolvedValue(undefined),
       handleAck: jest.fn(),
+    };
+
+    // Mock state machine services
+    const mockActor = {
+      subscribe: jest.fn((callback) => {
+        // Store callback to be triggered manually in tests
+        mockActor._callback = callback;
+        return { unsubscribe: jest.fn() };
+      }),
+      send: jest.fn((event) => {
+        // Simulate state machine behavior
+        if (mockActor._callback && event.type === 'CONNECT') {
+          // Trigger ready state immediately after JWT verification
+          // This will be called after the async verifyAsync mock resolves
+        }
+      }),
+      stop: jest.fn(),
+      start: jest.fn(),
+      getSnapshot: jest.fn(),
+      _callback: null as any,
+      _triggerReady: function (user: any) {
+        if (this._callback) {
+          this._callback({
+            matches: (state: string) => state === 'ready',
+            value: 'ready',
+            context: {
+              user,
+              client: null,
+              token: 'test-token',
+              retryCount: 0,
+              tokenExpiresAt: null,
+              ip: '',
+              error: null,
+            },
+          });
+        }
+      },
+    };
+
+    mockMachineService = {
+      extractToken: jest.fn((client) => client.handshake.auth?.token || client.handshake.headers.cookie?.split('=')?.[1]),
+      createMachine: jest.fn(),
+    };
+
+    mockMachineRegistry = {
+      create: jest.fn(() => mockActor),
+      get: jest.fn(),
+      remove: jest.fn(),
     };
 
     const mockLoggerService = {
@@ -72,6 +131,8 @@ describe('ChatGateway', () => {
         { provide: TokenLifecycleService, useValue: mockTokenLifecycleService },
         { provide: ConnectionHealthService, useValue: mockHealthService },
         { provide: ReliableMessageService, useValue: mockReliableMsgService },
+        { provide: WebSocketStateMachineService, useValue: mockMachineService },
+        { provide: WebSocketMachineRegistry, useValue: mockMachineRegistry },
         {
           provide: 'LoggerService',
           useValue: {
@@ -115,9 +176,14 @@ describe('ChatGateway', () => {
         emit: jest.fn(),
         data: {},
       } as unknown as AuthenticatedSocket;
-      mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user_1' });
+      mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user_1', id: 'user_1', username: 'test', email: 'test@test.com' });
 
-      await gateway.handleConnection(client);
+      const promise = gateway.handleConnection(client);
+      // Trigger the ready state callback
+      const actor = mockMachineRegistry.create.mock.results[mockMachineRegistry.create.mock.results.length - 1].value;
+      actor._triggerReady({ sub: 'user_1', id: 'user_1', username: 'test', email: 'test@test.com' });
+      await promise;
+
       expect(client.data.user).toBeDefined();
       expect(client.data.user!.id).toBe('user_1');
       expect(client.disconnect).not.toHaveBeenCalled();
@@ -135,15 +201,20 @@ describe('ChatGateway', () => {
         emit: jest.fn(),
         data: {},
       } as unknown as AuthenticatedSocket;
-      mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user_1' });
+      mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user_1', id: 'user_1', username: 'test', email: 'test@test.com' });
 
-      await gateway.handleConnection(client);
+      const promise = gateway.handleConnection(client);
+      // Trigger the ready state callback
+      const actor = mockMachineRegistry.create.mock.results[mockMachineRegistry.create.mock.results.length - 1].value;
+      actor._triggerReady({ sub: 'user_1', id: 'user_1', username: 'test', email: 'test@test.com' });
+      await promise;
+
       expect(client.data.user).toBeDefined();
       expect(client.data.user!.id).toBe('user_1');
     });
 
     it('should reject if rate limit exceeded', async () => {
-      mockRateLimitService.isAllowed.mockResolvedValueOnce(false);
+      mockRateLimitService.isAllowed.mockReturnValueOnce(false);
       const client = {
         handshake: {
           auth: { token: 'valid_token' },
@@ -153,7 +224,37 @@ describe('ChatGateway', () => {
         disconnect: jest.fn(),
         emit: jest.fn(),
       } as unknown as AuthenticatedSocket;
+
+      // Update machine registry mock to return actor that simulates disconnect on error
+      const errorActor = {
+        subscribe: jest.fn((callback) => {
+          setTimeout(() => {
+            callback({
+              matches: (state: string) => state === 'disconnected',
+              value: 'disconnected',
+              context: { error: 'Rate limit exceeded' }
+            });
+          }, 0);
+          return { unsubscribe: jest.fn() };
+        }),
+        send: jest.fn(),
+        stop: jest.fn(),
+        start: jest.fn(),
+        getSnapshot: jest.fn(),
+      };
+
+      // Override the default mock for this test
+      mockMachineRegistry.create.mockReturnValueOnce(errorActor);
+
       await gateway.handleConnection(client);
+
+      // The state machine flow for rate limit might differ slightly or handleConnection
+      // checks rate limit BEFORE creating machine (as seen in source). 
+      // If rate limit check is before machine creation, then client.disconnect() is called directly.
+      expect(mockRateLimitService.isAllowed).toHaveBeenCalled();
+
+      // Since our rate limit logic is at step 0 (before machine creation), 
+      // client.disconnect should be called.
       expect(client.disconnect).toHaveBeenCalled();
     });
 

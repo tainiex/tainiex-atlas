@@ -33,11 +33,13 @@ import { GraphModule } from './graph/graph.module';
 import { GraphNode } from './graph/entities/graph-node.entity';
 import { GraphEdge } from './graph/entities/graph-edge.entity';
 import { AppConfigModule } from './common/config/config.module';
+import { WebSocketModule } from './common/websocket/websocket.module';
 
 @Module({
   imports: [
     AppConfigModule, // Import global config module first
     LoggerModule,
+    WebSocketModule, // WebSocket state machine module (Global)
     HealthModule,
     ConfigModule.forRoot({
       isGlobal: true,
