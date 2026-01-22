@@ -116,6 +116,9 @@ importers:
       winston:
         specifier: ^3.19.0
         version: 3.19.0
+      xstate:
+        specifier: ^5.25.1
+        version: 5.25.1
       yjs:
         specifier: ^13.6.29
         version: 13.6.29
@@ -159,9 +162,6 @@ importers:
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.3
-      '@xstate/inspect':
-        specifier: ^0.8.0
-        version: 0.8.0(ws@8.18.3)(xstate@4.38.3)
       concurrently:
         specifier: ^9.2.1
         version: 9.2.1
@@ -1754,16 +1754,6 @@ packages:
   '@xhmikosr/os-filter-obj@3.0.0':
     resolution: {integrity: sha512-siPY6BD5dQ2SZPl3I0OZBHL27ZqZvLEosObsZRQ1NUB8qcxegwt0T9eKtV96JMFQpIz1elhkzqOg4c/Ri6Dp9A==}
     engines: {node: ^14.14.0 || >=16.0.0}
-
-  '@xstate/inspect@0.8.0':
-    resolution: {integrity: sha512-wSkFeOnp+7dhn+zTThO0M4D2FEqZN9lGIWowJu5JLa2ojjtlzRwK8SkjcHZ4rLX8VnMev7kGjgQLrGs8kxy+hw==}
-    peerDependencies:
-      '@types/ws': ^8.0.0
-      ws: ^8.0.0
-      xstate: ^4.37.0
-    peerDependenciesMeta:
-      '@types/ws':
-        optional: true
 
   '@xtuc/ieee754@1.2.0':
     resolution: {integrity: sha512-DX8nKgqcGwsc0eJSqYt5lwP4DH5FlHnmuWWBRy7X0NcaGR0ZtuyeESgMwTYVEtxmsNGY+qit4QYT/MIYTOTPeA==}
@@ -4660,8 +4650,8 @@ packages:
       utf-8-validate:
         optional: true
 
-  xstate@4.38.3:
-    resolution: {integrity: sha512-SH7nAaaPQx57dx6qvfcIgqKRXIh4L0A1iYEqim4s1u7c9VoCgzZc+63FY90AKU4ZzOC2cfJzTnpO4zK7fCUzzw==}
+  xstate@5.25.1:
+    resolution: {integrity: sha512-oyvsNH5pF2qkHmiHEMdWqc3OjDtoZOH2MTAI35r01f/ZQWOD+VLOiYqo65UgQET0XMA5s9eRm8fnsIo+82biEw==}
 
   xtend@4.0.2:
     resolution: {integrity: sha512-LKYU1iAXJXUgAXn9URjiu+MWhyUXHsvfp7mcuYm9dSUKK0/CjtrUwFAxD82/mCWbtLsGjFIad0wIsod4zrTAEQ==}
@@ -6492,12 +6482,6 @@ snapshots:
   '@xhmikosr/os-filter-obj@3.0.0':
     dependencies:
       arch: 3.0.0
-
-  '@xstate/inspect@0.8.0(ws@8.18.3)(xstate@4.38.3)':
-    dependencies:
-      fast-safe-stringify: 2.1.1
-      ws: 8.18.3
-      xstate: 4.38.3
 
   '@xtuc/ieee754@1.2.0': {}
 
@@ -9718,7 +9702,7 @@ snapshots:
 
   ws@8.18.3: {}
 
-  xstate@4.38.3: {}
+  xstate@5.25.1: {}
 
   xtend@4.0.2: {}
 
