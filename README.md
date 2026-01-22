@@ -7,11 +7,36 @@
 
 A modern, production-ready backend API built with NestJS that provides authentication, user management, and AI-powered chat capabilities using Google Vertex AI. Perfect as a starter template for building scalable applications with enterprise-grade features.
 
-## Overview
+## Product Positioning / 产品定位
 
-Tainiex Atlas is a comprehensive backend solution that combines robust authentication mechanisms with cutting-edge AI integration. It provides a solid foundation for building modern web applications that require user management, secure authentication, and intelligent chat capabilities.
+Tainiex Atlas is a **modern, enterprise-grade backend solution** designed to be the robust foundation for AI-native applications. It seamlessly integrates:
+- **Secure Authentication**: Traditional JWT + Google OAuth + Role-based Access.
+- **Real-time Collaboration**: Multi-user editing (CRDT/Y.js) and presence systems.
+- **AI Intelligence**: Native integration with Google Vertex AI (Gemini) for chat and RAG (Retrieval-Augmented Generation).
 
-### Key Features
+It is not just a boilerplate; it is a **production-ready architecture** that solves complex problems like WebSocket state management, distributed rate limiting, and long-term memory distillation out of the box.
+
+## Design Philosophy / 设计思想
+
+1.  **Modular Architecture (模块化)**:
+    -   Each major feature (Auth, Chat, Notes) is a self-contained module.
+    -   Clear separation of concerns between Controllers (HTTP), Gateways (WebSocket), and Services (Logic).
+
+2.  **RESTful & Real-time Hybrid**:
+    -   Uses standard **RESTful APIs** for resource management (CRUD).
+    -   Uses **WebSocket (Socket.io)** for high-frequency interactive features (Chat Streaming, Collaboration).
+
+3.  **Strict Type Safety**:
+    -   End-to-end type safety from Backend to Frontend using shared DTOs (`@tainiex/shared-atlas`).
+    -   No "magic strings" or `any` types allowed in core logic.
+
+4.  **Performance First**:
+    -   **Heavy Lifting Offloaded**: Graph processing and embedding generation run in a dedicated **Worker Pool**.
+    -   **Efficient Storage**: Uses Partial Indexes for tree structures and binary storage for CRDTs.
+
+5.  **Security by Design**:
+    -   Global Validation Pipes, Rate Limiting, and CSP.
+    -   Environment-isolated configurations.
 
 ### Key Features
 
@@ -25,6 +50,7 @@ Tainiex Atlas is a comprehensive backend solution that combines robust authentic
 - **Type Safety**: Full TypeScript implementation with shared type definitions
 - **Production Ready**: Enterprise-grade architecture with security best practices
 - **Performance Optimized**: Uses partial indexes and lazy loading for efficient tree structure handling
+
 
 ## Tech Stack
 
@@ -562,18 +588,18 @@ The project uses ESLint and Prettier for code quality:
 
 ### Architecture Documentation / 架构文档规范
 
-All architecture design documents are stored in the `docs/` directory following a standardized naming convention:
+> **Critical Rule**: All architecture design documents MUST be stored in the `docs/` directory and follow this strict naming convention:
 
-**Format**: `arch-design-<序号>-<描述>.md`
+**Format**: `arch-design-<Number>-<Description>.md`
 
-- `序号` (Number): Three-digit number (001, 002, 003, ...)
-- `描述` (Description): Brief English description with hyphens
+- `Number`: Three-digit sequence (e.g., 001, 002).
+- `Description`: Brief English description in kebab-case.
 
 **Examples**:
 - `arch-design-001-websocket-state-machine.md`
 - `arch-design-002-graph-rag-architecture.md`
 
-These documents capture design decisions, trade-offs, and implementation details for complex features.
+These documents are the Source of Truth for complex architectural decisions.
 
 ### Database Migrations
 

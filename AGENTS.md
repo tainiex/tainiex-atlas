@@ -28,26 +28,64 @@ This document serves as the authoritative guide for AI agents working on the `ta
 
 ## 2. Architecture & Design
 
-### 2.1. Modular Structure
-The application follows a modular architecture. Each major feature has its own directory in `src/` containing its Module, Controller, Service, and Entities.
+### 2.1. Code Map (代码地图)
 
-- **`src/app.module.ts`**: Root module, aggregates all feature modules.
-- **`src/auth/`**: Authentication logic (Local & Google OAuth).
-- **`src/users/`**: User management and persistence.
-- **src/chat/**: Chat sessions, message history, conversation logic, and **WebSocket Gateway**.
-- **src/notes/**: Core notes system, block-level storage, templates, and **Collaboration Gateway**.
-- **src/llm/**: Integration with Google Vertex AI (Gemini).
-- **`src/invitation/`**: Invitation code generation and validation system.
-- **docs/**: Architecture design documents (naming: `arch-design-XXX-description.md`)
-- **`shared-atlas/`**: Shared interfaces and DTOs (e.g., `IUser`).
-  - Request parameter structs (DTOs)
-  - Response structs
-  - Common shared structs
-  - Keep the API type definitions shared
-  - The shared library must contain more comments for users
-  - **Scripts**:
-      - `script/generate-dart.ts`: Generates Dart DTOs from TS source.
-      - `test/verify-dart-structure.ts`: Verifies structural and content consistency between TS and Dart.
+This section serves as the **Index (Yellow Pages)** for the entire codebase.
+
+#### **Directory Structure**
+
+- **src/app.module.ts**: Root module, aggregates all feature modules.
+- **src/main.ts**: Entry point, Global Pipes, View Engine, Swagger, and Logger setup.
+
+#### **Feature Modules (功能模块)**
+
+- **`src/auth/` (Authentication)**
+    - `AuthService`: Handles Login, Registration, Password Hashing.
+    - `strategies/`: Passport strategies (Local, Google, JWT, JWT-Refresh).
+    - `guards/`: Global and local Auth Guards.
+- **`src/chat/` (AI Chat System)**
+    - `ChatGateway`: **WebSocket** entry point for AI streaming with detailed event handling.
+    - `ChatService`: Manages session logic, message persistence, and LLM orchestration.
+    - `queue/`: **BullMQ/Worker** setup for asynchronous tasks (e.g., long-running summary generation).
+    - `memory/`: Integration with RAG/Memory services.
+- **`src/notes/` (Collaboration & Knowledge)**
+    - `CollaborationGateway`: **WebSocket** entry for real-time Y.js sync.
+    - `BlocksService`: CRUD for atomic note blocks.
+    - `YjsTransformer`: Service to convert between DB state and Y.js binary state.
+- **`src/llm/` (AI Integration)**
+    - `LlmService`: Wrapper for Google Vertex AI SDK.
+    - `adapters/`: Model adapters for different provider interfaces (if extensible).
+- **`src/users/`**: User entity and profile management.
+- **`src/invitation/`**: Logic for invitation code generation/validation.
+- **`src/health/`**: Health check endpoints (Liveness/Readiness probes).
+
+#### **Core & Shared (核心与共享)**
+
+- **`src/common/`**
+    - `filters/`: Global Exception Filters (e.g., `AllExceptionsFilter`).
+    - `guards/`: RateLimitGuard, etc.
+    - `websocket/`: **XState Machine** for managing complex socket connection states.
+- **`shared-atlas/` (External Shared Lib)**
+    - Contains strictly typed **DTOs** and **Interfaces** shared with the Frontend (Flutter/Web).
+    - `src/dto/`: Request/Response objects.
+    - `src/interfaces/`: Core entity types (IUser, etc.).
+
+#### **Infrastructure & Scripts**
+
+- **`script/`**
+    - `create_schema.sql`: Source of Truth for Database Schema.
+    - `generate-dart.ts`: Code generation tool for Frontend clients.
+
+---
+
+### 2.2. Document Index (文档索引)
+
+The `docs/` directory contains detailed architectural designs. **Always check these before significant refactoring.**
+
+| ID | Filename | Description (ZH/EN) |
+|---|---|---|
+| 001 | [arch-design-001-websocket-state-machine.md](docs/arch-design-001-websocket-state-machine.md) | WebSocket State Management Design / WebSocket 状态机设计 |
+| ... | ... | *Add new design docs here* |
 
 ### 2.2. Database (TypeORM)
 - **Entities**: All entities are defined in their respective modules/directories.
