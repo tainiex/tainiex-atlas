@@ -58,7 +58,7 @@ It is not just a boilerplate; it is a **production-ready architecture** that sol
 - **Language**: TypeScript 5.7.3
 - **Database**: PostgreSQL with TypeORM
 - **Authentication**: JWT + Passport.js + Google OAuth 2.0
-- **AI/ML**: Google Vertex AI (Gemini)
+- **AI/ML**: Google Vertex AI (Gemini) / Mistral AI
 - **Collaboration**: Y.js (CRDT) + Socket.io
 - **Storage**: Google Cloud Storage
 - **Testing**: Jest
@@ -132,6 +132,9 @@ GSA_KEY_FILE=./path/to/service-account-key.json
 VERTEX_PROJECT_ID=your-gcp-project-id
 VERTEX_LOCATION=us-central1
 VERTEX_MODEL=gemini-pro
+
+# Mistral AI Configuration
+MISTRAL_API_KEY=your_mistral_api_key_here
 ```
 
 ### 4. Set Up PostgreSQL Database

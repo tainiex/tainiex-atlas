@@ -197,9 +197,11 @@ The `docs/` directory contains detailed architectural designs. **Always check th
 - **Consistency**: All feature modules (like `ChatModule`) must NOT re-register `JwtModule` to ensure they use the same Secret Key and Service instance.
 
 ### 3.3. LLM Integration
-- **Provider**: Google Vertex AI (Gemini Models).
-- **Service**: `LlmService` handles API calls to Vertex AI (both standard `generateContent` and streaming `streamChat`).
-- **Configuration**: Credentials loaded via `GSA_KEY_FILE` or explicit Project/Location env vars.
+- **Providers**: Google Vertex AI (Gemini Models) and Mistral AI.
+- **Service**: `LlmService` handles API calls to providers. Uses `LlmAdapterFactory` to select the correct adapter based on model name.
+- **Configuration**:
+    - Vertex AI: Credentials loaded via `GSA_KEY_FILE` or explicit Project/Location env vars.
+    - Mistral AI: Requires `MISTRAL_API_KEY` in environment variables.
 
 ### 3.5. Notes & Collaboration System
 - **Block-Based Storage**: Notes are composed of multimodal blocks (TEXT, HEADING, IMAGE, etc.).

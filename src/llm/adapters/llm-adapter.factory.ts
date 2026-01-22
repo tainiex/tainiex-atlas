@@ -4,6 +4,7 @@ import { ILlmAdapter } from './llm-adapter.interface';
 import { ModelClassifier } from './model-classifier';
 import { GoogleVertexGaAdapter } from './google-vertex-ga.adapter';
 import { GoogleVertexPreviewAdapter } from './google-vertex-preview.adapter';
+import { MistralAiAdapter } from './mistral-ai.adapter';
 import { LoggerService } from '../../common/logger/logger.service';
 
 /**
@@ -26,7 +27,9 @@ export class LlmAdapterFactory {
 
     let adapter: ILlmAdapter;
 
-    if (category === 'preview') {
+    if (category === 'mistral') {
+      adapter = new MistralAiAdapter(configService, logger, modelName);
+    } else if (category === 'preview') {
       adapter = new GoogleVertexPreviewAdapter(
         configService,
         auth,

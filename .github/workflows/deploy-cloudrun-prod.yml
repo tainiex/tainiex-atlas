@@ -125,6 +125,7 @@ jobs:
           COOKIE_DOMAIN: ".tainiex.com"
           GCS_BUCKET_NAME: "tainiex-atlas"
           GCS_SERVICE_ACCOUNT: "${{ secrets.CLOUD_RUN_GCP_SERVICE_ACCOUNT }}"
+          MISTRAL_API_KEY: "${{ secrets.MISTRAL_API_KEY }}"
           EOF
 
           # Deploy using --env-vars-file which replaces all existing env vars

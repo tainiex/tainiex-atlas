@@ -23,22 +23,7 @@ export class ModelClassifier {
     return previewPatterns.some((pattern) => pattern.test(modelName));
   }
 
-  /**
-   * 获取模型类别
-   */
-  static getModelCategory(modelName: string): 'preview' | 'ga' {
-    return this.isPreviewModel(modelName) ? 'preview' : 'ga';
-  }
 
-  /**
-   * 获取模型的可读描述
-   */
-  static getModelDescription(modelName: string): string {
-    const category = this.getModelCategory(modelName);
-    return category === 'preview'
-      ? 'Preview model (v1beta1 API)'
-      : 'GA model (VertexAI SDK)';
-  }
 
   // Unified Model Configuration
   private static readonly _MODELS = [
@@ -46,7 +31,16 @@ export class ModelClassifier {
     { name: 'gemini-2.5-flash', maxOutputTokens: 5734 },
     { name: 'gemini-3-flash-preview', maxOutputTokens: 45875 },
     { name: 'gemini-3-pro-preview', maxOutputTokens: 45875 },
+    { name: 'mistral-medium-latest', maxOutputTokens: 32000 },
+    { name: 'mistral-small-latest', maxOutputTokens: 32000 },
   ];
+
+  /**
+   * 判断是否为 Mistral 模型
+   */
+  static isMistralModel(modelName: string): boolean {
+    return modelName.startsWith('mistral-') || modelName.startsWith('codestral-');
+  }
 
   /**
    * 获取模型元数据
@@ -83,5 +77,28 @@ export class ModelClassifier {
       return this.DEFAULT_MODEL;
     }
     return modelName;
+  }
+
+  /**
+   * 获取模型类别
+   */
+  static getModelCategory(modelName: string): 'preview' | 'ga' | 'mistral' {
+    if (this.isMistralModel(modelName)) {
+      return 'mistral';
+    }
+    return this.isPreviewModel(modelName) ? 'preview' : 'ga';
+  }
+
+  /**
+   * 获取模型的可读描述
+   */
+  static getModelDescription(modelName: string): string {
+    const category = this.getModelCategory(modelName);
+    if (category === 'mistral') {
+      return 'Mistral AI Model';
+    }
+    return category === 'preview'
+      ? 'Preview model (v1beta1 API)'
+      : 'GA model (VertexAI SDK)';
   }
 }
