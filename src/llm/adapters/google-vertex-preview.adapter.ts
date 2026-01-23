@@ -328,7 +328,10 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
               yield text;
             }
           } catch (e) {
-            this.logger.error('[GoogleVertexPreviewAdapter] JSON parse error:', e);
+            this.logger.error(
+              '[GoogleVertexPreviewAdapter] JSON parse error:',
+              e,
+            );
           }
 
           startIdx = objEnd + 1;

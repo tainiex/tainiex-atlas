@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Block } from './entities/block.entity';
 import { Note } from './entities/note.entity';
-import *  as Y from 'yjs';
+import * as Y from 'yjs';
 import { BlockType } from '@tainiex/shared-atlas';
 import { LoggerService } from '../common/logger/logger.service';
 

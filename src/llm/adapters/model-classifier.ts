@@ -23,8 +23,6 @@ export class ModelClassifier {
     return previewPatterns.some((pattern) => pattern.test(modelName));
   }
 
-
-
   // Unified Model Configuration
   private static readonly _MODELS = [
     { name: 'gemini-2.5-pro', maxOutputTokens: 5734 },
@@ -39,7 +37,9 @@ export class ModelClassifier {
    * 判断是否为 Mistral 模型
    */
   static isMistralModel(modelName: string): boolean {
-    return modelName.startsWith('mistral-') || modelName.startsWith('codestral-');
+    return (
+      modelName.startsWith('mistral-') || modelName.startsWith('codestral-')
+    );
   }
 
   /**

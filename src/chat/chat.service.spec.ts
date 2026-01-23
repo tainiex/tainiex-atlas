@@ -10,6 +10,7 @@ import { LoggerService } from '../common/logger/logger.service';
 import { ChatRole } from '@tainiex/shared-atlas';
 import { ConfigService } from '@nestjs/config';
 import { MemoryService } from './memory/memory.service';
+import { ToolsService } from '../tools/tools.service';
 
 describe('ChatService - Title Generation', () => {
   let service: ChatService;
@@ -58,6 +59,11 @@ describe('ChatService - Title Generation', () => {
     add: jest.fn(),
   };
 
+  const mockToolsService = {
+    getToolsDefinitions: jest.fn().mockReturnValue([]),
+    executeTool: jest.fn(),
+  };
+
   const mockLoggerService = {
     log: jest.fn(),
     error: jest.fn(),
@@ -86,13 +92,13 @@ describe('ChatService - Title Generation', () => {
         {
           provide: getRepositoryToken(ChatMessageHistory),
           useValue: mockChatMessageRepo,
-        }, // Re-use msg repo mock for simplicity as history likely has similar save/find interface or is not used in strictly tested paths
-        { provide: LlmService, useValue: mockLlmService },
+        },
         { provide: LlmService, useValue: mockLlmService },
         { provide: 'IContextManager', useValue: mockContextManager },
         { provide: 'IJobQueue', useValue: mockJobQueue },
         { provide: ConfigService, useValue: mockConfigService },
         { provide: MemoryService, useValue: mockMemoryService },
+        { provide: ToolsService, useValue: mockToolsService },
       ],
     }).compile();
 
@@ -275,5 +281,59 @@ describe('ChatService - Title Generation', () => {
         select: ['createdAt'],
       });
     });
+
+    describe('streamMessage - Agentic Workflow', () => {
+      const session = { id: 's1', userId: 'u1' };
+
+      beforeEach(() => {
+        mockChatSessionRepo.findOne.mockResolvedValue(session);
+        mockChatMessageRepo.create.mockReturnValue({ id: 'm1' });
+        mockChatMessageRepo.save.mockResolvedValue({ id: 'm1' });
+        mockChatMessageRepo.count.mockResolvedValue(1);
+        // Mock tools
+        const toolDefs = [{ name: 'get_weather', description: 'desc', parameters: {} }];
+        mockToolsService.getToolsDefinitions.mockReturnValue(toolDefs);
+      });
+
+      it('should execute tool when LLM returns JSON tool call', async () => {
+        // Setup LLM Responses for 2 turns
+        // Turn 1: Return Tool Call
+        mockLlmService.streamChat.mockImplementationOnce(async function* () {
+          yield '```json\n{ "tool": "get_weather", "parameters": { "city": "London" } }\n```';
+        });
+
+        // Turn 2: Return Final Answer
+        mockLlmService.streamChat.mockImplementationOnce(async function* () {
+          yield 'London weather is rainy.';
+        });
+
+        // Setup Tool Result
+        mockToolsService.executeTool.mockResolvedValue({ weather: 'rainy' });
+
+        const generator = service.streamMessage('s1', 'u1', 'Weather in London?', ChatRole.USER);
+
+        const chunks: string[] = [];
+        for await (const chunk of generator) {
+          chunks.push(chunk);
+        }
+
+        // Verify Tool Execution
+        expect(mockToolsService.executeTool).toHaveBeenCalledWith('get_weather', { city: 'London' });
+
+        // Verify both LLM calls
+        expect(mockLlmService.streamChat).toHaveBeenCalledTimes(2);
+
+        // Verify second LLM call includes Tool Output
+        const secondCallHistory = mockLlmService.streamChat.mock.calls[1][0];
+        const lastMsg = secondCallHistory[secondCallHistory.length - 1]; // Observation
+        expect(lastMsg.role).toBe('tool'); // Assuming we used 'tool' role
+        expect(lastMsg.message).toContain('rainy');
+
+        // Verify Output
+        const fullResponse = chunks.join('');
+        expect(fullResponse).toContain('London weather is rainy.');
+      });
+    });
   });
+
 });

@@ -106,7 +106,8 @@ interface AuthenticatedSocket extends Socket {
 })
 @UseFilters(new WebSocketExceptionFilter())
 export class CollaborationGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -206,10 +207,7 @@ export class CollaborationGateway
           client.data.user = user;
 
           // Schedule token refresh notification
-          this.tokenLifecycleService.scheduleRefreshNotification(
-            client,
-            token,
-          );
+          this.tokenLifecycleService.scheduleRefreshNotification(client, token);
 
           // Health Monitor Init
           this.healthService.onConnect(client.id);
@@ -269,7 +267,11 @@ export class CollaborationGateway
         : Date.now() + 15 * 60 * 1000;
 
       // Send success event to state machine
-      actor.send({ type: WebSocketEventTypes.AUTH_SUCCESS, user: payload, expiresAt });
+      actor.send({
+        type: WebSocketEventTypes.AUTH_SUCCESS,
+        user: payload,
+        expiresAt,
+      });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -319,7 +321,9 @@ export class CollaborationGateway
     // Check permission
     const canEdit = await this.notesService.canEdit(noteId, userId);
     if (!canEdit) {
-      client.emit(ClientEventTypes.COLLABORATION_ERROR, { error: 'No edit permission' });
+      client.emit(ClientEventTypes.COLLABORATION_ERROR, {
+        error: 'No edit permission',
+      });
       return;
     }
 

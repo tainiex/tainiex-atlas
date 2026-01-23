@@ -29,7 +29,9 @@ export class UsersService {
     }
 
     this.storage = new Storage(storageOptions);
-    this.logger.log(`[UsersService] Storage initialized for project: ${projectId}`);
+    this.logger.log(
+      `[UsersService] Storage initialized for project: ${projectId}`,
+    );
   }
 
   async findOne(username: string): Promise<User | null> {

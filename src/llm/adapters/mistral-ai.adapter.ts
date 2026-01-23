@@ -23,7 +23,9 @@ export class MistralAiAdapter implements ILlmAdapter {
   async initialize(): Promise<void> {
     const apiKey = this.configService.get<string>('MISTRAL_API_KEY');
     if (!apiKey) {
-      throw new Error('MISTRAL_API_KEY is not defined in environment variables');
+      throw new Error(
+        'MISTRAL_API_KEY is not defined in environment variables',
+      );
     }
 
     this.client = new Mistral({ apiKey });
@@ -45,7 +47,11 @@ export class MistralAiAdapter implements ILlmAdapter {
         model: this.modelName,
         messages: [{ role: 'user', content: prompt }],
       });
-      return (response.choices && response.choices[0] && response.choices[0].message.content) as string || '';
+      return (
+        ((response.choices &&
+          response.choices[0] &&
+          response.choices[0].message.content) as string) || ''
+      );
     } catch (error) {
       this.logger.error(
         '[MistralAiAdapter] generateContent failed:',
@@ -68,7 +74,11 @@ export class MistralAiAdapter implements ILlmAdapter {
         model: this.modelName,
         messages: mistralMessages,
       });
-      return (response.choices && response.choices[0] && response.choices[0].message.content) as string || '';
+      return (
+        ((response.choices &&
+          response.choices[0] &&
+          response.choices[0].message.content) as string) || ''
+      );
     } catch (error) {
       this.logger.error(
         '[MistralAiAdapter] chat failed:',

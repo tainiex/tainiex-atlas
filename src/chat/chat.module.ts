@@ -16,6 +16,7 @@ import { RateLimitModule } from '../rate-limit/rate-limit.module';
 
 import { MemoryModule } from './memory/memory.module';
 import { JobQueueModule } from './queue/job-queue.module';
+import { ToolsModule } from '../tools/tools.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { JobQueueModule } from './queue/job-queue.module';
     MemoryModule,
     JobQueueModule,
     RateLimitModule,
+    ToolsModule,
   ],
   controllers: [ChatController],
   providers: [
@@ -40,4 +42,4 @@ import { JobQueueModule } from './queue/job-queue.module';
   ],
   exports: [ChatService],
 })
-export class ChatModule {}
+export class ChatModule { }

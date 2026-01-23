@@ -209,7 +209,7 @@ export class MemoryService {
 
     // Push to queue
     this.queue.push({
-      verify: () => { }, // Placeholder if we need cancellation later
+      verify: () => {}, // Placeholder if we need cancellation later
       task: async () => this.runDistillationTask(userId, sessionId, messages),
     });
 

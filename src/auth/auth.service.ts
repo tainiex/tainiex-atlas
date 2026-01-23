@@ -168,7 +168,9 @@ export class AuthService {
             // Standard Web Flow (uses postmessage or configured URI)
             const response = await this.googleClient.getToken(dto.code);
             googleTokens = response.tokens;
-            this.logger.log('[GoogleLogin] Standard token exchange successful.');
+            this.logger.log(
+              '[GoogleLogin] Standard token exchange successful.',
+            );
           }
 
           // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
@@ -500,7 +502,10 @@ export class AuthService {
     } catch (e) {
       const errorMessage =
         e instanceof Error ? e.message : 'Verification failed';
-      this.logger.error(`[GoogleSignup] Token verification failed:`, errorMessage);
+      this.logger.error(
+        `[GoogleSignup] Token verification failed:`,
+        errorMessage,
+      );
       throw new UnauthorizedException('Invalid or expired signup token');
     }
 
@@ -518,7 +523,9 @@ export class AuthService {
     // Double check if user exists
     let user = await this.usersService.findOneByEmail(email);
     if (user) {
-      this.logger.log(`[GoogleSignup] User already exists, logging in: ${user.id}`);
+      this.logger.log(
+        `[GoogleSignup] User already exists, logging in: ${user.id}`,
+      );
       const tokens = await this.generateTokens(user);
       await this.updateRefreshToken(user.id, tokens.refresh_token);
 

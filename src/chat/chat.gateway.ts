@@ -97,7 +97,8 @@ export interface AuthenticatedSocket extends Socket {
 })
 @UseFilters(new WebSocketExceptionFilter())
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -176,9 +177,7 @@ export class ChatGateway
       ChatGateway.RATE_LIMIT_DURATION,
     );
     if (!isAllowed) {
-      this.logger.warn(
-        `Connection rejected: Rate limit exceeded for IP ${ip}`,
-      );
+      this.logger.warn(`Connection rejected: Rate limit exceeded for IP ${ip}`);
       client.disconnect(true);
       return;
     }
@@ -219,10 +218,7 @@ export class ChatGateway
           );
 
           // Schedule token refresh notification
-          this.tokenLifecycleService.scheduleRefreshNotification(
-            client,
-            token,
-          );
+          this.tokenLifecycleService.scheduleRefreshNotification(client, token);
 
           // Health Monitor Init
           this.healthService.onConnect(client.id);
@@ -276,10 +272,16 @@ export class ChatGateway
       payload.id = userId; // Ensure .id is available for legacy code
 
       // Calculate token expiration
-      const expiresAt = payload.exp ? payload.exp * 1000 : Date.now() + 15 * 60 * 1000;
+      const expiresAt = payload.exp
+        ? payload.exp * 1000
+        : Date.now() + 15 * 60 * 1000;
 
       // Send success event to state machine
-      actor.send({ type: WebSocketEventTypes.AUTH_SUCCESS, user: payload, expiresAt });
+      actor.send({
+        type: WebSocketEventTypes.AUTH_SUCCESS,
+        user: payload,
+        expiresAt,
+      });
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : 'Unknown error';
@@ -378,7 +380,10 @@ export class ChatGateway
         sessionId,
         user.sub,
       );
-      client.emit(ClientEventTypes.CHAT_STREAM, { type: 'done', title: updatedSession.title });
+      client.emit(ClientEventTypes.CHAT_STREAM, {
+        type: 'done',
+        title: updatedSession.title,
+      });
     } catch (error) {
       this.logger.error('Chat stream error:', error);
       const errorMessage =

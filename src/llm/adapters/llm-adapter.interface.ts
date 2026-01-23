@@ -1,4 +1,4 @@
-export type LlmRole = 'user' | 'assistant' | 'system';
+export type LlmRole = 'user' | 'assistant' | 'system' | 'tool';
 
 export interface ChatMessage {
   role: LlmRole;

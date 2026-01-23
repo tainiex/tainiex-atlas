@@ -103,7 +103,11 @@ describe('ChatGateway', () => {
     };
 
     mockMachineService = {
-      extractToken: jest.fn((client) => client.handshake.auth?.token || client.handshake.headers.cookie?.split('=')?.[1]),
+      extractToken: jest.fn(
+        (client) =>
+          client.handshake.auth?.token ||
+          client.handshake.headers.cookie?.split('=')?.[1],
+      ),
       createMachine: jest.fn(),
     };
 
@@ -176,12 +180,25 @@ describe('ChatGateway', () => {
         emit: jest.fn(),
         data: {},
       } as unknown as AuthenticatedSocket;
-      mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user_1', id: 'user_1', username: 'test', email: 'test@test.com' });
+      mockJwtService.verifyAsync.mockResolvedValue({
+        sub: 'user_1',
+        id: 'user_1',
+        username: 'test',
+        email: 'test@test.com',
+      });
 
       const promise = gateway.handleConnection(client);
       // Trigger the ready state callback
-      const actor = mockMachineRegistry.create.mock.results[mockMachineRegistry.create.mock.results.length - 1].value;
-      actor._triggerReady({ sub: 'user_1', id: 'user_1', username: 'test', email: 'test@test.com' });
+      const actor =
+        mockMachineRegistry.create.mock.results[
+          mockMachineRegistry.create.mock.results.length - 1
+        ].value;
+      actor._triggerReady({
+        sub: 'user_1',
+        id: 'user_1',
+        username: 'test',
+        email: 'test@test.com',
+      });
       await promise;
 
       expect(client.data.user).toBeDefined();
@@ -201,12 +218,25 @@ describe('ChatGateway', () => {
         emit: jest.fn(),
         data: {},
       } as unknown as AuthenticatedSocket;
-      mockJwtService.verifyAsync.mockResolvedValue({ sub: 'user_1', id: 'user_1', username: 'test', email: 'test@test.com' });
+      mockJwtService.verifyAsync.mockResolvedValue({
+        sub: 'user_1',
+        id: 'user_1',
+        username: 'test',
+        email: 'test@test.com',
+      });
 
       const promise = gateway.handleConnection(client);
       // Trigger the ready state callback
-      const actor = mockMachineRegistry.create.mock.results[mockMachineRegistry.create.mock.results.length - 1].value;
-      actor._triggerReady({ sub: 'user_1', id: 'user_1', username: 'test', email: 'test@test.com' });
+      const actor =
+        mockMachineRegistry.create.mock.results[
+          mockMachineRegistry.create.mock.results.length - 1
+        ].value;
+      actor._triggerReady({
+        sub: 'user_1',
+        id: 'user_1',
+        username: 'test',
+        email: 'test@test.com',
+      });
       await promise;
 
       expect(client.data.user).toBeDefined();
@@ -232,7 +262,7 @@ describe('ChatGateway', () => {
             callback({
               matches: (state: string) => state === 'disconnected',
               value: 'disconnected',
-              context: { error: 'Rate limit exceeded' }
+              context: { error: 'Rate limit exceeded' },
             });
           }, 0);
           return { unsubscribe: jest.fn() };
@@ -249,11 +279,11 @@ describe('ChatGateway', () => {
       await gateway.handleConnection(client);
 
       // The state machine flow for rate limit might differ slightly or handleConnection
-      // checks rate limit BEFORE creating machine (as seen in source). 
+      // checks rate limit BEFORE creating machine (as seen in source).
       // If rate limit check is before machine creation, then client.disconnect() is called directly.
       expect(mockRateLimitService.isAllowed).toHaveBeenCalled();
 
-      // Since our rate limit logic is at step 0 (before machine creation), 
+      // Since our rate limit logic is at step 0 (before machine creation),
       // client.disconnect should be called.
       expect(client.disconnect).toHaveBeenCalled();
     });

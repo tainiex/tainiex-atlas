@@ -97,7 +97,12 @@ export async function processDistillation(
           const edgeRepo = dataSource.getRepository(GraphEdge);
           // Create a LoggerService instance for the worker thread
           const logger = new LoggerService(null as any);
-          const graphService = new GraphService(nodeRepo, edgeRepo, dataSource, logger);
+          const graphService = new GraphService(
+            nodeRepo,
+            edgeRepo,
+            dataSource,
+            logger,
+          );
 
           // Ingest Graph Data
           for (const m of memories) {

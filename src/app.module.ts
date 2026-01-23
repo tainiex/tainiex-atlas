@@ -13,6 +13,7 @@ import { ChatModule } from './chat/chat.module';
 import { ChatSession } from './chat/chat-session.entity';
 import { ChatMessage } from './chat/chat-message.entity';
 import { LoggerModule } from './common/logger/logger.module';
+import { ActivityModule } from './common/activity/activity.module';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { RateLimitEntry } from './rate-limit/rate-limit.entity';
 import { RateLimitModule } from './rate-limit/rate-limit.module';
@@ -39,6 +40,7 @@ import { WebSocketModule } from './common/websocket/websocket.module';
   imports: [
     AppConfigModule, // Import global config module first
     LoggerModule,
+    ActivityModule,
     WebSocketModule, // WebSocket state machine module (Global)
     HealthModule,
     ConfigModule.forRoot({
@@ -104,4 +106,4 @@ import { WebSocketModule } from './common/websocket/websocket.module';
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule { }
+export class AppModule {}

@@ -147,7 +147,9 @@ export class VersionsService {
     for (const note of notesToSnapshot) {
       try {
         await this.createNoteSnapshot(note.id);
-        this.logger.log(`[VersionsService] Created snapshot for note: ${note.id}`);
+        this.logger.log(
+          `[VersionsService] Created snapshot for note: ${note.id}`,
+        );
       } catch (error) {
         this.logger.error(
           `[VersionsService] Failed to snapshot note ${note.id}:`,

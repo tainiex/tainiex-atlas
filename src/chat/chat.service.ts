@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  Inject,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, Inject, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, LessThan, MoreThan, FindOptionsWhere } from 'typeorm';
@@ -11,6 +7,7 @@ import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
 import { MemoryService } from './memory/memory.service';
+import { ToolsService } from '../tools/tools.service';
 import type { IJobQueue } from './queue/job-queue.interface';
 import { ChatRole, CHAT_ROOT_PARENT_ID } from '@tainiex/shared-atlas';
 import type { IContextManager } from './context/context-manager.interface';
@@ -31,6 +28,7 @@ export class ChatService {
     private chatMessageHistoryRepository: Repository<ChatMessageHistory>,
     private llmService: LlmService,
     private memoryService: MemoryService,
+    private toolsService: ToolsService, // [NEW] Injected ToolsService
     @Inject('IContextManager')
     private contextManager: IContextManager,
     @Inject('IJobQueue')
@@ -235,13 +233,15 @@ export class ChatService {
     model?: string,
     parentId?: string,
   ): AsyncGenerator<string> {
-    this.logger.debug(`[ChatService] streamMessage called: ${JSON.stringify({
-      sessionId,
-      userId,
-      content,
-      role,
-      parentId,
-    })}`);
+    this.logger.debug(
+      `[ChatService] streamMessage called: ${JSON.stringify({
+        sessionId,
+        userId,
+        content,
+        role,
+        parentId,
+      })}`,
+    );
 
     // 1. Verify session
     const session = await this.chatSessionRepository.findOne({
@@ -404,77 +404,207 @@ export class ChatService {
       return;
     }
 
-    this.logger.log('[ChatService] Preparing to call LLM service...');
-    // 5. Stream AI Response
+    this.logger.log('[ChatService] Preparing to call LLM service (Agentic Loop)...');
+
+    // 5. Agentic Loop (ReAct)
     const history = await this.contextManager.getContext(sessionId);
     const previousMessages = history.filter((m) => m.id !== userMessage.id);
 
-    let fullAiResponse = '';
+    // Prepare Tools Definition
+    const tools = this.toolsService.getToolsDefinitions();
+    const toolsJson = JSON.stringify(tools, null, 2);
+
+    // RAG / Memory Context
+    let memoryContext = '';
     try {
-      // [NEW] Memory Retrieval RAG
-      let systemPromptAddon = '';
-      try {
-        if (content && content.trim().length > 0) {
-          const relevantMemories = await this.memoryService.searchMemories(
-            userId,
-            content,
-          );
-          if (relevantMemories.length > 0) {
-            const memoryContext = relevantMemories
-              .map((m) => `- ${m.content} (Source: ${m.metadata.sourceType})`)
-              .join('\n');
-            systemPromptAddon = `\nRelevant Memories for Context:\n${memoryContext}\n`;
-          }
+      if (content && content.trim().length > 0) {
+        const relevantMemories = await this.memoryService.searchMemories(userId, content);
+        if (relevantMemories.length > 0) {
+          memoryContext = relevantMemories
+            .map((m) => `- ${m.content} (Source: ${m.metadata.sourceType})`)
+            .join('\n');
         }
-      } catch (e) {
-        this.logger.error('[ChatService] Memory retrieval failed', e);
       }
-
-      let effectiveHistory: LlmMessage[] = previousMessages.map((m) => ({
-        role: m.role as unknown as LlmRole,
-        message: m.content,
-      }));
-
-      if (systemPromptAddon) {
-        effectiveHistory = [
-          {
-            role: 'system' as LlmRole,
-            message: `You are a helpful AI assistant.${systemPromptAddon}`,
-          },
-          ...effectiveHistory,
-        ];
-      }
-
-      this.logger.debug(
-        `[ChatService] Calling llmService.streamChat with ${effectiveHistory.length} messages (including system)`,
-      );
-      const stream = this.llmService.streamChat(
-        effectiveHistory,
-        content,
-        model,
-      );
-
-      this.logger.log('[ChatService] Stream obtained, starting iteration...');
-      for await (const chunk of stream) {
-        fullAiResponse += chunk;
-        yield chunk;
-      }
-    } catch (error) {
-      this.logger.error('[ChatService] Stream AI Error:', error);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      this.logger.error('[ChatService] Error stack:', error.stack);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      yield `data: [Error: ${error.message}]\n\n`;
-      throw error;
+    } catch (e) {
+      this.logger.error('[ChatService] Memory retrieval failed', e);
     }
 
-    // 5. Save AI Message
-    if (fullAiResponse) {
+    // System Prompt construction
+    const dateStr = new Date().toISOString();
+    const systemPrompt = `You are an advanced AI assistant powered by Tainiex Atlas.
+Current Time: ${dateStr}
+
+You have access to the following tools:
+${toolsJson}
+
+RULES:
+1. If the user's request can be answered directly, reply normally.
+2. If you need to use a tool, you MUST output a JSON object in this EXACT format (AND NOTHING ELSE):
+   { "tool": "tool_name", "parameters": { ... } }
+3. After using a tool, you will receive the observation. Then you can answer the user.
+4. If you use "web_search", cite your sources.
+
+Relevant Memories:
+${memoryContext}
+`;
+
+    // Initialize Conversation History with System Prompt
+    let currentHistory: LlmMessage[] = [
+      { role: 'system', message: systemPrompt },
+      ...previousMessages.map(m => ({ role: m.role as LlmRole, message: m.content })),
+      { role: 'user', message: content } // Current User Message
+    ];
+
+    let loopCount = 0;
+    const MAX_LOOPS = 5;
+    let finalAnswer = '';
+
+    while (loopCount < MAX_LOOPS) {
+      loopCount++;
+      this.logger.debug(`[AgentLoop] Iteration ${loopCount}/${MAX_LOOPS}`);
+
+      try {
+        // Step 1: Call LLM (Planning/Thinking)
+        // SPECULATIVE INTENT RECOGNITION
+        // User request: Force 'gemini-2.5-flash' for intent recognition to save time.
+        const userModel = model || 'gemini-2.5-flash';
+        let effectiveModel = userModel;
+        let isSpeculativeMode = false;
+
+        if (loopCount === 1 && userModel !== 'gemini-2.5-flash') {
+          effectiveModel = 'gemini-2.5-flash';
+          isSpeculativeMode = true;
+          this.logger.debug(`[AgentLoop] Speculative Intent Recognition with ${effectiveModel}`);
+        } else {
+          this.logger.debug(`[AgentLoop] Reasoning with model: ${effectiveModel}`);
+        }
+
+        const stream = this.llmService.streamChat(currentHistory, '', effectiveModel);
+
+        let accumulatedResponse = '';
+
+        // If we are in "Speculative Mode" (Flash instead of Pro), we MUST BUFFER the output.
+        // We cannot yield to the user yet, because if it's NOT a tool call, we might need to discard 
+        // this "cheap" response and re-run with the "expensive" model.
+
+        if (isSpeculativeMode) {
+          // Buffer completely
+          for await (const chunk of stream) {
+            accumulatedResponse += chunk;
+          }
+        } else {
+          // Determine if we should stream immediately
+          // For subsequent loops (Synthesis), we just stream.
+          for await (const chunk of stream) {
+            accumulatedResponse += chunk;
+            yield chunk;
+          }
+        }
+
+        // Step 2: Analyze Response
+        const trimmedResponse = accumulatedResponse.trim();
+        // Try to parse JSON tool call
+        const jsonMatch = trimmedResponse.match(/```json\n([\s\S]*?)\n```/) || trimmedResponse.match(/\{[\s\S]*\}/);
+
+        let toolCall: { tool: string, parameters: any } | null = null;
+
+        if (jsonMatch) {
+          try {
+            const potentialJson = jsonMatch[1] || jsonMatch[0];
+            const parsed = JSON.parse(potentialJson);
+            if (parsed.tool && parsed.parameters) {
+              toolCall = parsed;
+            }
+          } catch (e) {
+            // Not valid JSON
+          }
+        }
+
+        // SPECULATIVE CHECK:
+        // If we used Flash speculatively, and it failed to produce a tool call...
+        // It means correct intent was "Chat", so we need to use the User's preferred model (Pro).
+        if (isSpeculativeMode && !toolCall) {
+          this.logger.log(`[AgentLoop] Speculative Flash thought it was chat. Re-running with ${userModel}...`);
+          // Reset loop count so we retry Step 1 with the correct model
+          loopCount--;
+          // We did NOT yield anything, so client is still waiting.
+          continue;
+        }
+
+        // If we are here, either:
+        // 1. Not speculative (Standard run)
+        // 2. Speculative AND Tool call found (Success!)
+
+        if (isSpeculativeMode && toolCall) {
+          // If success, we should yield the "Plan" so user sees it?
+          // Or we can just skip yielding the JSON and let the Tool Execution event show "Executing..."
+          // Let's yield it to be consistent with normal flow (client expects some chunks before tool event?)
+          // Actually, if we yield JSON now, it appears as a burst.
+          yield accumulatedResponse;
+        }
+
+        if (toolCall) {
+          // Step 3: Execute Tool
+          this.logger.log(`[AgentLoop] Detected Tool Call: ${toolCall.tool}`);
+
+          // NOTIFY USER (Conceptually via yield or ActivityGateway)
+          // The ToolsService.executeTool() ALREADY uses @TrackActivity decorator!
+          // So ActivityGateway will broadcast valid events automatically.
+          // We just need to execute it.
+
+          let toolResult: any;
+          try {
+            toolResult = await this.toolsService.executeTool(toolCall.tool, toolCall.parameters);
+          } catch (err) {
+            toolResult = `Error: ${err.message}`;
+          }
+
+          const observation = JSON.stringify(toolResult);
+          this.logger.debug(`[AgentLoop] Tool Output: ${observation.substring(0, 100)}...`);
+
+          // Step 4: Update History
+          // Add the Assistant's Tool Request
+          currentHistory.push({ role: 'assistant', message: trimmedResponse });
+          // Add the Tool Output (Observation)
+          currentHistory.push({ role: 'tool', message: observation }); // Using new 'tool' role
+
+          // Continue loop to let LLM process the observation
+          continue;
+        } else {
+          // Step 5: Final Answer
+          // If it's not a tool call, assuming it's the final answer (or a question for user).
+          // Since we already yielded the chunks, we are done.
+          finalAnswer = accumulatedResponse;
+          break;
+        }
+
+      } catch (error) {
+        this.logger.error('[AgentLoop] Error:', error);
+        yield `\n[System Error: ${error.message}]`;
+        throw error;
+      }
+    }
+
+    if (loopCount >= MAX_LOOPS) {
+      yield '\n[System: Max iterations reached. Stopping execution.]';
+    }
+
+    // 5. Save AI Message (The FINAL response, or the accumulation of the Agent's journey?)
+    // If we want to save the "Thought Process", we should save the final answer.
+    // Ideally we save the whole chain, but chat UI usually expects 1 response per 1 request.
+    // Let's save the 'finalAnswer' (the last text block).
+    // The intermediate steps are ephemeral (or we should save them as a single big message?)
+    // Saving only the final answer keeps history clean.
+
+    if (finalAnswer) {
       const aiMessage = this.chatMessageRepository.create({
         sessionId,
         role: ChatRole.ASSISTANT,
-        content: fullAiResponse,
-        parentId: userMessage.id, // AI replies to User
+        content: finalAnswer, // Only save the final text? 
+        // If we want to persist the "Tool Usage" history, we need a better DB schema/Agent Memory.
+        // For now, saving the last response is standard for simple Chatbots.
+        // Or we concatenate? "Used tool A. Result... Final Answer".
+        parentId: userMessage.id,
       });
       await this.chatMessageRepository.save(aiMessage);
     }
@@ -637,12 +767,14 @@ Title:`;
     newContent: string,
     model?: string,
   ): AsyncGenerator<string> {
-    this.logger.debug(`[ChatService] updateMessageAndRegenerate called: ${JSON.stringify({
-      sessionId,
-      userId,
-      messageId,
-      newContent,
-    })}`);
+    this.logger.debug(
+      `[ChatService] updateMessageAndRegenerate called: ${JSON.stringify({
+        sessionId,
+        userId,
+        messageId,
+        newContent,
+      })}`,
+    );
 
     // 1. Verify Access
     const session = await this.chatSessionRepository.findOne({
@@ -872,7 +1004,9 @@ Title:`;
         backfill_complete: true,
       };
       await this.chatSessionRepository.save(session);
-      this.logger.log(`[ChatService] Backfill complete for session ${sessionId}`);
+      this.logger.log(
+        `[ChatService] Backfill complete for session ${sessionId}`,
+      );
     }
   }
 

@@ -1,4 +1,4 @@
-# arch-design-001: WebSocket 状态机架构
+# arch-design-002: WebSocket 状态机架构
 
 > **作者**: AI Assistant  
 > **创建日期**: 2026-01-22  

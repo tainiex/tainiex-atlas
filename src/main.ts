@@ -98,7 +98,10 @@ async function bootstrap() {
     await app.listen(port, '0.0.0.0');
     appLogger.log(`Application is running on: ${await app.getUrl()}`);
   } catch (error) {
-    appLogger.error('Bootstrap failed:', error instanceof Error ? error.stack : String(error));
+    appLogger.error(
+      'Bootstrap failed:',
+      error instanceof Error ? error.stack : String(error),
+    );
     process.exit(1);
   }
 }

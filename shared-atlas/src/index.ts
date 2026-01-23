@@ -9,3 +9,4 @@ export * from './constants';
 export * from './dto/chat.dto';
 
 export * from './interfaces/websocket.interface';
+export * from './interfaces/activity.interface';

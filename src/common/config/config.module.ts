@@ -8,8 +8,8 @@ import { ConfigurationService } from './configuration.service';
  */
 @Global()
 @Module({
-    imports: [ConfigModule],
-    providers: [ConfigurationService],
-    exports: [ConfigurationService],
+  imports: [ConfigModule],
+  providers: [ConfigurationService],
+  exports: [ConfigurationService],
 })
-export class AppConfigModule { }
+export class AppConfigModule {}

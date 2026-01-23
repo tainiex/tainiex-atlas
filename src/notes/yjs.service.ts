@@ -210,7 +210,9 @@ export class YjsService {
       );
     }
 
-    this.logger.log(`[YjsService] Persisted document state for note: ${noteId}`);
+    this.logger.log(
+      `[YjsService] Persisted document state for note: ${noteId}`,
+    );
   }
 
   /**
