@@ -67,7 +67,8 @@
     "xstate": "^5.25.1",
     "yjs": "^13.6.29",
     "zod": "^3.23.8",
-    "zod-to-json-schema": "^3.23.2"
+    "zod-to-json-schema": "^3.23.2",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
@@ -91,7 +92,6 @@
     "globals": "^16.0.0",
     "husky": "^9.1.7",
     "jest": "^30.0.0",
-    "jsonwebtoken": "^9.0.3",
     "prettier": "^3.4.2",
     "socket.io-client": "^4.8.3",
     "source-map-support": "^0.5.21",
