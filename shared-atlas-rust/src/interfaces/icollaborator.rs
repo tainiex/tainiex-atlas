@@ -27,4 +27,5 @@ pub struct ICollaborator {
 /// Current text selection range.
 /// 当前文本选区范围。
     pub selection: Option<serde_json::Value>,
+    pub connected_at: chrono::DateTime<chrono::Utc>,
 }

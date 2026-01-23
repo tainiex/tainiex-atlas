@@ -1,3 +1,5 @@
+pub mod activity_event_payload;
+pub mod activity_status;
 pub mod mobile_auth_response;
 pub mod auth_response;
 pub mod token_response;

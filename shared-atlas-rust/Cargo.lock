@@ -207,7 +207,7 @@ dependencies = [
 
 [[package]]
 name = "shared-atlas-rust"
-version = "0.0.1"
+version = "0.0.32-jxu0u"
 dependencies = [
  "chrono",
  "serde",
