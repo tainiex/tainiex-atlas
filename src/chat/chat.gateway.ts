@@ -42,6 +42,7 @@ export interface AuthenticatedSocket extends Socket {
 @WebSocketGateway({
   cors: {
     origin: (requestOrigin, callback) => {
+      console.log(`[CORS Check] Incoming Origin: '${requestOrigin}'`);
       // Strict CORS check: Only allow origins defined in environment variables
       // This prevents CSRF and WebSocket Hijacking attacks
       const rawConfig = process.env.CORS_ORIGIN || '';
@@ -77,6 +78,7 @@ export interface AuthenticatedSocket extends Socket {
       });
 
       if (!requestOrigin || isAllowed) {
+        console.log(`[CORS Check] Allowed Origin: '${requestOrigin}'`);
         callback(null, true);
       } else {
         console.warn(
@@ -97,8 +99,7 @@ export interface AuthenticatedSocket extends Socket {
 })
 @UseFilters(new WebSocketExceptionFilter())
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
