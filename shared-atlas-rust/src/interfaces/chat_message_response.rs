@@ -1,5 +1,4 @@
 use serde::{Serialize, Deserialize};
-use crate::interfaces::ichat_message::IChatMessage;
 use crate::interfaces::chat_role::ChatRole;
 
 /// API response structure for a chat message.

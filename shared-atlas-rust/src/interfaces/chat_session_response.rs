@@ -1,5 +1,4 @@
 use serde::{Serialize, Deserialize};
-use crate::interfaces::ichat_session::IChatSession;
 
 /// API response structure for a chat session.
 /// Match of IChatSession for now.

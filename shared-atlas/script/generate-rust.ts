@@ -357,10 +357,17 @@ async function main() {
             // For enums, usually don't need to import other types
             // Only structs/interfaces may reference other types
             if (item.type !== 'enum') {
+                // Remove comments to avoid false positives from JSDoc references
+                const codeWithoutComments = code
+                    .split('\n')
+                    .filter(line => !line.trim().startsWith('///'))
+                    .join('\n');
+
                 typeLocation.forEach((loc, typeName) => {
                     if (typeName === name) return; // Self
                     const regex = new RegExp(`\\b${typeName}\\b`);
-                    if (regex.test(code)) {
+                    // Check in code without comments to avoid JSDoc references
+                    if (regex.test(codeWithoutComments)) {
                         // Need to import
                         // loc is "dto/chat_dto"
                         // We are in relativeDir (e.g. "dto")
