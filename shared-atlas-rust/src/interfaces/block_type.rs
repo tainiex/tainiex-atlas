@@ -1,6 +1,4 @@
 use serde::{Serialize, Deserialize};
-use crate::interfaces::iblock::IBlock;
-use crate::interfaces::create_block_dto::CreateBlockDto;
 
 /// Enum defining the type of a content block in a note.
 /// 定义笔记中内容块的类型。

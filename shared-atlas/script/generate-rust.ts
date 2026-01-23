@@ -353,21 +353,26 @@ async function main() {
 
             // Calculate Imports
             const requiredImports = new Set<string>();
-            typeLocation.forEach((loc, typeName) => {
-                if (typeName === name) return; // Self
-                const regex = new RegExp(`\\b${typeName}\\b`);
-                if (regex.test(code)) {
-                    // Need to import
-                    // loc is "dto/chat_dto"
-                    // We are in relativeDir (e.g. "dto")
-                    // crate path: crate::dto::chat_dto::ChatDto
 
-                    // Construct crate path
-                    // We need to map dir to module path.
-                    const modPath = loc.replace(/[\\/]/g, '::');
-                    requiredImports.add(`use crate::${modPath}::${typeName};`);
-                }
-            });
+            // For enums, usually don't need to import other types
+            // Only structs/interfaces may reference other types
+            if (item.type !== 'enum') {
+                typeLocation.forEach((loc, typeName) => {
+                    if (typeName === name) return; // Self
+                    const regex = new RegExp(`\\b${typeName}\\b`);
+                    if (regex.test(code)) {
+                        // Need to import
+                        // loc is "dto/chat_dto"
+                        // We are in relativeDir (e.g. "dto")
+                        // crate path: crate::dto::chat_dto::ChatDto
+
+                        // Construct crate path
+                        // We need to map dir to module path.
+                        const modPath = loc.replace(/[\\/]/g, '::');
+                        requiredImports.add(`use crate::${modPath}::${typeName};`);
+                    }
+                });
+            }
 
             const importsList = [
                 'use serde::{Serialize, Deserialize};',
