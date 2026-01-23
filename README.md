@@ -464,24 +464,51 @@ socket.emit('chat:send', { sessionId: 'xxx', content: 'Hello' });
 tainiex-atlas/
 ├── src/
 │   ├── auth/              # Authentication module
-│   │   ├── auth.controller.ts
-│   │   ├── auth.service.ts
-│   │   ├── jwt.strategy.ts
-│   │   └── jwt-auth.guard.ts
+│   │   ├── strategies/    # Passport strategies (JWT, Google OAuth)
+│   │   ├── guards/        # Auth guards
+│   │   └── auth.service.ts
 │   ├── users/             # User management module
-│   │   ├── users.controller.ts
 │   │   ├── users.service.ts
 │   │   └── user.entity.ts
-│   ├── llm/               # AI chat module
-│   │   ├── llm.controller.ts
-│   │   └── llm.service.ts
+│   ├── chat/              # AI chat system
+│   │   ├── chat.gateway.ts      # WebSocket handler
+│   │   ├── chat.service.ts      # Session & message logic
+│   │   ├── memory/              # Memory distillation & RAG
+│   │   ├── queue/               # Async job processing
+│   │   └── worker/              # Worker pool for heavy tasks
+│   ├── notes/             # Notion-like notes system
+│   │   ├── collaboration.gateway.ts  # Y.js real-time sync
+│   │   ├── notes.service.ts
+│   │   ├── blocks.service.ts    # Block-based content
+│   │   ├── yjs-transformer.service.ts
+│   │   └── entities/            # Note, Block, Snapshot, etc.
+│   ├── llm/               # AI integration layer
+│   │   ├── llm.service.ts       # Vertex AI wrapper
+│   │   └── adapters/            # Model adapters (Gemini, Mistral)
+│   ├── tools/             # Agentic AI tools
+│   │   ├── tools.service.ts
+│   │   └── providers/           # Weather, Search, Wikipedia, Stock
+│   ├── graph/             # Knowledge graph (Graph RAG)
+│   │   ├── graph.service.ts
+│   │   └── entities/            # GraphNode, GraphEdge
+│   ├── invitation/        # Invitation code system
+│   ├── rate-limit/        # Distributed rate limiting
+│   ├── health/            # Health check endpoints
+│   ├── common/            # Shared utilities
+│   │   ├── activity/      # Real-time activity tracking
+│   │   ├── logger/        # Winston-based logging
+│   │   ├── storage/       # Google Cloud Storage
+│   │   ├── websocket/     # WebSocket utilities & state machine
+│   │   └── context/       # CLS for request context
 │   ├── app.module.ts      # Root application module
 │   └── main.ts            # Application entry point
 ├── docs/                  # Architecture design documents
-│   └── arch-design-XXX-*.md  # Numbered design docs (XXX = 001, 002, ...)
-├── shared-lib/            # Shared TypeScript interfaces
-│   └── src/
-│       └── interfaces/
+│   └── arch-design-XXX-*.md  # Numbered design docs
+├── shared-atlas/          # Shared TypeScript library
+│   ├── src/
+│   │   ├── dto/           # Request/Response DTOs
+│   │   └── interfaces/    # Core type definitions
+│   └── script/            # Code generation (Dart, Rust)
 ├── test/                  # Test files
 ├── gsa/                   # Google Service Account keys (gitignored)
 ├── .env                   # Environment variables (gitignored)
@@ -518,16 +545,37 @@ tainiex-atlas/
 ### AI Chat Capabilities
 
 - **Google Vertex AI Integration**: Powered by the Gemini language model
+- **Mistral AI Support**: Alternative LLM provider with configurable models
 - **Conversation History**: Support for multi-turn conversations with linked-list message tracking (`parent_id`)
 - **Message Versioning**: Automatic archiving of message history upon updates for version control
 - **Token Window Management**: Intelligent context windowing to optimize LLM performance and token usage
 - **JWT Protected**: Secure, user-specific chat sessions
-- **Configurable**: Easily switch between different Gemini models (default: `gemini-3-pro-preview`)
-- **Streaming Support**: Real-time server-sent events (SSE) for chat responses
-- **Configurable**: Easily switch between different Gemini models (default: `gemini-3-pro-preview`)
-- **Streaming Support**: Real-time server-sent events (SSE) for chat responses
+- **Configurable Models**: Easily switch between different AI models (default: `gemini-2.0-flash-exp`)
+- **Real-time Streaming**: WebSocket-based real-time server-sent events (SSE) for chat responses
 - **Model Discovery**: API endpoint to list all available Vertex AI models
-- **Historical Memory Backfill**: Automatically processes past conversations to generate long-term memories ("Auto-Backfill" triggered on chat load).
+- **Historical Memory Backfill**: Automatically processes past conversations to generate long-term memories ("Auto-Backfill" triggered on chat load)
+
+**Activity Tracking System**
+- **Real-time Broadcasting**: Live updates of AI agent activities (THINKING, TOOL_EXECUTION, etc.)
+- **WebSocket Pub/Sub**: Dedicated `/api/activity` namespace for activity streams
+- **Decorator-based Tracking**: `@TrackActivity` decorator for automatic activity publishing
+- **Event Types**: THINKING, ACTING, OBSERVING, TOOL_EXECUTION, MEMORY_SEARCH, GRAPH_SEARCH
+
+**Agentic Tools**
+- **Tool Registry**: Modular tool system with automatic registration
+- **Available Tools**:
+  - `get_weather`: Real-time weather data fetching
+  - `web_search`: Internet search capabilities
+  - `search_wikipedia`: Encyclopedic knowledge queries
+  - `get_stock_price`: Financial data retrieval
+- **Activity Integration**: Automatic activity tracking for all tool executions
+- **Context Propagation**: CLS (Continuation Local Storage) for unified logging and tracing
+
+**Worker Pool Architecture**
+- **Generic Worker Pool**: Powered by Piscina for robust concurrency management
+- **Offloaded Processing**: Heavy tasks (graph extraction, memory distillation) run in worker threads
+- **Thread-Safe**: Independent database connections per worker
+- **Use Cases**: Backfill processing, knowledge graph extraction, semantic memory generation
 
 ### Security Features
 
@@ -541,18 +589,18 @@ tainiex-atlas/
 
 ## Shared Library
 
-The project includes a shared TypeScript library (`@tainiex/tainiex-shared`) located in `./shared-lib`:
+The project includes a shared TypeScript library (`@tainiex/shared-atlas`) located in `./shared-atlas`:
 
-- **Version**: 0.0.2
+- **Version**: 0.0.32
 - **Purpose**: Shared interfaces and type definitions
 - **Published to**: GitHub Packages (`npm.pkg.github.com`)
-- **Key Exports**: `IUser` interface
+- **Key Exports**: DTOs, interfaces, and enums shared between backend and frontend
 
 This ensures type consistency between frontend and backend implementations.
 
 ## Client Code Generation
 
-Tainiex Atlas supports automatic generation of Dart DTOs for Flutter applications.
+Tainiex Atlas supports automatic generation of client DTOs for multiple platforms.
 
 ### Dart (Flutter)
 - **Source**: `@tainiex/shared-atlas`
@@ -565,10 +613,16 @@ Tainiex Atlas supports automatic generation of Dart DTOs for Flutter application
 1.  Add dependency in `pubspec.yaml`:
     ```yaml
     dependencies:
-      shared_atlas_dart: ^0.0.24 # Match the version in shared-atlas
+      shared_atlas_dart: ^0.0.32 # Match the version in shared-atlas
     ```
     *If using a private pub server, ensure `publishConfig` is set correctly.*
 2.  Run `flutter pub get`.
+
+### Rust
+- **Source**: `@tainiex/shared-atlas`
+- **Output**: `shared-atlas-rust` directory
+- **Command**: `pnpm run generate:rust`
+- **Use Case**: Native Rust applications or WASM integrations
 
 ## Development
 

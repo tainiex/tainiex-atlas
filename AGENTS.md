@@ -46,35 +46,62 @@ This section serves as the **Index (Yellow Pages)** for the entire codebase.
 - **`src/chat/` (AI Chat System)**
     - `ChatGateway`: **WebSocket** entry point for AI streaming with detailed event handling.
     - `ChatService`: Manages session logic, message persistence, and LLM orchestration.
-    - `queue/`: **BullMQ/Worker** setup for asynchronous tasks (e.g., long-running summary generation).
-    - `memory/`: Integration with RAG/Memory services.
+    - `queue/`: In-memory job queue for asynchronous tasks (e.g., backfill processing).
+    - `memory/`: Integration with RAG/Memory services (semantic search, distillation).
+    - `worker/`: **Generic Worker Pool** (Piscina) for CPU-intensive tasks.
 - **`src/notes/` (Collaboration & Knowledge)**
     - `CollaborationGateway`: **WebSocket** entry for real-time Y.js sync.
+    - `NotesService`: Note CRUD operations with tree structure support.
     - `BlocksService`: CRUD for atomic note blocks.
     - `YjsTransformer`: Service to convert between DB state and Y.js binary state.
+    - `PresenceService`: Manages real-time cursor and user presence.
+    - `VersionsService`: Handles block versioning and snapshots.
 - **`src/llm/` (AI Integration)**
-    - `LlmService`: Wrapper for Google Vertex AI SDK.
-    - `adapters/`: Model adapters for different provider interfaces (if extensible).
+    - `LlmService`: Wrapper for Google Vertex AI SDK and Mistral AI.
+    - `adapters/`: Model adapters for different provider interfaces (Gemini, Mistral).
+- **`src/tools/` (Agentic AI Tools)**
+    - `ToolsService`: Tool registry and execution manager.
+    - `providers/`: Concrete tool implementations (WeatherTool, SearchTool, WikipediaTool, StockTool).
+- **`src/graph/` (Knowledge Graph - Graph RAG)**
+    - `GraphService`: Knowledge graph CRUD and traversal (Recursive CTE).
+    - `entities/`: GraphNode, GraphEdge.
 - **`src/users/`**: User entity and profile management.
 - **`src/invitation/`**: Logic for invitation code generation/validation.
+- **`src/rate-limit/`**: Distributed rate limiting (PostgreSQL-backed with in-memory cache).
 - **`src/health/`**: Health check endpoints (Liveness/Readiness probes).
 
 #### **Core & Shared (核心与共享)**
 
 - **`src/common/`**
-    - `filters/`: Global Exception Filters (e.g., `AllExceptionsFilter`).
+    - `activity/`: **Real-time Activity Tracking**
+        - `ActivityGateway`: WebSocket gateway for broadcasting agent activities.
+        - `ActivityPublisher`: Pub/sub service for publishing activity events.
+        - `@TrackActivity` decorator: Automatic tracking for service methods.
+    - `logger/`: **Centralized Logging**
+        - `LoggerService`: Winston-based logger with environment-specific formatting.
+        - Dev: Colored console with PID. Prod: JSON format.
+    - `storage/`: **Google Cloud Storage Integration**
+        - `StorageService`: File upload, signed URL generation.
+    - `websocket/`: **WebSocket Utilities**
+        - `WebSocketStateMachineService`: XState-based connection state management.
+        - Error handling and reliable messaging utilities.
+    - `context/`: **Request Context (CLS)**
+        - `ClsService`: Continuation Local Storage for request tracing.
+    - `filters/`: Global Exception Filters (e.g., `AllExceptionsFilter`, `WebSocketExceptionFilter`).
     - `guards/`: RateLimitGuard, etc.
-    - `websocket/`: **XState Machine** for managing complex socket connection states.
 - **`shared-atlas/` (External Shared Lib)**
-    - Contains strictly typed **DTOs** and **Interfaces** shared with the Frontend (Flutter/Web).
+    - Contains strictly typed **DTOs** and **Interfaces** shared with the Frontend (Flutter/Web/Rust).
     - `src/dto/`: Request/Response objects.
     - `src/interfaces/`: Core entity types (IUser, etc.).
+    - `script/`: Code generation tools (Dart, Rust).
 
 #### **Infrastructure & Scripts**
 
 - **`script/`**
     - `create_schema.sql`: Source of Truth for Database Schema.
-    - `generate-dart.ts`: Code generation tool for Frontend clients.
+- **`shared-atlas/script/`**
+    - `generate-dart.ts`: Dart DTO code generation for Flutter.
+    - `generate-rust.ts`: Rust struct generation for native/WASM.
 
 ---
 
@@ -138,12 +165,11 @@ The `docs/` directory contains detailed architectural designs. **Always check th
 - **Namespaces**:
     - **`/api/chat`**: Handles AI chat sessions, message sending, and streaming.
     - **`/api/collaboration`**: Handles real-time note editing (Y.js sync) and presence updates.
+    - **`/api/activity`**: Broadcasts real-time agent activity events (THINKING, TOOL_EXECUTION, etc.).
 - **Client Implementation**: 
     - Clients should instantiate **one** `Manager` with the root URL and authentication options.
-    - Open discrete sockets for distinct namespaces from the same manager: `manager.socket('/api/chat')` and `manager.socket('/api/collaboration')`.
-    - Open discrete sockets for distinct namespaces from the same manager: `manager.socket('/api/chat')` and `manager.socket('/api/collaboration')`.
-- **Authentication**: Both namespaces share the same authentication mechanism (JWT in `auth.token` or `cookie`).
-- **Authentication**: Both namespaces share the same authentication mechanism (JWT in `auth.token` or `cookie`).
+    - Open discrete sockets for distinct namespaces from the same manager: `manager.socket('/api/chat')`, `manager.socket('/api/collaboration')`, and `manager.socket('/api/activity')`.
+- **Authentication**: All namespaces share the same authentication mechanism (JWT in `auth.token` or `cookie`).
 - **Reliability (ACK System) / 可靠性（ACK 系统）**:
     - Critical messages (e.g., stream start, state sync) are sent via `ReliableMessageService` with a `messageId`.
     - 关键消息（如流开始、状态同步）通过 `ReliableMessageService` 发送，包含 `messageId`。
@@ -156,6 +182,10 @@ The `docs/` directory contains detailed architectural designs. **Always check th
     - 所有 WebSocket 错误遵循严格的 JSON 结构。
     - See `WebSocketErrorCode` enum for specific codes (40xx Auth, 42xx Validation, 50xx Server).
     - 具体代码请参考 `WebSocketErrorCode` 枚举。
+- **Connection Health**:
+    - `ConnectionHealthService` monitors ping latency and assigns health scores.
+    - Low health scores (\u003c40) trigger warnings to encourage client reconnection.
+    - Configured with optimized `pingInterval` (10s) and `pingTimeout` (20s) for mobile stability.
 
 ### 2.5. State Machine Architecture / 状态机架构
 
