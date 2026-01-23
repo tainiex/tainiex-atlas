@@ -439,10 +439,11 @@ ${toolsJson}
 
 RULES:
 1. If the user's request can be answered directly, reply normally.
-2. If you need to use a tool, you MUST output a JSON object in this EXACT format (AND NOTHING ELSE):
+2. If you need to use a tool, you MUST output ONE JSON object in this EXACT format:
    { "tool": "tool_name", "parameters": { ... } }
-3. After using a tool, you will receive the observation. Then you can answer the user.
-4. If you use "web_search", cite your sources.
+3. **IMPORTANT**: Call each tool ONLY ONCE with the best parameters. Do NOT call the same tool multiple times.
+4. After using a tool, you will receive the observation. Then you can answer the user.
+5. If you use "web_search", cite your sources.
 
 Relevant Memories:
 ${memoryContext}
@@ -501,24 +502,54 @@ ${memoryContext}
           }
         }
 
-        // Step 2: Analyze Response
+        // Step 2: Extract ALL tool calls and deduplicate
         const trimmedResponse = accumulatedResponse.trim();
-        // Try to parse JSON tool call
-        const jsonMatch = trimmedResponse.match(/```json\n([\s\S]*?)\n```/) || trimmedResponse.match(/\{[\s\S]*\}/);
+        const toolCalls: Array<{ tool: string; parameters: any }> = [];
 
-        let toolCall: { tool: string, parameters: any } | null = null;
-
-        if (jsonMatch) {
+        // First try to extract from code block
+        const codeBlockMatch = trimmedResponse.match(/```json\n([\s\S]*?)\n```/);
+        if (codeBlockMatch) {
           try {
-            const potentialJson = jsonMatch[1] || jsonMatch[0];
-            const parsed = JSON.parse(potentialJson);
+            const parsed = JSON.parse(codeBlockMatch[1]);
             if (parsed.tool && parsed.parameters) {
-              toolCall = parsed;
+              toolCalls.push(parsed);
             }
           } catch (e) {
-            // Not valid JSON
+            // Not valid JSON in code block
           }
         }
+
+        // If no code block, find all JSON objects using non-greedy pattern
+        if (toolCalls.length === 0) {
+          const jsonPattern = /\{[^{}]*?"tool"[^{}]*?"parameters"[^{}]*?\}/g;
+          const matches = trimmedResponse.matchAll(jsonPattern);
+
+          for (const match of matches) {
+            try {
+              const parsed = JSON.parse(match[0]);
+              if (parsed.tool && parsed.parameters) {
+                toolCalls.push(parsed);
+              }
+            } catch (e) {
+              this.logger.warn(`[AgentLoop] Failed to parse tool call: ${match[0].substring(0, 50)}...`);
+            }
+          }
+        }
+
+        // Deduplicate by tool name - keep only first occurrence
+        const uniqueToolCalls = new Map<string, { tool: string; parameters: any }>();
+        for (const tc of toolCalls) {
+          if (!uniqueToolCalls.has(tc.tool)) {
+            uniqueToolCalls.set(tc.tool, tc);
+          } else {
+            this.logger.warn(`[AgentLoop] Duplicate tool call detected and ignored: ${tc.tool} with params ${JSON.stringify(tc.parameters)}`);
+          }
+        }
+
+        // Take the first unique tool call
+        const toolCall = uniqueToolCalls.size > 0
+          ? Array.from(uniqueToolCalls.values())[0]
+          : null;
 
         // SPECULATIVE CHECK:
         // If we used Flash speculatively, and it failed to produce a tool call...
