@@ -8,7 +8,7 @@ use serde::{Serialize, Deserialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StorageModule {
     #[serde(rename = "notes")]
-    NOTES,
+    Notes,
     #[serde(rename = "chats")]
-    CHAT,
+    Chat,
 }

@@ -13,7 +13,7 @@ use crate::interfaces::chat_send_payload::ChatSendPayload;
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ChatRole {
     #[serde(rename = "user")]
-    USER,
+    User,
     #[serde(rename = "assistant")]
-    ASSISTANT,
+    Assistant,
 }

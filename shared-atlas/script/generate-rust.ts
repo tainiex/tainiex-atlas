@@ -23,6 +23,13 @@ function toSnakeCase(str: string): string {
         .replace(/^_/, '');
 }
 
+// Helper to convert SCREAMING_SNAKE_CASE or snake_case to PascalCase
+function toPascalCase(str: string): string {
+    return str.split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join('');
+}
+
 // Helper: Map TypeScript types to Rust types
 function mapTypeToRust(type: Type, isOptional: boolean): string {
     let rustType = 'serde_json::Value'; // Default to dynamic JSON value
@@ -96,19 +103,20 @@ function generateRustEnum(enumDec: EnumDeclaration): string {
 
     const members = enumDec.getMembers();
     members.forEach(member => {
-        let value = member.getName();
+        const originalName = member.getName();
+        const rustName = toPascalCase(originalName);
+
         const initializer = member.getInitializer();
+        let serializeName = originalName;
+
         if (initializer) {
             const initText = initializer.getText().replace(/^['"]|['"]$/g, '');
-            // Use serde rename if the value is different from the name
-            if (initText !== value) {
-                // Determine if it's a string enum or numeric
-                // Rust enums with values are tricky if mixed. 
-                // Assuming String enums for now as that's most common in TS DTOs
-                lines.push(`    #[serde(rename = "${initText}")]`);
-            }
+            serializeName = initText;
         }
-        lines.push(`    ${member.getName()},`);
+
+        // Always add serde rename to preserve JSON compatibility
+        lines.push(`    #[serde(rename = "${serializeName}")]`);
+        lines.push(`    ${rustName},`);
     });
 
     lines.push(`}`);

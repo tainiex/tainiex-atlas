@@ -1,6 +1,6 @@
 [package]
 name = "shared-atlas-rust"
-version = "0.0.32-jxu0u"
+version = "0.0.32-jxy61"
 edition = "2021"
 description = "Generated Rust models for Tainiex Atlas"
 license = "Apache-2.0"

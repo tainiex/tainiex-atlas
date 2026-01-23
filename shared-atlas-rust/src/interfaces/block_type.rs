@@ -10,21 +10,38 @@ use crate::interfaces::create_block_dto::CreateBlockDto;
 /// - `CreateBlockDto.type`
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum BlockType {
-    TEXT,
-    HEADING1,
-    HEADING2,
-    HEADING3,
-    BULLET_LIST,
-    NUMBERED_LIST,
-    TODO_LIST,
-    TODO_ITEM,
-    TABLE,
-    CODE,
-    IMAGE,
-    VIDEO,
-    FILE,
-    DIVIDER,
-    QUOTE,
-    CALLOUT,
-    TOGGLE,
+    #[serde(rename = "TEXT")]
+    Text,
+    #[serde(rename = "HEADING1")]
+    Heading1,
+    #[serde(rename = "HEADING2")]
+    Heading2,
+    #[serde(rename = "HEADING3")]
+    Heading3,
+    #[serde(rename = "BULLET_LIST")]
+    BulletList,
+    #[serde(rename = "NUMBERED_LIST")]
+    NumberedList,
+    #[serde(rename = "TODO_LIST")]
+    TodoList,
+    #[serde(rename = "TODO_ITEM")]
+    TodoItem,
+    #[serde(rename = "TABLE")]
+    Table,
+    #[serde(rename = "CODE")]
+    Code,
+    #[serde(rename = "IMAGE")]
+    Image,
+    #[serde(rename = "VIDEO")]
+    Video,
+    #[serde(rename = "FILE")]
+    File,
+    #[serde(rename = "DIVIDER")]
+    Divider,
+    #[serde(rename = "QUOTE")]
+    Quote,
+    #[serde(rename = "CALLOUT")]
+    Callout,
+    #[serde(rename = "TOGGLE")]
+    Toggle,
 }

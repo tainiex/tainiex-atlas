@@ -3,27 +3,27 @@ use serde::{Serialize, Deserialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum WebSocketErrorCode {
     #[serde(rename = "4010")]
-    AUTH_TOKEN_MISSING,
+    AuthTokenMissing,
     #[serde(rename = "4011")]
-    AUTH_TOKEN_INVALID,
+    AuthTokenInvalid,
     #[serde(rename = "4012")]
-    AUTH_TOKEN_EXPIRED,
+    AuthTokenExpired,
     #[serde(rename = "4030")]
-    PERMISSION_DENIED,
+    PermissionDenied,
     #[serde(rename = "4031")]
-    RATE_LIMIT_EXCEEDED,
+    RateLimitExceeded,
     #[serde(rename = "4032")]
-    CONCURRENT_LIMIT_REACHED,
+    ConcurrentLimitReached,
     #[serde(rename = "4220")]
-    INVALID_PAYLOAD,
+    InvalidPayload,
     #[serde(rename = "4221")]
-    NOTE_NOT_FOUND,
+    NoteNotFound,
     #[serde(rename = "4222")]
-    SESSION_NOT_FOUND,
+    SessionNotFound,
     #[serde(rename = "5000")]
-    INTERNAL_ERROR,
+    InternalError,
     #[serde(rename = "5001")]
-    DATABASE_ERROR,
+    DatabaseError,
     #[serde(rename = "5002")]
-    YJS_SYNC_FAILED,
+    YjsSyncFailed,
 }
