@@ -460,6 +460,8 @@ ${memoryContext}
 
     let loopCount = 0;
     const MAX_LOOPS = 5;
+    let speculativeRetryCount = 0; // Track speculative mode retries
+    const MAX_SPECULATIVE_RETRIES = 3; // Prevent infinite retry loop
     let finalAnswer = '';
 
     while (loopCount < MAX_LOOPS) {
@@ -506,6 +508,7 @@ ${memoryContext}
 
         // Step 2: Extract ALL tool calls and deduplicate
         const trimmedResponse = accumulatedResponse.trim();
+        this.logger.debug(`[AgentLoop] Parsing response (first 300 chars): ${trimmedResponse.substring(0, 300)}...`);
         const toolCalls: Array<{ tool: string; parameters: any }> = [];
 
         // First try to extract from code block
@@ -515,26 +518,43 @@ ${memoryContext}
             const parsed = JSON.parse(codeBlockMatch[1]);
             if (parsed.tool && parsed.parameters) {
               toolCalls.push(parsed);
+              this.logger.debug(`[AgentLoop] Found tool call in code block: ${parsed.tool}`);
             }
           } catch (e) {
-            // Not valid JSON in code block
+            this.logger.warn(`[AgentLoop] Failed to parse JSON from code block: ${e.message}`);
           }
         }
 
-        // If no code block, find all JSON objects using non-greedy pattern
+        // If no code block, manually parse JSON objects (supports nested structures)
         if (toolCalls.length === 0) {
-          const jsonPattern = /\{[^{}]*?"tool"[^{}]*?"parameters"[^{}]*?\}/g;
-          const matches = trimmedResponse.matchAll(jsonPattern);
+          // Manual JSON extraction that handles nested objects
+          let depth = 0;
+          let startIndex = -1;
 
-          for (const match of matches) {
-            try {
-              const parsed = JSON.parse(match[0]);
-              if (parsed.tool && parsed.parameters) {
-                toolCalls.push(parsed);
+          for (let i = 0; i < trimmedResponse.length; i++) {
+            if (trimmedResponse[i] === '{') {
+              if (depth === 0) startIndex = i;
+              depth++;
+            } else if (trimmedResponse[i] === '}') {
+              depth--;
+              if (depth === 0 && startIndex !== -1) {
+                const jsonStr = trimmedResponse.substring(startIndex, i + 1);
+                try {
+                  const parsed = JSON.parse(jsonStr);
+                  if (parsed.tool && parsed.parameters) {
+                    toolCalls.push(parsed);
+                    this.logger.debug(`[AgentLoop] Found tool call: ${parsed.tool}`);
+                  }
+                } catch (e) {
+                  // Skip invalid JSON, continue searching
+                }
+                startIndex = -1;
               }
-            } catch (e) {
-              this.logger.warn(`[AgentLoop] Failed to parse tool call: ${match[0].substring(0, 50)}...`);
             }
+          }
+
+          if (toolCalls.length === 0) {
+            this.logger.warn(`[AgentLoop] No valid tool calls found in response`);
           }
         }
 
@@ -557,7 +577,21 @@ ${memoryContext}
         // If we used Flash speculatively, and it failed to produce a tool call...
         // It means correct intent was "Chat", so we need to use the User's preferred model (Pro).
         if (isSpeculativeMode && !toolCall) {
-          this.logger.log(`[AgentLoop] Speculative Flash thought it was chat. Re-running with ${userModel}...`);
+          speculativeRetryCount++;
+
+          // Prevent infinite retry loop
+          if (speculativeRetryCount > MAX_SPECULATIVE_RETRIES) {
+            this.logger.error(
+              `[AgentLoop] Max speculative retries (${MAX_SPECULATIVE_RETRIES}) exceeded. Treating as chat.`
+            );
+            // Treat as final answer to break the loop
+            finalAnswer = accumulatedResponse;
+            break;
+          }
+
+          this.logger.log(
+            `[AgentLoop] Speculative Flash thought it was chat (retry ${speculativeRetryCount}/${MAX_SPECULATIVE_RETRIES}). Re-running with ${userModel}...`
+          );
           // Reset loop count so we retry Step 1 with the correct model
           loopCount--;
           // We did NOT yield anything, so client is still waiting.
