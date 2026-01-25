@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { Tool, ToolDefinition } from './interfaces/tool.interface';
+import { ToolDefinition } from './interfaces/tool.interface';
+import { IToolProvider } from '../agent/interfaces/tool-provider.interface';
 import { WeatherTool, SearchTool, WikipediaTool, StockTool } from './providers';
 import { ActivityPublisher } from '../common/activity/interfaces/activity-publisher.interface';
 import { ClsService } from 'nestjs-cls';
@@ -8,7 +9,7 @@ import { TrackActivity } from '../common/activity/track-activity.decorator';
 @Injectable()
 export class ToolsService implements OnModuleInit {
     private readonly logger = new Logger(ToolsService.name);
-    private toolsMap = new Map<string, Tool>();
+    private toolsMap = new Map<string, IToolProvider>();
 
     constructor(
         private readonly weatherTool: WeatherTool,
@@ -27,7 +28,7 @@ export class ToolsService implements OnModuleInit {
         this.registerTool(this.stockTool);
     }
 
-    private registerTool(tool: Tool) {
+    private registerTool(tool: IToolProvider) {
         if (this.toolsMap.has(tool.name)) {
             this.logger.warn(`Duplicate tool registered: ${tool.name}. Overwriting.`);
         }
@@ -36,9 +37,11 @@ export class ToolsService implements OnModuleInit {
     }
 
     getToolsDefinitions(): ToolDefinition[] {
-        return Array.from(this.toolsMap.values()).map((tool) =>
-            tool.getDefinition(),
-        );
+        return Array.from(this.toolsMap.values()).map((tool) => ({
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters,
+        }));
     }
 
     @TrackActivity({
