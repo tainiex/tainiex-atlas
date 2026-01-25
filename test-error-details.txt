@@ -1,0 +1,123 @@
+
+>   ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 1: Should NOT generate title if content <= 20 chars
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 1: Should generate title if content > 20 chars
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 2: Should generate title if title is "New Chat"
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 2: Should NOT generate title if title is already set
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 3: Should generate title if title is "New Chat" (Just in case)
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 4: Should generate title if still New Chat
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › getSessionMessages › should return messages in correct order
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › getSessionMessages › should handle pagination with cursor correctly (chronological check)
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › getSessionMessages › should handle broken chains / missing parents gracefully
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › getSessionMessages › should correctly handle "random" UUIDs with chronological timestamps
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+>   ● ChatService - Title Generation › getSessionMessages › streamMessage - Agentic Workflow › should execute tool when LLM returns JSON tool call
+  
+      Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+  
+      Potential solutions:
+      - Is RootTestModule a valid NestJS module?
+      - If AgentFactory is a provider, is it part of the current RootTestModule?
+      - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+        @Module({
+          imports: [ /* the Module containing AgentFactory */ ]
+        })
+

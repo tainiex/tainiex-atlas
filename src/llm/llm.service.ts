@@ -136,25 +136,28 @@ export class LlmService implements OnModuleInit {
     history: ChatMessage[],
     message: string,
     modelName?: string,
+    tools?: any[],
   ): Promise<string> {
     const adapter = await this.getAdapter(modelName);
     this.logger.debug(
       `[LlmService] Chatting using model '${modelName}' via adapter: ${adapter.constructor.name}`,
     );
-    return adapter.chat(history, message);
+    return adapter.chat(history, message, tools);
   }
 
   async *streamChat(
     history: ChatMessage[],
     message: string,
     modelName?: string,
+    tools?: any[],
   ): AsyncGenerator<string> {
     const adapter = await this.getAdapter(modelName);
     console.log(
       `[LlmService] streamChat using model: ${modelName} (Adapter: ${adapter.constructor.name})`,
     );
+    console.log(`[LlmService] Tools count: ${tools?.length || 0}`);
 
-    yield* adapter.streamChat(history, message);
+    yield* adapter.streamChat(history, message, tools);
   }
 
   async getEmbeddings(text: string): Promise<number[]> {

@@ -27,10 +27,9 @@ describe('WeatherTool', () => {
         expect(tool).toBeDefined();
     });
 
-    it('should return mock data if API key is missing', async () => {
+    it('should throw error if API key is missing', async () => {
         delete process.env.OPENWEATHER_API_KEY;
-        const result = await tool.execute({ city: 'London' });
-        expect(result.source).toBe('Mock');
+        await expect(tool.execute({ city: 'London' })).rejects.toThrow('OPENWEATHER_API_KEY missing');
     });
 
     it('should call OpenWeather API if key is present', async () => {

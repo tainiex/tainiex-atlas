@@ -27,16 +27,9 @@ describe('SearchTool', () => {
         expect(tool).toBeDefined();
     });
 
-    it('should return mock data if API key is missing', async () => {
+    it('should throw error if API key is missing', async () => {
         delete process.env.TAVILY_API_KEY;
-
-        // Spy on warning
-        const warnSpy = jest.spyOn(tool['logger'], 'warn').mockImplementation();
-
-        const result = await tool.execute({ query: 'test' });
-
-        expect(result.source).toBe('Mock');
-        expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('TAVILY_API_KEY not found'));
+        await expect(tool.execute({ query: 'test' })).rejects.toThrow('TAVILY_API_KEY missing');
     });
 
     it('should call generic search API if key is present', async () => {

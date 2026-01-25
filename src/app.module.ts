@@ -35,6 +35,7 @@ import { GraphNode } from './graph/entities/graph-node.entity';
 import { GraphEdge } from './graph/entities/graph-edge.entity';
 import { AppConfigModule } from './common/config/config.module';
 import { WebSocketModule } from './common/websocket/websocket.module';
+import { AgentModule } from './agent/agent.module';
 
 @Module({
   imports: [
@@ -102,8 +103,9 @@ import { WebSocketModule } from './common/websocket/websocket.module';
     StorageModule,
     NotesModule,
     GraphModule,
+    AgentModule,
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

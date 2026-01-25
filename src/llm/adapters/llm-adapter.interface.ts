@@ -20,12 +20,12 @@ export interface ILlmAdapter {
   /**
    * 进行对话并返回完整响应
    */
-  chat(history: ChatMessage[], message: string): Promise<string>;
+  chat(history: ChatMessage[], message: string, tools?: any[]): Promise<string>;
 
   /**
    * 进行流式对话，逐步返回响应内容
    */
-  streamChat(history: ChatMessage[], message: string): AsyncGenerator<string>;
+  streamChat(history: ChatMessage[], message: string, tools?: any[]): AsyncGenerator<string>;
 
   /**
    * 获取文本的向量 Embedding

@@ -1,40 +1,45 @@
-import { Injectable } from '@nestjs/common';
-import { Tool } from '../interfaces/tool.interface';
-import { z } from 'zod';
+import { Injectable, Logger } from '@nestjs/common';
+import { IToolProvider } from '../../agent/interfaces/tool-provider.interface';
+import { AgentTool } from '../../agent/decorators/agent-tool.decorator';
 
-@Injectable()
-export class SearchTool extends Tool {
+@AgentTool({
+  name: 'web_search',
+  description: 'Search the web for current information, news, or specific facts. Optimized for LLMs.',
+  scope: 'global'
+})
+export class SearchTool implements IToolProvider {
   name = 'web_search';
-  description =
-    'Search the web for current information, news, or specific facts. Optimized for LLMs.';
+  description = 'Search the web for current information, news, or specific facts. Optimized for LLMs.';
 
-  schema = z.object({
-    query: z.string().describe('The search query string'),
-    max_results: z.number().int().min(1).max(10).optional().default(5),
-  });
+  private logger = new Logger(SearchTool.name);
 
-  protected async executeImpl(args: z.infer<typeof this.schema>): Promise<any> {
+  parameters = {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'The search query string' },
+      max_results: { type: 'number', default: 5 }
+    },
+    required: ['query']
+  };
+
+  /**
+   * Check if API Key is configured
+   */
+  isAvailable(): boolean {
+    const apiKey = process.env.TAVILY_API_KEY;
+    if (!apiKey) {
+      this.logger.debug('TAVILY_API_KEY not found. SearchTool disabled.');
+      return false;
+    }
+    return true;
+  }
+
+  async execute(args: any): Promise<any> {
     const { query, max_results } = args;
     const apiKey = process.env.TAVILY_API_KEY;
 
     if (!apiKey) {
-      this.logger.warn('TAVILY_API_KEY not found. Returning MOCK data.');
-      return {
-        query,
-        results: [
-          {
-            title: 'Mock Result 1',
-            url: 'http://example.com/1',
-            content: 'This is a mock search result content.',
-          },
-          {
-            title: 'Mock Result 2',
-            url: 'http://example.com/2',
-            content: 'Another mock result for testing.',
-          },
-        ],
-        source: 'Mock',
-      };
+      throw new Error('TAVILY_API_KEY missing');
     }
 
     const res = await fetch('https://api.tavily.com/search', {
@@ -45,7 +50,7 @@ export class SearchTool extends Tool {
       body: JSON.stringify({
         api_key: apiKey,
         query,
-        max_results,
+        max_results: max_results || 5, // Default to 5 if undefined
         search_depth: 'basic',
         include_answer: true,
       }),
@@ -59,11 +64,11 @@ export class SearchTool extends Tool {
     return {
       query,
       answer: data.answer,
-      results: data.results.map((r: any) => ({
+      results: data.results?.map((r: any) => ({
         title: r.title,
         url: r.url,
         content: r.content,
-      })),
+      })) || [],
     };
   }
 }

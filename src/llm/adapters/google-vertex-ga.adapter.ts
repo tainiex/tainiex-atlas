@@ -130,20 +130,29 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
     }
   }
 
-  async chat(history: ChatMessage[], message: string): Promise<string> {
-    const formattedHistory: Content[] = history.map((h) => ({
-      role: this.mapRoleToVertex(h.role),
-      parts: [{ text: h.message || h.text || '' }],
-    }));
+  async chat(history: ChatMessage[], message: string, tools?: any[]): Promise<string> {
+    // Extract System Prompt
+    const systemMessage = history.find(h => h.role === 'system');
+    const systemInstruction = systemMessage ? (systemMessage.message || systemMessage.text) : undefined;
+
+    const formattedHistory: Content[] = history
+      .filter(h => h.role !== 'system')
+      .map((h) => ({
+        role: this.mapRoleToVertex(h.role),
+        parts: [{ text: h.message || h.text || '' }],
+      }));
 
     const metadata = ModelClassifier.getMetadata(this.modelName);
     const maxOutputTokens = metadata.maxOutputTokens;
+    const vertexTools = tools && tools.length > 0 ? tools : undefined;
 
     const runChat = async (): Promise<string> => {
       return this.withRetry(async () => {
         try {
           const chat = this.model.startChat({
             history: formattedHistory,
+            systemInstruction: systemInstruction ? { role: 'system', parts: [{ text: systemInstruction }] } : undefined,
+            tools: vertexTools, // Native function calling
             generationConfig: {
               maxOutputTokens,
               temperature: 0.9,
@@ -154,6 +163,14 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
 
           const result = await chat.sendMessage(message);
           const response = result.response;
+
+          // Check for function call
+          const functionCall = response.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+          if (functionCall) {
+            this.logger.debug('[GoogleVertexGaAdapter] ✓ Function call detected:', functionCall.name);
+            return JSON.stringify({ tool: functionCall.name, parameters: functionCall.args || {} });
+          }
+
           const text = response.candidates?.[0].content.parts[0].text;
           return text || '';
         } catch (error) {
@@ -172,18 +189,38 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
   async *streamChat(
     history: ChatMessage[],
     message: string,
+    tools?: any[],
   ): AsyncGenerator<string> {
-    const formattedHistory: Content[] = history.map((h) => ({
-      role: this.mapRoleToVertex(h.role),
-      parts: [{ text: h.message || h.text || '' }],
-    }));
+    // Extract System Prompt
+    const systemMessage = history.find(h => h.role === 'system');
+    const systemInstruction = systemMessage ? (systemMessage.message || systemMessage.text) : undefined;
+
+    const formattedHistory: Content[] = history
+      .filter(h => h.role !== 'system')
+      .map((h) => ({
+        role: this.mapRoleToVertex(h.role),
+        parts: [{ text: h.message || h.text || '' }],
+      }));
+
+    // Convert tools to Vertex AI format
+    let vertexTools: any[] | undefined = undefined;
+    if (tools && tools.length > 0) {
+      vertexTools = [{
+        functionDeclarations: tools.map(tool => ({
+          name: tool.name,
+          description: tool.description,
+          parameters: tool.parameters
+        }))
+      }];
+      console.log('[GoogleVertexGaAdapter] ✓ Configured native function calling with', tools.length, 'tools');
+    }
 
     const metadata = ModelClassifier.getMetadata(this.modelName);
     const currentMaxTokens = metadata.maxOutputTokens;
 
     while (true) {
       try {
-        const chat = this.model.startChat({
+        const chatConfig: any = {
           history: formattedHistory,
           generationConfig: {
             maxOutputTokens: currentMaxTokens,
@@ -191,7 +228,17 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
             topP: 0.95,
             topK: 40,
           },
-        });
+        };
+
+        if (systemInstruction) {
+          chatConfig.systemInstruction = { role: 'system', parts: [{ text: systemInstruction }] };
+        }
+
+        if (vertexTools) {
+          chatConfig.tools = vertexTools;
+        }
+
+        const chat = this.model.startChat(chatConfig);
 
         // Wrap the initial network request (sendMessageStream) with retry
         const result = await this.withRetry(async () => {
@@ -201,6 +248,16 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         let chunkCount = 0;
         for await (const chunk of result.stream) {
           chunkCount++;
+
+          // Check for function call
+          const functionCall = chunk.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+          if (functionCall) {
+            console.log('[GoogleVertexGaAdapter] ✓ Function call detected:', functionCall.name);
+            const toolCallJson = JSON.stringify({ tool: functionCall.name, parameters: functionCall.args || {} });
+            yield toolCallJson;
+            return; // Stop after function call
+          }
+
           const text = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
           if (text) {
             console.log(

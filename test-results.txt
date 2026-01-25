@@ -1,0 +1,506 @@
+
+> tainiex-atlas@0.0.22 test C:\Users\Cselerity\Codes\tainiex-atlas
+> jest
+
+PASS src/tools/providers/wikipedia.tool.spec.ts
+PASS src/app.controller.spec.ts
+FAIL src/tools/providers/weather.tool.spec.ts
+  ● WeatherTool › should return mock data if API key is missing
+
+    OPENWEATHER_API_KEY missing
+
+      62 |     if (!apiKey) {
+      63 |       // Should not happen if isAvailable checks out, but double check
+    > 64 |       throw new Error('OPENWEATHER_API_KEY missing');
+         |             ^
+      65 |     }
+      66 |
+      67 |     const units = unit === 'fahrenheit' ? 'imperial' : 'metric';
+
+      at WeatherTool.execute (tools/providers/weather.tool.ts:64:13)
+      at Object.<anonymous> (tools/providers/weather.tool.spec.ts:32:24)
+
+FAIL src/tools/providers/search.tool.spec.ts
+  ● SearchTool › should return mock data if API key is missing
+
+    TAVILY_API_KEY missing
+
+      40 |
+      41 |     if (!apiKey) {
+    > 42 |       throw new Error('TAVILY_API_KEY missing');
+         |             ^
+      43 |     }
+      44 |
+      45 |     const res = await fetch('https://api.tavily.com/search', {
+
+      at SearchTool.execute (tools/providers/search.tool.ts:42:13)
+      at Object.<anonymous> (tools/providers/search.tool.spec.ts:36:35)
+
+PASS src/common/websocket/__tests__/websocket-state-machine.service.spec.ts
+PASS src/llm/adapters/google-vertex-ga.adapter.spec.ts
+PASS src/tools/tools.service.spec.ts
+PASS src/notes/notes.service.spec.ts
+PASS src/invitation/invitation.service.spec.ts
+PASS src/chat/context/token-window.manager.spec.ts
+PASS src/notes/yjs-transformer.service.spec.ts
+FAIL src/chat/chat.service.spec.ts
+  ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 1: Should NOT generate title if content <= 20 chars
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 1: Should generate title if content > 20 chars
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 2: Should generate title if title is "New Chat"
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 2: Should NOT generate title if title is already set
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 3: Should generate title if title is "New Chat" (Just in case)
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › streamMessage - Smart Delay Logic › Turn 4: Should generate title if still New Chat
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › getSessionMessages › should return messages in correct order
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › getSessionMessages › should handle pagination with cursor correctly (chronological check)
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › getSessionMessages › should handle broken chains / missing parents gracefully
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › getSessionMessages › should correctly handle "random" UUIDs with chronological timestamps
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+  ● ChatService - Title Generation › getSessionMessages › streamMessage - Agentic Workflow › should execute tool when LLM returns JSON tool call
+
+    Nest can't resolve dependencies of the ChatService (ChatSessionRepository, ChatMessageRepository, ChatMessageHistoryRepository, LlmService, MemoryService, ?, IContextManager, IJobQueue, ConfigService, LoggerService). Please make sure that the argument AgentFactory at index [5] is available in the RootTestModule context.
+
+    Potential solutions:
+    - Is RootTestModule a valid NestJS module?
+    - If AgentFactory is a provider, is it part of the current RootTestModule?
+    - If AgentFactory is exported from a separate @Module, is that module imported within RootTestModule?
+      @Module({
+        imports: [ /* the Module containing AgentFactory */ ]
+      })
+
+    For more common dependency resolution issues, see: https://docs.nestjs.com/faq/common-errors
+
+      75 |
+      76 |   beforeEach(async () => {
+    > 77 |     const module: TestingModule = await Test.createTestingModule({
+         |                                   ^
+      78 |       providers: [
+      79 |         ChatService,
+      80 |         {
+
+      at TestingInjector.lookupComponentInParentModules (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:290:19)
+      at TestingInjector.resolveComponentWrapper (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-injector.js:19:45)
+      at resolveParam (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:140:38)
+          at async Promise.all (index 5)
+      at TestingInjector.resolveConstructorParams (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:169:27)
+      at TestingInjector.loadInstance (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:75:13)
+      at TestingInjector.loadProvider (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/injector.js:103:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:56:13
+          at async Promise.all (index 3)
+      at TestingInstanceLoader.createInstancesOfProviders (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:55:9)
+      at ../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:40:13
+          at async Promise.all (index 1)
+      at TestingInstanceLoader.createInstances (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:39:9)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+core@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_re_mvyyik2s4d6n5dzjmqbwsro2z4/node_modules/@nestjs/core/injector/instance-loader.js:22:13)
+      at TestingInstanceLoader.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-instance-loader.js:9:9)
+      at TestingModuleBuilder.createInstancesOfDependencies (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:118:9)
+      at TestingModuleBuilder.compile (../node_modules/.pnpm/@nestjs+testing@11.1.11_@nestjs+common@11.1.11_class-transformer@0.5.1_class-validator@0.14.3_tjbhr5fxuacowilvl6xw7bwgxe/node_modules/@nestjs/testing/testing-module.builder.js:74:9)
+      at Object.<anonymous> (chat/chat.service.spec.ts:77:35)
+
+PASS src/chat/chat.gateway.spec.ts
+A worker process has failed to exit gracefully and has been force exited. This is likely caused by tests leaking due to improper teardown. Try running with --detectOpenHandles to find leaks. Active timers can also cause this, ensure that .unref() was called on them.
+
+Test Suites: 3 failed, 10 passed, 13 total
+Tests:       13 failed, 55 passed, 68 total
+Snapshots:   0 total
+Time:        3.781 s
+Ran all test suites.
+ ELIFECYCLE  Test failed. See above for more details.

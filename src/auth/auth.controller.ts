@@ -36,13 +36,14 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private configService: ConfigurationService,
-  ) {}
+  ) { }
 
   @Post('login')
   @RateLimit(5, 60) // Limit: 5 requests per 60 seconds
   async login(
     @Body() loginDto: LoginDto,
     @Res({ passthrough: true }) res: FastifyReply,
+    @Request() req: FastifyRequest,
   ) {
     const user = await this.authService.validateUser(
       loginDto.username,
@@ -58,7 +59,12 @@ export class AuthController {
     res.setCookie('access_token', tokens.access_token, cookieConfig.access);
     res.setCookie('refresh_token', tokens.refresh_token, cookieConfig.refresh);
 
-    return tokens;
+    const authMode = req.headers['x-auth-mode'];
+    if (authMode === 'bearer') {
+      return { user, tokens };
+    }
+
+    return user;
   }
 
   @Post('google')

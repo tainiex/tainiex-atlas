@@ -7,7 +7,8 @@ import { ChatMessage } from './chat-message.entity';
 import { ChatMessageHistory } from './chat-message-history.entity';
 import { LlmService } from '../llm/llm.service';
 import { MemoryService } from './memory/memory.service';
-import { ToolsService } from '../tools/tools.service';
+// import { ToolsService } from '../tools/tools.service'; // DEPRECATED
+import { AgentFactory } from '../agent/services/agent-factory.service';
 import type { IJobQueue } from './queue/job-queue.interface';
 import { ChatRole, CHAT_ROOT_PARENT_ID } from '@tainiex/shared-atlas';
 import type { IContextManager } from './context/context-manager.interface';
@@ -28,7 +29,7 @@ export class ChatService {
     private chatMessageHistoryRepository: Repository<ChatMessageHistory>,
     private llmService: LlmService,
     private memoryService: MemoryService,
-    private toolsService: ToolsService, // [NEW] Injected ToolsService
+    private agentFactory: AgentFactory, // [NEW] Agent Factory
     @Inject('IContextManager')
     private contextManager: IContextManager,
     @Inject('IJobQueue')
@@ -406,13 +407,9 @@ export class ChatService {
 
     this.logger.log('[ChatService] Preparing to call LLM service (Agentic Loop)...');
 
-    // 5. Agentic Loop (ReAct)
+    // 5. Agentic Loop (ReAct) - NEW FRAMEWORK
     const history = await this.contextManager.getContext(sessionId);
     const previousMessages = history.filter((m) => m.id !== userMessage.id);
-
-    // Prepare Tools Definition
-    const tools = this.toolsService.getToolsDefinitions();
-    const toolsJson = JSON.stringify(tools, null, 2);
 
     // RAG / Memory Context
     let memoryContext = '';
@@ -429,248 +426,68 @@ export class ChatService {
       this.logger.error('[ChatService] Memory retrieval failed', e);
     }
 
-    // System Prompt construction
+    // Prepare System Prompt (Identity is defined by ReactAgentEngine)
     const dateStr = new Date().toISOString();
-    const systemPrompt = `You are Tainiex, an advanced AI assistant powered by Tainiex Atlas.
-Current Time: ${dateStr}
-
-You have access to the following tools:
-${toolsJson}
-
-RULES:
-1. Identity: You are Tainiex.
-2. Real-time Data: If asked about real-time data (e.g., weather, stocks, news) and you do not have a tool to retrieve this information, you MUST explicitly state that you cannot provide real-time data. DO NOT fabricate dates, prices, or facts.
-3. If the user's request can be answered directly, reply normally.
-4. If you need to use a tool, you MUST output ONE JSON object in this EXACT format:
-   { "tool": "tool_name", "parameters": { ... } }
-5. **IMPORTANT**: Call each tool ONLY ONCE with the best parameters. Do NOT call the same tool multiple times.
-6. After using a tool, you will receive the observation. Then you can answer the user.
-7. If you use "web_search", cite your sources.
+    const systemPrompt = `Current Time: ${dateStr}
 
 Relevant Memories:
 ${memoryContext}
 `;
 
-    // Initialize Conversation History with System Prompt
-    let currentHistory: LlmMessage[] = [
-      { role: 'system', message: systemPrompt },
-      ...previousMessages.map(m => ({ role: m.role as LlmRole, message: m.content })),
-      { role: 'user', message: content } // Current User Message
-    ];
+    // Map history to AgentMessage
+    const agentHistory = previousMessages.map(m => ({
+      role: m.role as any,
+      content: m.content
+    }));
 
-    let loopCount = 0;
-    const MAX_LOOPS = 5;
-    let speculativeRetryCount = 0; // Track speculative mode retries
-    const MAX_SPECULATIVE_RETRIES = 3; // Prevent infinite retry loop
+    // Create Agent Engine
+    const agent = this.agentFactory.createAgent();
+
+    // Execute Agent
+    const stream = agent.execute({
+      input: content,
+      history: agentHistory,
+      systemPrompt: systemPrompt,
+      model: model,
+      speculativeModel: 'gemini-2.5-flash', // Always use Flash for fast intent detection
+      enableSpeculative: true, // Enable Speculative execution
+      tools: this.agentFactory.getTools('global'), // Get tools for this scope
+      context: { userId, sessionId }
+    });
+
     let finalAnswer = '';
 
-    while (loopCount < MAX_LOOPS) {
-      loopCount++;
-      this.logger.debug(`[AgentLoop] Iteration ${loopCount}/${MAX_LOOPS}`);
-
-      try {
-        // Step 1: Call LLM (Planning/Thinking)
-        // SPECULATIVE INTENT RECOGNITION
-        // User request: Force 'gemini-2.5-flash' for intent recognition to save time.
-        const userModel = model || 'gemini-2.5-flash';
-        let effectiveModel = userModel;
-        let isSpeculativeMode = false;
-
-        if (loopCount === 1 && userModel !== 'gemini-2.5-flash') {
-          effectiveModel = 'gemini-2.5-flash';
-          isSpeculativeMode = true;
-          this.logger.debug(`[AgentLoop] Speculative Intent Recognition with ${effectiveModel}`);
-        } else {
-          this.logger.debug(`[AgentLoop] Reasoning with model: ${effectiveModel}`);
+    try {
+      for await (const event of stream) {
+        if (event.type === 'answer_chunk') {
+          yield event.content;
+        } else if (event.type === 'thought') {
+          this.logger.debug(`[Agent] Thought: ${event.content}`);
+          // Optional: yield thought events if frontend supports it
+        } else if (event.type === 'tool_call') {
+          this.logger.log(`[Agent] Calling Tool: ${event.tool}`);
+          // Publish Activity
+          // Note: ToolsService.executeTool used to have @TrackActivity.
+          // Now we manually publish or rely on interceptors.
+          // For now, let's just log.
+        } else if (event.type === 'final_answer') {
+          finalAnswer = event.content;
+        } else if (event.type === 'error') {
+          this.logger.error(`[Agent] Error: ${event.message}`);
+          yield `\n[System Error: ${event.message}]`;
         }
-
-        const stream = this.llmService.streamChat(currentHistory, '', effectiveModel);
-
-        let accumulatedResponse = '';
-
-        // If we are in "Speculative Mode" (Flash instead of Pro), we MUST BUFFER the output.
-        // We cannot yield to the user yet, because if it's NOT a tool call, we might need to discard 
-        // this "cheap" response and re-run with the "expensive" model.
-
-        if (isSpeculativeMode) {
-          // Buffer completely
-          for await (const chunk of stream) {
-            accumulatedResponse += chunk;
-          }
-        } else {
-          // Determine if we should stream immediately
-          // For subsequent loops (Synthesis), we just stream.
-          for await (const chunk of stream) {
-            accumulatedResponse += chunk;
-            yield chunk;
-          }
-        }
-
-        // Step 2: Extract ALL tool calls and deduplicate
-        const trimmedResponse = accumulatedResponse.trim();
-        this.logger.debug(`[AgentLoop] Parsing response (first 300 chars): ${trimmedResponse.substring(0, 300)}...`);
-        const toolCalls: Array<{ tool: string; parameters: any }> = [];
-
-        // First try to extract from code block
-        const codeBlockMatch = trimmedResponse.match(/```json\n([\s\S]*?)\n```/);
-        if (codeBlockMatch) {
-          try {
-            const parsed = JSON.parse(codeBlockMatch[1]);
-            if (parsed.tool && parsed.parameters) {
-              toolCalls.push(parsed);
-              this.logger.debug(`[AgentLoop] Found tool call in code block: ${parsed.tool}`);
-            }
-          } catch (e) {
-            this.logger.warn(`[AgentLoop] Failed to parse JSON from code block: ${e.message}`);
-          }
-        }
-
-        // If no code block, manually parse JSON objects (supports nested structures)
-        if (toolCalls.length === 0) {
-          // Manual JSON extraction that handles nested objects
-          let depth = 0;
-          let startIndex = -1;
-
-          for (let i = 0; i < trimmedResponse.length; i++) {
-            if (trimmedResponse[i] === '{') {
-              if (depth === 0) startIndex = i;
-              depth++;
-            } else if (trimmedResponse[i] === '}') {
-              depth--;
-              if (depth === 0 && startIndex !== -1) {
-                const jsonStr = trimmedResponse.substring(startIndex, i + 1);
-                try {
-                  const parsed = JSON.parse(jsonStr);
-                  if (parsed.tool && parsed.parameters) {
-                    toolCalls.push(parsed);
-                    this.logger.debug(`[AgentLoop] Found tool call: ${parsed.tool}`);
-                  }
-                } catch (e) {
-                  // Skip invalid JSON, continue searching
-                }
-                startIndex = -1;
-              }
-            }
-          }
-
-          if (toolCalls.length === 0) {
-            this.logger.warn(`[AgentLoop] No valid tool calls found in response`);
-          }
-        }
-
-        // Deduplicate by tool name - keep only first occurrence
-        const uniqueToolCalls = new Map<string, { tool: string; parameters: any }>();
-        for (const tc of toolCalls) {
-          if (!uniqueToolCalls.has(tc.tool)) {
-            uniqueToolCalls.set(tc.tool, tc);
-          } else {
-            this.logger.warn(`[AgentLoop] Duplicate tool call detected and ignored: ${tc.tool} with params ${JSON.stringify(tc.parameters)}`);
-          }
-        }
-
-        // Take the first unique tool call
-        const toolCall = uniqueToolCalls.size > 0
-          ? Array.from(uniqueToolCalls.values())[0]
-          : null;
-
-        // SPECULATIVE CHECK:
-        // If we used Flash speculatively, and it failed to produce a tool call...
-        // It means correct intent was "Chat", so we need to use the User's preferred model (Pro).
-        if (isSpeculativeMode && !toolCall) {
-          speculativeRetryCount++;
-
-          // Prevent infinite retry loop
-          if (speculativeRetryCount > MAX_SPECULATIVE_RETRIES) {
-            this.logger.error(
-              `[AgentLoop] Max speculative retries (${MAX_SPECULATIVE_RETRIES}) exceeded. Treating as chat.`
-            );
-            // Treat as final answer to break the loop
-            finalAnswer = accumulatedResponse;
-            break;
-          }
-
-          this.logger.log(
-            `[AgentLoop] Speculative Flash thought it was chat (retry ${speculativeRetryCount}/${MAX_SPECULATIVE_RETRIES}). Re-running with ${userModel}...`
-          );
-          // Reset loop count so we retry Step 1 with the correct model
-          loopCount--;
-          // We did NOT yield anything, so client is still waiting.
-          continue;
-        }
-
-        // If we are here, either:
-        // 1. Not speculative (Standard run)
-        // 2. Speculative AND Tool call found (Success!)
-
-        if (isSpeculativeMode && toolCall) {
-          // If success, we should yield the "Plan" so user sees it?
-          // Or we can just skip yielding the JSON and let the Tool Execution event show "Executing..."
-          // Let's yield it to be consistent with normal flow (client expects some chunks before tool event?)
-          // Actually, if we yield JSON now, it appears as a burst.
-          yield accumulatedResponse;
-        }
-
-        if (toolCall) {
-          // Step 3: Execute Tool
-          this.logger.log(`[AgentLoop] Detected Tool Call: ${toolCall.tool}`);
-
-          // NOTIFY USER (Conceptually via yield or ActivityGateway)
-          // The ToolsService.executeTool() ALREADY uses @TrackActivity decorator!
-          // So ActivityGateway will broadcast valid events automatically.
-          // We just need to execute it.
-
-          let toolResult: any;
-          try {
-            toolResult = await this.toolsService.executeTool(toolCall.tool, toolCall.parameters);
-          } catch (err) {
-            toolResult = `Error: ${err.message}`;
-          }
-
-          const observation = JSON.stringify(toolResult);
-          this.logger.debug(`[AgentLoop] Tool Output: ${observation.substring(0, 100)}...`);
-
-          // Step 4: Update History
-          // Add the Assistant's Tool Request
-          currentHistory.push({ role: 'assistant', message: trimmedResponse });
-          // Add the Tool Output (Observation)
-          currentHistory.push({ role: 'tool', message: observation }); // Using new 'tool' role
-
-          // Continue loop to let LLM process the observation
-          continue;
-        } else {
-          // Step 5: Final Answer
-          // If it's not a tool call, assuming it's the final answer (or a question for user).
-          // Since we already yielded the chunks, we are done.
-          finalAnswer = accumulatedResponse;
-          break;
-        }
-
-      } catch (error) {
-        this.logger.error('[AgentLoop] Error:', error);
-        yield `\n[System Error: ${error.message}]`;
-        throw error;
       }
+    } catch (error) {
+      this.logger.error('[Agent] Execution failed', error);
+      yield `\n[System Error: ${error.message}]`;
     }
 
-    if (loopCount >= MAX_LOOPS) {
-      yield '\n[System: Max iterations reached. Stopping execution.]';
-    }
-
-    // 5. Save AI Message (The FINAL response, or the accumulation of the Agent's journey?)
-    // If we want to save the "Thought Process", we should save the final answer.
-    // Ideally we save the whole chain, but chat UI usually expects 1 response per 1 request.
-    // Let's save the 'finalAnswer' (the last text block).
-    // The intermediate steps are ephemeral (or we should save them as a single big message?)
-    // Saving only the final answer keeps history clean.
-
+    // 6. Save AI Message
     if (finalAnswer) {
       const aiMessage = this.chatMessageRepository.create({
         sessionId,
         role: ChatRole.ASSISTANT,
-        content: finalAnswer, // Only save the final text? 
-        // If we want to persist the "Tool Usage" history, we need a better DB schema/Agent Memory.
-        // For now, saving the last response is standard for simple Chatbots.
-        // Or we concatenate? "Used tool A. Result... Final Answer".
+        content: finalAnswer,
         parentId: userMessage.id,
       });
       await this.chatMessageRepository.save(aiMessage);

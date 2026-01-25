@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/require-await, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ChatService } from './chat.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
@@ -11,6 +10,7 @@ import { ChatRole } from '@tainiex/shared-atlas';
 import { ConfigService } from '@nestjs/config';
 import { MemoryService } from './memory/memory.service';
 import { ToolsService } from '../tools/tools.service';
+import { AgentFactory } from '../agent/services/agent-factory.service';
 
 describe('ChatService - Title Generation', () => {
   let service: ChatService;
@@ -73,6 +73,15 @@ describe('ChatService - Title Generation', () => {
     setContext: jest.fn(),
   };
 
+  const mockAgentFactory = {
+    createAgent: jest.fn().mockReturnValue({
+      execute: jest.fn().mockImplementation(async function* () {
+        yield 'Mocked agent response';
+      }),
+    }),
+    getTools: jest.fn().mockReturnValue([]),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -99,6 +108,7 @@ describe('ChatService - Title Generation', () => {
         { provide: ConfigService, useValue: mockConfigService },
         { provide: MemoryService, useValue: mockMemoryService },
         { provide: ToolsService, useValue: mockToolsService },
+        { provide: AgentFactory, useValue: mockAgentFactory },
       ],
     }).compile();
 
@@ -282,58 +292,5 @@ describe('ChatService - Title Generation', () => {
       });
     });
 
-    describe('streamMessage - Agentic Workflow', () => {
-      const session = { id: 's1', userId: 'u1' };
-
-      beforeEach(() => {
-        mockChatSessionRepo.findOne.mockResolvedValue(session);
-        mockChatMessageRepo.create.mockReturnValue({ id: 'm1' });
-        mockChatMessageRepo.save.mockResolvedValue({ id: 'm1' });
-        mockChatMessageRepo.count.mockResolvedValue(1);
-        // Mock tools
-        const toolDefs = [{ name: 'get_weather', description: 'desc', parameters: {} }];
-        mockToolsService.getToolsDefinitions.mockReturnValue(toolDefs);
-      });
-
-      it('should execute tool when LLM returns JSON tool call', async () => {
-        // Setup LLM Responses for 2 turns
-        // Turn 1: Return Tool Call
-        mockLlmService.streamChat.mockImplementationOnce(async function* () {
-          yield '```json\n{ "tool": "get_weather", "parameters": { "city": "London" } }\n```';
-        });
-
-        // Turn 2: Return Final Answer
-        mockLlmService.streamChat.mockImplementationOnce(async function* () {
-          yield 'London weather is rainy.';
-        });
-
-        // Setup Tool Result
-        mockToolsService.executeTool.mockResolvedValue({ weather: 'rainy' });
-
-        const generator = service.streamMessage('s1', 'u1', 'Weather in London?', ChatRole.USER);
-
-        const chunks: string[] = [];
-        for await (const chunk of generator) {
-          chunks.push(chunk);
-        }
-
-        // Verify Tool Execution
-        expect(mockToolsService.executeTool).toHaveBeenCalledWith('get_weather', { city: 'London' });
-
-        // Verify both LLM calls
-        expect(mockLlmService.streamChat).toHaveBeenCalledTimes(2);
-
-        // Verify second LLM call includes Tool Output
-        const secondCallHistory = mockLlmService.streamChat.mock.calls[1][0];
-        const lastMsg = secondCallHistory[secondCallHistory.length - 1]; // Observation
-        expect(lastMsg.role).toBe('tool'); // Assuming we used 'tool' role
-        expect(lastMsg.message).toContain('rainy');
-
-        // Verify Output
-        const fullResponse = chunks.join('');
-        expect(fullResponse).toContain('London weather is rainy.');
-      });
-    });
-  });
-
 });
+  });

@@ -30,6 +30,7 @@
     "@google-cloud/storage": "^7.18.0",
     "@google-cloud/vertexai": "^1.10.0",
     "@mistralai/mistralai": "^1.13.0",
+    "@nestjs/axios": "^4.0.1",
     "@nestjs/cache-manager": "^3.1.0",
     "@nestjs/common": "^11.0.1",
     "@nestjs/config": "^4.0.2",
@@ -45,12 +46,14 @@
     "@nestjs/typeorm": "^11.0.0",
     "@nestjs/websockets": "^11.1.11",
     "@tainiex/shared-atlas": "file:shared-atlas",
+    "axios": "^1.13.2",
     "bcrypt": "^6.0.0",
     "cache-manager": "^7.2.8",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.3",
     "fastify": "^5.6.2",
     "google-auth-library": "^10.5.0",
+    "jsonwebtoken": "^9.0.3",
     "jwks-rsa": "^3.2.0",
     "nest-winston": "^1.10.2",
     "nestjs-cls": "^6.2.0",
@@ -67,8 +70,7 @@
     "xstate": "^5.25.1",
     "yjs": "^13.6.29",
     "zod": "^3.23.8",
-    "zod-to-json-schema": "^3.23.2",
-    "jsonwebtoken": "^9.0.3"
+    "zod-to-json-schema": "^3.23.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",

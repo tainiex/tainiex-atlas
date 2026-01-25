@@ -1,25 +1,53 @@
-import { Injectable, Inject } from '@nestjs/common'; // Fixed import
-import { Tool } from '../interfaces/tool.interface';
-import { z } from 'zod';
+import { Injectable, Inject, Logger } from '@nestjs/common';
+import { IToolProvider } from '../../agent/interfaces/tool-provider.interface';
+import { AgentTool } from '../../agent/decorators/agent-tool.decorator';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
-@Injectable()
-export class WeatherTool extends Tool {
-  name = 'get_weather';
-  description =
-    'Get current weather for a city. Returns temperature, humidity, and simple description.';
+import { z } from 'zod';
 
-  schema = z.object({
+@AgentTool({
+  name: 'get_weather',
+  description: 'Get current weather for a city. Returns temperature, humidity, and simple description.',
+  scope: 'global'
+})
+export class WeatherTool implements IToolProvider {
+  name = 'get_weather';
+  description = 'Get current weather for a city. Returns temperature, humidity, and simple description.';
+
+  private logger = new Logger(WeatherTool.name);
+
+  // Define Schema using Zod or raw JSON Schema
+  private zodSchema = z.object({
     city: z.string().describe('City name, e.g. Shanghai, San Francisco'),
     unit: z.enum(['celsius', 'fahrenheit']).optional().default('celsius'),
   });
 
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {
-    super();
+  // Convert to JSON Schema compatibility
+  parameters = {
+    type: 'object',
+    properties: {
+      city: { type: 'string', description: 'City name' },
+      unit: { type: 'string', enum: ['celsius', 'fahrenheit'], default: 'celsius' }
+    },
+    required: ['city']
+  };
+
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) { }
+
+  /**
+   * Check if API Key is configured
+   */
+  isAvailable(): boolean {
+    const apiKey = process.env.OPENWEATHER_API_KEY;
+    if (!apiKey) {
+      this.logger.debug('OPENWEATHER_API_KEY not found. Tool disabled.');
+      return false;
+    }
+    return true;
   }
 
-  protected async executeImpl(args: z.infer<typeof this.schema>): Promise<any> {
+  async execute(args: any): Promise<any> {
     const { city, unit } = args;
     const cacheKey = `weather:${city.toLowerCase()}:${unit}`;
 
@@ -32,16 +60,8 @@ export class WeatherTool extends Tool {
 
     const apiKey = process.env.OPENWEATHER_API_KEY;
     if (!apiKey) {
-      // Fallback for dev/demo if no key
-      this.logger.warn('OPENWEATHER_API_KEY not found. Returning MOCK data.');
-      return {
-        city,
-        temperature: 25,
-        unit,
-        description: 'Sunny (Mock Data)',
-        humidity: 60,
-        source: 'Mock',
-      };
+      // Should not happen if isAvailable checks out, but double check
+      throw new Error('OPENWEATHER_API_KEY missing');
     }
 
     const units = unit === 'fahrenheit' ? 'imperial' : 'metric';

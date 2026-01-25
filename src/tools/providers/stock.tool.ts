@@ -1,23 +1,43 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { Tool } from '../interfaces/tool.interface';
-import { z } from 'zod';
+import { Injectable, Inject, Logger } from '@nestjs/common';
+import { IToolProvider } from '../../agent/interfaces/tool-provider.interface';
+import { AgentTool } from '../../agent/decorators/agent-tool.decorator';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
-@Injectable()
-export class StockTool extends Tool {
+@AgentTool({
+  name: 'get_stock_price',
+  description: 'Get current stock price and change for a given symbol.',
+  scope: 'global'
+})
+export class StockTool implements IToolProvider {
   name = 'get_stock_price';
   description = 'Get current stock price and change for a given symbol.';
 
-  schema = z.object({
-    symbol: z.string().describe('Stock symbol, e.g. MSFT, AAPL, GOOGL'),
-  });
+  private logger = new Logger(StockTool.name);
 
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {
-    super();
+  parameters = {
+    type: 'object',
+    properties: {
+      symbol: { type: 'string', description: 'Stock symbol, e.g. MSFT, AAPL' }
+    },
+    required: ['symbol']
+  };
+
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) { }
+
+  /**
+   * Check if API Key is configured
+   */
+  isAvailable(): boolean {
+    const apiKey = process.env.ALPHAVANTAGE_API_KEY;
+    if (!apiKey) {
+      this.logger.debug('ALPHAVANTAGE_API_KEY not found. StockTool disabled.');
+      return false;
+    }
+    return true;
   }
 
-  protected async executeImpl(args: z.infer<typeof this.schema>): Promise<any> {
+  async execute(args: any): Promise<any> {
     const { symbol } = args;
     const cacheKey = `stock:${symbol.toUpperCase()}`;
 
@@ -31,14 +51,7 @@ export class StockTool extends Tool {
     const apiKey = process.env.ALPHAVANTAGE_API_KEY;
 
     if (!apiKey) {
-      this.logger.warn('ALPHAVANTAGE_API_KEY not found. Returning MOCK data.');
-      return {
-        symbol,
-        price: 150.0,
-        change_percent: '+1.2%',
-        latest_trading_day: '2023-10-27',
-        source: 'Mock',
-      };
+      throw new Error('ALPHAVANTAGE_API_KEY missing');
     }
 
     const url = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${apiKey}`;
@@ -50,7 +63,6 @@ export class StockTool extends Tool {
 
     const data = await res.json();
 
-    // Alpha Vantage often returns 200 OK even if error or rate limit
     if (data['Error Message']) {
       throw new Error(`Stock API Error: ${data['Error Message']}`);
     }
@@ -70,7 +82,7 @@ export class StockTool extends Tool {
       latest_trading_day: quote['07. latest trading day'],
     };
 
-    // Cache for 1 minute (60 seconds) as stock prices move fast
+    // Cache for 1 minute (60 seconds)
     await this.cacheManager.set(cacheKey, result, 60000);
     return result;
   }

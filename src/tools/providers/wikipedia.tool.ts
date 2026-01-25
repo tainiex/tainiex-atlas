@@ -1,22 +1,38 @@
-import { Injectable } from '@nestjs/common';
-import { Tool } from '../interfaces/tool.interface';
-import { z } from 'zod';
+import { Injectable, Logger } from '@nestjs/common';
+import { IToolProvider } from '../../agent/interfaces/tool-provider.interface';
+import { AgentTool } from '../../agent/decorators/agent-tool.decorator';
 
-@Injectable()
-export class WikipediaTool extends Tool {
+@AgentTool({
+  name: 'search_wikipedia',
+  description: 'Search Wikipedia for encyclopedic knowledge, definitions, and historical events.',
+  scope: 'global'
+})
+export class WikipediaTool implements IToolProvider {
   name = 'search_wikipedia';
-  description =
-    'Search Wikipedia for encyclopedic knowledge, definitions, and historical events.';
+  description = 'Search Wikipedia for encyclopedic knowledge, definitions, and historical events.';
 
-  schema = z.object({
-    query: z.string().describe('The search query'),
-    language: z.string().optional().default('en'),
-  });
+  private logger = new Logger(WikipediaTool.name);
 
-  protected async executeImpl(args: z.infer<typeof this.schema>): Promise<any> {
+  parameters = {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: 'The search query' },
+      language: { type: 'string', default: 'en' }
+    },
+    required: ['query']
+  };
+
+  /**
+   * Wikipedia is free, so it's always available.
+   */
+  isAvailable(): boolean {
+    return true;
+  }
+
+  async execute(args: any): Promise<any> {
     const { query, language } = args;
-    // Wiki API is free, no key needed.
-    const endpoint = `https://${language}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*`;
+    const lang = language || 'en';
+    const endpoint = `https://${lang}.wikipedia.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(query)}&format=json&origin=*`;
 
     const res = await fetch(endpoint);
     if (!res.ok) {
@@ -29,11 +45,8 @@ export class WikipediaTool extends Tool {
       return { message: 'No results found on Wikipedia.' };
     }
 
-    // Use the first result to get a snippet. Ideally, we should fetch the page content/summary.
-    // Let's improve by fetching the summary of the top result.
     const topTitle = data.query.search[0].title;
-
-    const summaryUrl = `https://${language}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topTitle)}`;
+    const summaryUrl = `https://${lang}.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(topTitle)}`;
     const summaryRes = await fetch(summaryUrl);
 
     if (summaryRes.ok) {
