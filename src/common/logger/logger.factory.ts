@@ -31,9 +31,10 @@ export function createWinstonLogger(): Logger {
           const msg =
             typeof message === 'object'
               ? JSON.stringify(message)
-              : String(message);
+              : (message as string);
 
           // level already contains ANSI codes from colorize
+          // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
           return `[Nest] ${pid} - ${timestamp}  ${level} ${ctx} ${msg}${metaStr}`;
         }),
       );

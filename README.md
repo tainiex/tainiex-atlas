@@ -638,7 +638,7 @@ The project uses ESLint and Prettier for code quality:
 ## Architectural Decisions / 架构决策
 
 - **Database Migrations**: `synchronize: true` is strictly **DISABLED** in all environments (including development) to ensure schema consistency. All changes must be done via migration scripts.
-- **Shared DTOs**: API request/response objects MUST be defined in `shared-lib` to ensure type safety between frontend and backend.
+- **Shared DTOs**: API request/response objects MUST be defined in `@tainiex/shared-atlas` to ensure type safety between frontend and backend.
 - **Global Validation**: `ValidationPipe` is enabled globally. ALL controller endpoints MUST use DTOs with `class-validator` decorators. Use of `any` or raw objects in controllers is forbidden.
 - **Scalability**: Socket.io adapter will transition to Redis in the future; currently using in-memory adapter (aware of horizontal scaling limitation).
 - **Logging**: Production logs must use structured JSON format (Winston/Pino) for observability in cloud environments.

@@ -1,3 +1,7 @@
+/**
+ * Test file with mock implementations
+ */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Test, TestingModule } from '@nestjs/testing';
 import { ToolsService } from './tools.service';
 import { WeatherTool } from './providers/weather.tool';
@@ -14,7 +18,11 @@ describe('ToolsService', () => {
   // Mocks
   const mockBaseTool = {
     execute: jest.fn().mockResolvedValue('success'),
-    getDefinition: () => ({ name: 'base', description: 'desc', parameters: {} }),
+    getDefinition: () => ({
+      name: 'base',
+      description: 'desc',
+      parameters: {},
+    }),
   };
 
   const createMockTool = (name: string) => ({
@@ -40,7 +48,10 @@ describe('ToolsService', () => {
         ToolsService,
         { provide: WeatherTool, useValue: createMockTool('get_weather') },
         { provide: SearchTool, useValue: createMockTool('web_search') },
-        { provide: WikipediaTool, useValue: createMockTool('search_wikipedia') },
+        {
+          provide: WikipediaTool,
+          useValue: createMockTool('search_wikipedia'),
+        },
         { provide: StockTool, useValue: createMockTool('get_stock_price') },
         { provide: ActivityPublisher, useValue: mockActivityPublisher },
         { provide: ClsService, useValue: mockClsService },
@@ -59,19 +70,24 @@ describe('ToolsService', () => {
       service.onModuleInit();
       const definitions = service.getToolsDefinitions();
       expect(definitions.length).toBe(4);
-      expect(definitions.map(d => d.name)).toEqual(expect.arrayContaining([
-        'get_weather', 'web_search', 'search_wikipedia', 'get_stock_price'
-      ]));
+      expect(definitions.map((d) => d.name)).toEqual(
+        expect.arrayContaining([
+          'get_weather',
+          'web_search',
+          'search_wikipedia',
+          'get_stock_price',
+        ]),
+      );
     });
 
     it('should handle duplicate registration gracefully', () => {
       // Spy on logger
-      const loggerSpy = jest.spyOn(Logger.prototype, 'warn').mockImplementation();
+      jest.spyOn(Logger.prototype, 'warn').mockImplementation();
 
       // Manually trigger registration twice for the same tool instance (simulated)
       // Since we can't easily access the private method, we rely on onModuleInit calling registration
       service.onModuleInit();
-      // If we were to call it again, it would re-register. 
+      // If we were to call it again, it would re-register.
       // To strictly test duplicate warning, we would need to modify the service to expose register or inject same tool twice.
       // For now, onModuleInit is safe.
 
@@ -96,18 +112,23 @@ describe('ToolsService', () => {
       expect(mockActivityPublisher.publish).toHaveBeenCalledTimes(2);
       expect(mockActivityPublisher.publish).toHaveBeenCalledWith(
         'test-session-id',
-        expect.objectContaining({ type: 'TOOL_EXECUTION', status: 'STARTED' })
+        expect.objectContaining({ type: 'TOOL_EXECUTION', status: 'STARTED' }),
       );
       expect(mockActivityPublisher.publish).toHaveBeenCalledWith(
         'test-session-id',
-        expect.objectContaining({ type: 'TOOL_EXECUTION', status: 'COMPLETED' })
+        expect.objectContaining({
+          type: 'TOOL_EXECUTION',
+          status: 'COMPLETED',
+        }),
       );
     });
 
     it('should throw error if tool not found', async () => {
-      await expect(service.executeTool('unknown_tool', {})).rejects.toThrow('Tool not found: unknown_tool');
-      // Should NOT satisfy activity tracking because method throws BEFORE decorator logic in implementations usually, 
-      // but here decorator wraps the method. 
+      await expect(service.executeTool('unknown_tool', {})).rejects.toThrow(
+        'Tool not found: unknown_tool',
+      );
+      // Should NOT satisfy activity tracking because method throws BEFORE decorator logic in implementations usually,
+      // but here decorator wraps the method.
       // However, the decorator calls original method. If original method throws "Tool not found", decorator catches it?
       // Wait, "executeTool" is the one throwing "Tool not found".
       // The decorator wraps "executeTool".
@@ -115,7 +136,7 @@ describe('ToolsService', () => {
 
       expect(mockActivityPublisher.publish).toHaveBeenCalledWith(
         'test-session-id',
-        expect.objectContaining({ type: 'TOOL_EXECUTION', status: 'FAILED' })
+        expect.objectContaining({ type: 'TOOL_EXECUTION', status: 'FAILED' }),
       );
     });
 
@@ -124,25 +145,31 @@ describe('ToolsService', () => {
       const failingTool = createMockTool('failing_tool');
       failingTool.execute.mockRejectedValue(new Error('API Error'));
 
-      // Inject explicitly via reflection or re-create module. 
+      // Inject explicitly via reflection or re-create module.
       // Easier to just mock one of the existing tools to fail for this test.
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       const weatherTool = (service as any).weatherTool;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
       weatherTool.execute.mockRejectedValue(new Error('Weather API Down'));
 
-      await expect(service.executeTool('get_weather', {})).rejects.toThrow('Weather API Down');
+      await expect(service.executeTool('get_weather', {})).rejects.toThrow(
+        'Weather API Down',
+      );
 
       expect(mockActivityPublisher.publish).toHaveBeenCalledWith(
         'test-session-id',
         expect.objectContaining({
           type: 'TOOL_EXECUTION',
           status: 'FAILED',
-          metadata: expect.objectContaining({ error: 'Weather API Down' })
-        })
+          metadata: expect.objectContaining({ error: 'Weather API Down' }),
+        }),
       );
     });
 
     it('should handle publisher errors gracefully (should not block execution)', async () => {
-      mockActivityPublisher.publish.mockRejectedValueOnce(new Error('PubSub Error'));
+      mockActivityPublisher.publish.mockRejectedValueOnce(
+        new Error('PubSub Error'),
+      );
 
       const result = await service.executeTool('get_weather', {});
       expect(result).toBe('get_weather_success');

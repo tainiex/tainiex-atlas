@@ -7,18 +7,12 @@ import { LlmModule } from '../llm/llm.module';
 
 @Global()
 @Module({
-    imports: [
-        DiscoveryModule,
-        LlmModule,
-        AgentToolsModule // Import the isolated tools module
-    ],
-    providers: [
-        AgentFactory,
-        ToolRegistryService
-    ],
-    exports: [
-        AgentFactory,
-        ToolRegistryService
-    ]
+  imports: [
+    DiscoveryModule,
+    LlmModule,
+    AgentToolsModule, // Import the isolated tools module
+  ],
+  providers: [AgentFactory, ToolRegistryService],
+  exports: [AgentFactory, ToolRegistryService],
 })
-export class AgentModule { }
+export class AgentModule {}

@@ -36,7 +36,7 @@ export class AuthController {
   constructor(
     private authService: AuthService,
     private configService: ConfigurationService,
-  ) { }
+  ) {}
 
   @Post('login')
   @RateLimit(5, 60) // Limit: 5 requests per 60 seconds

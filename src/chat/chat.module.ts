@@ -42,4 +42,4 @@ import { JobQueueModule } from './queue/job-queue.module';
   ],
   exports: [ChatService],
 })
-export class ChatModule { }
+export class ChatModule {}

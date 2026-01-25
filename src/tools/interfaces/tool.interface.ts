@@ -1,3 +1,8 @@
+/**
+ * Tool system interfaces with intentional use of `any` for parameter flexibility
+ */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { Logger } from '@nestjs/common';

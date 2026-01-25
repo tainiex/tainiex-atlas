@@ -131,7 +131,7 @@ export class GraphService {
 
         await this.createEdge(sourceNode.id, targetNode.id, relationType);
       } catch (e) {
-        this.logger.warn(`Failed to process relation: ${relStr}`, e);
+        this.logger.warn(`Failed to process relation: ${relStr}: ${String(e)}`);
       }
     }
   }

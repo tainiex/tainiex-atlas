@@ -1,19 +1,48 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { IToolProvider } from '../../agent/interfaces/tool-provider.interface';
 import { AgentTool } from '../../agent/decorators/agent-tool.decorator';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
-
 import { z } from 'zod';
+
+interface WeatherArgs {
+  city: string;
+  unit?: 'celsius' | 'fahrenheit';
+}
+
+interface WeatherApiResponse {
+  name: string;
+  main: {
+    temp: number;
+    humidity: number;
+  };
+  weather: Array<{
+    description: string;
+  }>;
+  wind: {
+    speed: number;
+  };
+}
+
+interface WeatherResult {
+  city: string;
+  temperature: number;
+  unit: string | undefined;
+  description: string | undefined;
+  humidity: number;
+  wind_speed: number;
+}
 
 @AgentTool({
   name: 'get_weather',
-  description: 'Get current weather for a city. Returns temperature, humidity, and simple description.',
-  scope: 'global'
+  description:
+    'Get current weather for a city. Returns temperature, humidity, and simple description.',
+  scope: 'global',
 })
 export class WeatherTool implements IToolProvider {
   name = 'get_weather';
-  description = 'Get current weather for a city. Returns temperature, humidity, and simple description.';
+  description =
+    'Get current weather for a city. Returns temperature, humidity, and simple description.';
 
   private logger = new Logger(WeatherTool.name);
 
@@ -28,12 +57,16 @@ export class WeatherTool implements IToolProvider {
     type: 'object',
     properties: {
       city: { type: 'string', description: 'City name' },
-      unit: { type: 'string', enum: ['celsius', 'fahrenheit'], default: 'celsius' }
+      unit: {
+        type: 'string',
+        enum: ['celsius', 'fahrenheit'],
+        default: 'celsius',
+      },
     },
-    required: ['city']
+    required: ['city'],
   };
 
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) { }
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
   /**
    * Check if API Key is configured
@@ -47,12 +80,13 @@ export class WeatherTool implements IToolProvider {
     return true;
   }
 
-  async execute(args: any): Promise<any> {
-    const { city, unit } = args;
+  async execute(args: any): Promise<WeatherResult> {
+    const validArgs = args as WeatherArgs;
+    const { city, unit } = validArgs;
     const cacheKey = `weather:${city.toLowerCase()}:${unit}`;
 
     // Check Cache
-    const cached = await this.cacheManager.get(cacheKey);
+    const cached = await this.cacheManager.get<WeatherResult>(cacheKey);
     if (cached) {
       this.logger.log(`Returning cached weather for ${city}`);
       return cached;
@@ -75,9 +109,9 @@ export class WeatherTool implements IToolProvider {
       throw new Error(`Weather API Error: ${res.status} ${res.statusText}`);
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as unknown as WeatherApiResponse;
 
-    const result = {
+    const result: WeatherResult = {
       city: data.name,
       temperature: data.main.temp,
       unit,

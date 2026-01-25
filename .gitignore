@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+lint_*.txt
 
 # Logs
 logs
@@ -57,9 +58,9 @@ pids
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# Shared lib
-/shared-lib/dist/
-/shared-lib/node_modules/
+# Shared atlas
+/shared-atlas/dist/
+/shared-atlas/node_modules/
 
 # Google Service Account
 /gsa

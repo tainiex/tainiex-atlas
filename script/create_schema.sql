@@ -269,7 +269,7 @@ CREATE INDEX notes_search_idx ON notes USING GIN(search_vector);
 --------------------------------------------------------------------------------
 DROP TABLE IF EXISTS blocks_new;
 
--- Create ENUM type if not exists (explicitly matches shared-lib BlockType)
+-- Create ENUM type if not exists (explicitly matches shared-atlas BlockType)
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'blocks_type_enum') THEN

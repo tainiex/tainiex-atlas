@@ -1,4 +1,4 @@
-import { ActivityStatus, ActivityEventPayload } from '@tainiex/shared-atlas';
+import { ActivityEventPayload } from '@tainiex/shared-atlas';
 
 export class ActivityEvent {
   constructor(

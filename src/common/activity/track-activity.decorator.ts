@@ -1,8 +1,17 @@
-import { Inject } from '@nestjs/common';
+/**
+ * Decorator with dynamic method wrapping
+ */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { ClsService } from 'nestjs-cls';
 import { ActivityPublisher } from './interfaces/activity-publisher.interface';
 import { ActivityStatus } from '@tainiex/shared-atlas';
 import { v4 as uuidv4 } from 'uuid';
+
+interface HasDependencies {
+  activityPublisher?: ActivityPublisher;
+  cls?: ClsService;
+}
 
 /**
  * Decorator to track activity start/end and publish events.
@@ -23,11 +32,13 @@ export function TrackActivity(metadata: { type: string; description: string }) {
       // Alternatively, we can use ModuleRef, but that's complex in decorators.
       // A common pattern in NestJS is to assume property injection or specific names.
 
-      const publisher: ActivityPublisher = this.activityPublisher;
-      const cls: ClsService = this.cls;
+      const instance = this as HasDependencies;
+      const publisher = instance.activityPublisher;
+      const cls = instance.cls;
 
       if (!publisher || !cls) {
         // If not available, just run original method (Safety fallback)
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         return originalMethod.apply(this, args);
       }
 
@@ -35,6 +46,7 @@ export function TrackActivity(metadata: { type: string; description: string }) {
       const sessionId = cls.get('sessionId');
       // If no session context, we might skip tracking or log warning
       if (!sessionId) {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         return originalMethod.apply(this, args);
       }
 
@@ -51,12 +63,13 @@ export function TrackActivity(metadata: { type: string; description: string }) {
           status: ActivityStatus.STARTED,
           timestamp,
         });
-      } catch (e) {
+      } catch {
         /* ignore publishing errors */
       }
 
       try {
         // 4. Execute Method
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-member-access
         const result = await originalMethod.apply(this, args);
 
         // 5. Emit COMPLETED
@@ -71,6 +84,7 @@ export function TrackActivity(metadata: { type: string; description: string }) {
           })
           .catch(() => {});
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-return
         return result;
       } catch (error) {
         // 6. Emit FAILED

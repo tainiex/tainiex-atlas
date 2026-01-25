@@ -1,11 +1,8 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { AppModule } from './app.module';
 
-import { ConfigService } from '@nestjs/config';
-
 import {
   ClassSerializerInterceptor,
-  LogLevel,
   ValidationPipe,
   LoggerService as NestLoggerService,
 } from '@nestjs/common';
@@ -26,19 +23,19 @@ async function bootstrap() {
 
   // Create NestJS LoggerService wrapper for Winston
   class WinstonLogger implements NestLoggerService {
-    log(message: any, context?: string) {
+    log(message: string, context?: string) {
       winstonLogger.info(message, { context });
     }
-    error(message: any, trace?: string, context?: string) {
+    error(message: string, trace?: string, context?: string) {
       winstonLogger.error(message, { context, trace });
     }
-    warn(message: any, context?: string) {
+    warn(message: string, context?: string) {
       winstonLogger.warn(message, { context });
     }
-    debug(message: any, context?: string) {
+    debug(message: string, context?: string) {
       winstonLogger.debug(message, { context });
     }
-    verbose(message: any, context?: string) {
+    verbose(message: string, context?: string) {
       winstonLogger.verbose(message, { context });
     }
   }

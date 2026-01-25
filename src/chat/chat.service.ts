@@ -12,10 +12,6 @@ import { AgentFactory } from '../agent/services/agent-factory.service';
 import type { IJobQueue } from './queue/job-queue.interface';
 import { ChatRole, CHAT_ROOT_PARENT_ID } from '@tainiex/shared-atlas';
 import type { IContextManager } from './context/context-manager.interface';
-import type {
-  ChatMessage as LlmMessage,
-  LlmRole,
-} from '../llm/adapters/llm-adapter.interface';
 import { LoggerService } from '../common/logger/logger.service';
 
 @Injectable()
@@ -312,7 +308,10 @@ export class ChatService {
             context,
           );
         } catch (e) {
-          this.logger.error('[ChatService] Distillation trigger failed', e);
+          this.logger.error(
+            '[ChatService] Distillation trigger failed',
+            String(e),
+          );
         }
       })();
     }
@@ -405,7 +404,9 @@ export class ChatService {
       return;
     }
 
-    this.logger.log('[ChatService] Preparing to call LLM service (Agentic Loop)...');
+    this.logger.log(
+      '[ChatService] Preparing to call LLM service (Agentic Loop)...',
+    );
 
     // 5. Agentic Loop (ReAct) - NEW FRAMEWORK
     const history = await this.contextManager.getContext(sessionId);
@@ -415,7 +416,10 @@ export class ChatService {
     let memoryContext = '';
     try {
       if (content && content.trim().length > 0) {
-        const relevantMemories = await this.memoryService.searchMemories(userId, content);
+        const relevantMemories = await this.memoryService.searchMemories(
+          userId,
+          content,
+        );
         if (relevantMemories.length > 0) {
           memoryContext = relevantMemories
             .map((m) => `- ${m.content} (Source: ${m.metadata.sourceType})`)
@@ -423,7 +427,10 @@ export class ChatService {
         }
       }
     } catch (e) {
-      this.logger.error('[ChatService] Memory retrieval failed', e);
+      this.logger.error(
+        '[ChatService] Memory retrieval failed',
+        e instanceof Error ? e.stack : String(e),
+      );
     }
 
     // Prepare System Prompt (Identity is defined by ReactAgentEngine)
@@ -435,9 +442,9 @@ ${memoryContext}
 `;
 
     // Map history to AgentMessage
-    const agentHistory = previousMessages.map(m => ({
-      role: m.role as any,
-      content: m.content
+    const agentHistory = previousMessages.map((m) => ({
+      role: m.role as 'system' | 'user' | 'assistant' | 'tool',
+      content: m.content,
     }));
 
     // Create Agent Engine
@@ -452,7 +459,7 @@ ${memoryContext}
       speculativeModel: 'gemini-2.5-flash', // Always use Flash for fast intent detection
       enableSpeculative: true, // Enable Speculative execution
       tools: this.agentFactory.getTools('global'), // Get tools for this scope
-      context: { userId, sessionId }
+      context: { userId, sessionId },
     });
 
     let finalAnswer = '';
@@ -461,6 +468,7 @@ ${memoryContext}
       for await (const event of stream) {
         if (event.type === 'answer_chunk') {
           yield event.content;
+          finalAnswer += event.content;
         } else if (event.type === 'thought') {
           this.logger.debug(`[Agent] Thought: ${event.content}`);
           // Optional: yield thought events if frontend supports it
@@ -478,8 +486,16 @@ ${memoryContext}
         }
       }
     } catch (error) {
-      this.logger.error('[Agent] Execution failed', error);
-      yield `\n[System Error: ${error.message}]`;
+      if (error instanceof Error) {
+        this.logger.error('[Agent] Execution failed', error.stack);
+        yield `\n[System Error: ${error.message}]`;
+      } else {
+        this.logger.error(
+          '[Agent] Execution failed (unknown error)',
+          String(error),
+        );
+        yield `\n[System Error: Unknown error]`;
+      }
     }
 
     // 6. Save AI Message
@@ -519,7 +535,10 @@ ${memoryContext}
         await this.chatMessageRepository.save(aiMessage);
       }
     } catch (error) {
-      this.logger.error('Failed to generate AI response:', error);
+      this.logger.error(
+        'Failed to generate AI response:',
+        error instanceof Error ? error.stack : String(error),
+      );
     }
   }
 
@@ -565,7 +584,10 @@ Title:`;
         await this.chatSessionRepository.save(session);
       }
     } catch (error) {
-      this.logger.error('Failed to auto-generate title:', error);
+      this.logger.error(
+        'Failed to auto-generate title:',
+        error instanceof Error ? error.stack : String(error),
+      );
     }
   }
 
@@ -759,11 +781,14 @@ Title:`;
         yield chunk;
       }
     } catch (error) {
-      this.logger.error('[ChatService] Stream AI Error:', error);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      this.logger.error('[ChatService] Error stack:', error.stack);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-      yield `data: [Error: ${error.message}]\n\n`;
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(
+        '[ChatService] Stream AI Error:',
+        errorStack || errorMessage,
+      );
+      yield `data: [Error: ${errorMessage}]\n\n`;
       throw error;
     }
 

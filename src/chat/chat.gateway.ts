@@ -96,10 +96,17 @@ export interface AuthenticatedSocket extends Socket {
   pingTimeout: 20000,
   // Maximize transport reliability
   transports: ['websocket', 'polling'],
+  // Streaming optimization: disable compression to reduce latency
+  perMessageDeflate: false,
+  // HTTP compression is disabled to prevent buffering
+  httpCompression: false,
+  // Reduce buffering for real-time streaming
+  wsEngine: 'ws',
 })
 @UseFilters(new WebSocketExceptionFilter())
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -372,6 +379,9 @@ export class ChatGateway
           type: 'chunk',
           data: chunk,
         });
+        // Force immediate flush by yielding control to event loop
+        // This ensures chunks are sent immediately without batching
+        await new Promise((resolve) => setImmediate(resolve));
       }
 
       this.logger.log(`Stream completed: ${chunkCount} chunks sent`);
@@ -386,7 +396,10 @@ export class ChatGateway
         title: updatedSession.title,
       });
     } catch (error) {
-      this.logger.error('Chat stream error:', error);
+      this.logger.error(
+        'Chat stream error:',
+        error instanceof Error ? error.stack : String(error),
+      );
       const errorMessage =
         error instanceof Error ? error.message : 'Stream failed';
       client.emit(ClientEventTypes.CHAT_STREAM, {

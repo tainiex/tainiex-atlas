@@ -130,13 +130,19 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
     }
   }
 
-  async chat(history: ChatMessage[], message: string, tools?: any[]): Promise<string> {
+  async chat(
+    history: ChatMessage[],
+    message: string,
+    tools?: any[],
+  ): Promise<string> {
     // Extract System Prompt
-    const systemMessage = history.find(h => h.role === 'system');
-    const systemInstruction = systemMessage ? (systemMessage.message || systemMessage.text) : undefined;
+    const systemMessage = history.find((h) => h.role === 'system');
+    const systemInstruction = systemMessage
+      ? systemMessage.message || systemMessage.text
+      : undefined;
 
     const formattedHistory: Content[] = history
-      .filter(h => h.role !== 'system')
+      .filter((h) => h.role !== 'system')
       .map((h) => ({
         role: this.mapRoleToVertex(h.role),
         parts: [{ text: h.message || h.text || '' }],
@@ -151,7 +157,9 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         try {
           const chat = this.model.startChat({
             history: formattedHistory,
-            systemInstruction: systemInstruction ? { role: 'system', parts: [{ text: systemInstruction }] } : undefined,
+            systemInstruction: systemInstruction
+              ? { role: 'system', parts: [{ text: systemInstruction }] }
+              : undefined,
             tools: vertexTools, // Native function calling
             generationConfig: {
               maxOutputTokens,
@@ -165,10 +173,17 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
           const response = result.response;
 
           // Check for function call
-          const functionCall = response.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+          const functionCall =
+            response.candidates?.[0]?.content?.parts?.[0]?.functionCall;
           if (functionCall) {
-            this.logger.debug('[GoogleVertexGaAdapter] ✓ Function call detected:', functionCall.name);
-            return JSON.stringify({ tool: functionCall.name, parameters: functionCall.args || {} });
+            this.logger.debug(
+              '[GoogleVertexGaAdapter] ✓ Function call detected:',
+              functionCall.name,
+            );
+            return JSON.stringify({
+              tool: functionCall.name,
+              parameters: functionCall.args || {},
+            });
           }
 
           const text = response.candidates?.[0].content.parts[0].text;
@@ -192,11 +207,13 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
     tools?: any[],
   ): AsyncGenerator<string> {
     // Extract System Prompt
-    const systemMessage = history.find(h => h.role === 'system');
-    const systemInstruction = systemMessage ? (systemMessage.message || systemMessage.text) : undefined;
+    const systemMessage = history.find((h) => h.role === 'system');
+    const systemInstruction = systemMessage
+      ? systemMessage.message || systemMessage.text
+      : undefined;
 
     const formattedHistory: Content[] = history
-      .filter(h => h.role !== 'system')
+      .filter((h) => h.role !== 'system')
       .map((h) => ({
         role: this.mapRoleToVertex(h.role),
         parts: [{ text: h.message || h.text || '' }],
@@ -205,14 +222,23 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
     // Convert tools to Vertex AI format
     let vertexTools: any[] | undefined = undefined;
     if (tools && tools.length > 0) {
-      vertexTools = [{
-        functionDeclarations: tools.map(tool => ({
-          name: tool.name,
-          description: tool.description,
-          parameters: tool.parameters
-        }))
-      }];
-      console.log('[GoogleVertexGaAdapter] ✓ Configured native function calling with', tools.length, 'tools');
+      vertexTools = [
+        {
+          functionDeclarations: tools.map((tool: any) => ({
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            name: tool.name as string,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            description: tool.description as string,
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            parameters: tool.parameters as Record<string, any>,
+          })),
+        },
+      ];
+      console.log(
+        '[GoogleVertexGaAdapter] ✓ Configured native function calling with',
+        tools.length,
+        'tools',
+      );
     }
 
     const metadata = ModelClassifier.getMetadata(this.modelName);
@@ -231,13 +257,19 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
         };
 
         if (systemInstruction) {
-          chatConfig.systemInstruction = { role: 'system', parts: [{ text: systemInstruction }] };
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+          chatConfig.systemInstruction = {
+            role: 'system',
+            parts: [{ text: systemInstruction }],
+          };
         }
 
         if (vertexTools) {
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
           chatConfig.tools = vertexTools;
         }
 
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const chat = this.model.startChat(chatConfig);
 
         // Wrap the initial network request (sendMessageStream) with retry
@@ -250,10 +282,17 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
           chunkCount++;
 
           // Check for function call
-          const functionCall = chunk.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+          const functionCall =
+            chunk.candidates?.[0]?.content?.parts?.[0]?.functionCall;
           if (functionCall) {
-            console.log('[GoogleVertexGaAdapter] ✓ Function call detected:', functionCall.name);
-            const toolCallJson = JSON.stringify({ tool: functionCall.name, parameters: functionCall.args || {} });
+            console.log(
+              '[GoogleVertexGaAdapter] ✓ Function call detected:',
+              functionCall.name,
+            );
+            const toolCallJson = JSON.stringify({
+              tool: functionCall.name,
+              parameters: functionCall.args || {},
+            });
             yield toolCallJson;
             return; // Stop after function call
           }
@@ -286,7 +325,7 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
           // Wait, if I want to support retrying the connection establishment, existing withRetry does that.
           // If the stream breaks, proper resumption is hard.
           // Let's assume the user's issue is INITIAL connection timeout.
-          // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
           this.logger.error('[GoogleVertexGaAdapter] streamChat error:', error);
 
           // Check for maxOutputTokens error

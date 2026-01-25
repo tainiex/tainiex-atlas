@@ -1,15 +1,41 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { IToolProvider } from '../../agent/interfaces/tool-provider.interface';
 import { AgentTool } from '../../agent/decorators/agent-tool.decorator';
 
+interface SearchArgs {
+  query: string;
+  max_results?: number;
+}
+
+interface TavilyResponse {
+  answer?: string;
+  results: Array<{
+    title: string;
+    url: string;
+    content: string;
+  }>;
+}
+
+interface SearchResult {
+  query: string;
+  answer?: string;
+  results: Array<{
+    title: string;
+    url: string;
+    content: string;
+  }>;
+}
+
 @AgentTool({
   name: 'web_search',
-  description: 'Search the web for current information, news, or specific facts. Optimized for LLMs.',
-  scope: 'global'
+  description:
+    'Search the web for current information, news, or specific facts. Optimized for LLMs.',
+  scope: 'global',
 })
 export class SearchTool implements IToolProvider {
   name = 'web_search';
-  description = 'Search the web for current information, news, or specific facts. Optimized for LLMs.';
+  description =
+    'Search the web for current information, news, or specific facts. Optimized for LLMs.';
 
   private logger = new Logger(SearchTool.name);
 
@@ -17,9 +43,9 @@ export class SearchTool implements IToolProvider {
     type: 'object',
     properties: {
       query: { type: 'string', description: 'The search query string' },
-      max_results: { type: 'number', default: 5 }
+      max_results: { type: 'number', default: 5 },
     },
-    required: ['query']
+    required: ['query'],
   };
 
   /**
@@ -34,8 +60,8 @@ export class SearchTool implements IToolProvider {
     return true;
   }
 
-  async execute(args: any): Promise<any> {
-    const { query, max_results } = args;
+  async execute(args: any): Promise<SearchResult> {
+    const { query, max_results } = args as SearchArgs;
     const apiKey = process.env.TAVILY_API_KEY;
 
     if (!apiKey) {
@@ -60,15 +86,16 @@ export class SearchTool implements IToolProvider {
       throw new Error(`Tavily API Error: ${res.status} ${res.statusText}`);
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as unknown as TavilyResponse;
     return {
       query,
       answer: data.answer,
-      results: data.results?.map((r: any) => ({
-        title: r.title,
-        url: r.url,
-        content: r.content,
-      })) || [],
+      results:
+        data.results?.map((r) => ({
+          title: r.title,
+          url: r.url,
+          content: r.content,
+        })) || [],
     };
   }
 }

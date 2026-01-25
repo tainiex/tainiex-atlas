@@ -227,11 +227,56 @@ The `docs/` directory contains detailed architectural designs. **Always check th
 - **Consistency**: All feature modules (like `ChatModule`) must NOT re-register `JwtModule` to ensure they use the same Secret Key and Service instance.
 
 ### 3.3. LLM Integration
-- **Providers**: Google Vertex AI (Gemini Models) and Mistral AI.
+- **Providers**: Google Vertex AI (Gemini Models), Mistral AI, and OpenRouter.
 - **Service**: `LlmService` handles API calls to providers. Uses `LlmAdapterFactory` to select the correct adapter based on model name.
 - **Configuration**:
     - Vertex AI: Credentials loaded via `GSA_KEY_FILE` or explicit Project/Location env vars.
     - Mistral AI: Requires `MISTRAL_API_KEY` in environment variables.
+    - OpenRouter: Requires `OPENROUTER_API_KEY` in environment variables.
+
+### 3.3.1. Agent Engine - Streaming Optimization (流式输出优化)
+- **Component**: `ReactAgentEngine` (`src/agent-core/react-engine.ts`)
+- **Challenge**: Balancing tool call detection with real-time streaming UX
+  - 挑战：在工具调用检测和实时流式体验之间取得平衡
+- **Previous Approach (旧方案)**:
+  - Buffer entire LLM response → Detect tool calls → Output to user
+  - 缓冲完整的 LLM 响应 → 检测工具调用 → 输出给用户
+  - **Problem**: High latency (30-50s for long responses from slow providers)
+  - 问题：延迟高（慢速提供商的长响应需要 30-50 秒）
+- **Current Approach (当前方案) - Stream-First Detection**:
+  ```typescript
+  // 1. Check first chunk
+  if (firstChunk.startsWith('{')) {
+    // Native function calling (JSON) → Buffer mode
+    // 原生函数调用（JSON）→ 缓冲模式
+    hasToolCall = true;
+  } else {
+    // Text response → Stream immediately
+    // 文本响应 → 立即流式输出
+    yield { type: 'answer_chunk', content: chunk };
+  }
+
+  // 2. Subsequent chunks
+  if (hasToolCall) {
+    continue; // Keep buffering
+  } else {
+    yield { type: 'answer_chunk', content: chunk }; // Stream directly
+  }
+  ```
+- **Advantages (优势)**:
+  - **Zero latency for text responses**: Streams start immediately when first chunk arrives
+    - 文本响应零延迟：第一个 chunk 到达时立即开始流式输出
+  - **Native function calling support**: Google Vertex AI and compatible providers return JSON in first chunk
+    - 原生函数调用支持：Google Vertex AI 等兼容提供商在第一个 chunk 返回 JSON
+  - **Backward compatible**: Still supports text-based tool call parsing (though buffered)
+    - 向后兼容：仍支持基于文本的工具调用解析（虽然会缓冲）
+- **Performance Improvement (性能提升)**:
+  - Before: 741 chunks → 34s buffering → 25 large chunks → User sees response
+    - 之前：741 个 chunks → 34 秒缓冲 → 25 个大块 → 用户看到响应
+  - After: 741 chunks → Each chunk streams immediately → <1s first token
+    - 之后：741 个 chunks → 每个 chunk 立即流式输出 → <1 秒首个 token
+- **Reference**: Inspired by OpenAI and Claude Code's stream-first approach
+  - 参考：借鉴了 OpenAI 和 Claude Code 的流式优先方法
 
 ### 3.5. Notes & Collaboration System
 - **Block-Based Storage**: Notes are composed of multimodal blocks (TEXT, HEADING, IMAGE, etc.).
@@ -265,7 +310,7 @@ The `docs/` directory contains detailed architectural designs. **Always check th
 ## 4. Constraints & Conventions
 1.  **Code Style**: Follow standard Prettier/ESLint rules.
 2.  **DTOs/Interfaces**: 
-    - **Shared Library**: Define shared interfaces/DTOs in `shared-lib` for all API request/response bodies.
+    - **Shared Library**: Define shared interfaces/DTOs in `@tainiex/shared-atlas` for all API request/response bodies.
     - **Strict Validation**: Controllers MUST use DTOs decorated with `class-validator` (e.g., `@Body() dto: SignupDto`).
     - **Forbidden**: usage of `any` or raw objects like `@Body() req` in controllers is **STRICTLY FORBIDDEN**.
     - **Global Pipe**: The application runs with a global `ValidationPipe({ whitelist: true })`. Properties not in the DTO will be stripped.

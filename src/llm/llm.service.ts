@@ -118,7 +118,6 @@ export class LlmService implements OnModuleInit {
         full_name: model.name,
       }));
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       this.logger.error('Failed to list remote models via SDK', error);
       throw error;
     }

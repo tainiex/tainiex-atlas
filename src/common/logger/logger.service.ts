@@ -21,8 +21,25 @@ export class LoggerService implements NestLoggerService {
     this.logger.info(message, { context: context || this.context });
   }
 
-  error(message: string, trace?: string, context?: string) {
-    this.logger.error(message, { trace, context: context || this.context });
+  error(message: string, trace?: unknown, context?: string) {
+    let traceStr: string | undefined;
+    if (trace instanceof Error) {
+      traceStr = trace.stack;
+    } else if (typeof trace === 'string') {
+      traceStr = trace;
+    } else if (trace !== null && trace !== undefined) {
+      try {
+        traceStr = JSON.stringify(trace);
+      } catch {
+        // Fallback to String() for objects that can't be JSON.stringified
+        // eslint-disable-next-line @typescript-eslint/no-base-to-string
+        traceStr = String(trace as object);
+      }
+    }
+    this.logger.error(message, {
+      trace: traceStr,
+      context: context || this.context,
+    });
   }
 
   warn(message: string, context?: string) {

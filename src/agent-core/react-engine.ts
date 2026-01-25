@@ -1,10 +1,21 @@
-import { IAgentEngine, AgentRunConfig, AgentEvent, AgentMessage } from './interfaces/agent.interface';
-import { Tool } from './interfaces/tool.interface';
+/**
+ * This file contains intentional use of `any` types in the tool system.
+ * The tool interface uses `any` for flexibility across different tool implementations.
+ * These are design decisions, not oversights.
+ */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
+import {
+  IAgentEngine,
+  AgentRunConfig,
+  AgentEvent,
+  AgentMessage,
+} from './interfaces/agent.interface';
 import { ILlmProvider } from './interfaces/llm-provider.interface';
 
 /**
  * ReAct Agent Engine (Core Implementation)
- * 
+ *
  * Features:
  * - Pure TypeScript (No framework dependencies)
  * - Speculative Execution (Flash -> Pro fallback)
@@ -12,192 +23,331 @@ import { ILlmProvider } from './interfaces/llm-provider.interface';
  * - Tool Deduplication
  */
 export class ReactAgentEngine implements IAgentEngine {
-    constructor(private llm: ILlmProvider) { }
+  constructor(private llm: ILlmProvider) {}
 
-    async *execute(config: AgentRunConfig): AsyncGenerator<AgentEvent> {
-        const {
-            input,
-            history = [],
-            systemPrompt,
-            tools = [],
-            maxLoops = 5,
-            enableSpeculative = true,
-            context = {}
-        } = config;
+  async *execute(config: AgentRunConfig): AsyncGenerator<AgentEvent> {
+    const {
+      input,
+      history = [],
+      systemPrompt,
+      tools = [],
+      maxLoops = 5,
+      enableSpeculative = true,
+      context = {},
+    } = config;
 
-        // System Prompt - NO longer includes tool definitions (using native tools parameter instead)
-        console.log('[ReactAgentEngine] Tools count:', tools.length);
-        console.log('[ReactAgentEngine] Will pass tools natively to LLM');
+    // System Prompt - NO longer includes tool definitions (using native tools parameter instead)
+    console.log('[ReactAgentEngine] Tools count:', tools.length);
+    console.log('[ReactAgentEngine] Will pass tools natively to LLM');
 
-        // Build basic system prompt (no tool descriptions)
-        const basicSystemPrompt = systemPrompt || '';
+    // Build basic system prompt (no tool descriptions)
+    const basicSystemPrompt = systemPrompt || '';
 
-        console.log('[ReactAgentEngine] System Prompt (without tools):', basicSystemPrompt.substring(0, 300) + '...');
+    console.log(
+      '[ReactAgentEngine] System Prompt (without tools):',
+      basicSystemPrompt.substring(0, 300) + '...',
+    );
 
-        const currentHistory: AgentMessage[] = [
-            { role: 'system', content: basicSystemPrompt },
-            ...history,
-            { role: 'user', content: input }
-        ];
+    const currentHistory: AgentMessage[] = [
+      { role: 'system', content: basicSystemPrompt },
+      ...history,
+      { role: 'user', content: input },
+    ];
 
-        console.log('[ReactAgentEngine] History length (including system):', currentHistory.length);
+    console.log(
+      '[ReactAgentEngine] History length (including system):',
+      currentHistory.length,
+    );
 
-        let loopCount = 0;
-        let speculativeRetries = 0;
-        const MAX_SPECULATIVE_RETRIES = 2; // Limit speculative retries
+    let loopCount = 0;
+    let speculativeRetries = 0;
+    const MAX_SPECULATIVE_RETRIES = 2; // Limit speculative retries
 
-        while (loopCount < maxLoops) {
-            loopCount++;
-            console.log(`[ReactAgentEngine] ===== Loop ${loopCount}/${maxLoops} =====`);
+    while (loopCount < maxLoops) {
+      loopCount++;
+      console.log(
+        `[ReactAgentEngine] ===== Loop ${loopCount}/${maxLoops} =====`,
+      );
 
-            // --- Speculative Execution Logic ---
-            const preferredModel = config.model || 'gemini-1.5-pro';
-            const speculativeModel = config.speculativeModel || 'gemini-2.5-flash';
-            let effectiveModel = preferredModel;
-            let isSpeculative = false;
+      // --- Speculative Execution Logic ---
+      const preferredModel = config.model || 'gemini-1.5-pro';
+      const speculativeModel = config.speculativeModel || 'gemini-2.5-flash';
+      let effectiveModel = preferredModel;
+      let isSpeculative = false;
 
-            // Fast intent detection: Always use speculativeModel for first loop if enabled
-            if (enableSpeculative && loopCount === 1 && speculativeRetries < MAX_SPECULATIVE_RETRIES) {
-                effectiveModel = speculativeModel;
-                isSpeculative = true;
-                console.log(`[ReactAgentEngine] Using speculative execution with ${effectiveModel} (retry ${speculativeRetries}/${MAX_SPECULATIVE_RETRIES})`);
-            } else {
-                console.log(`[ReactAgentEngine] Using model: ${effectiveModel}, speculative: ${isSpeculative}`);
-            }
+      // Fast intent detection: Always use speculativeModel for first loop if enabled
+      if (
+        enableSpeculative &&
+        loopCount === 1 &&
+        speculativeRetries < MAX_SPECULATIVE_RETRIES
+      ) {
+        effectiveModel = speculativeModel;
+        isSpeculative = true;
+        console.log(
+          `[ReactAgentEngine] Using speculative execution with ${effectiveModel} (retry ${speculativeRetries}/${MAX_SPECULATIVE_RETRIES})`,
+        );
+      } else {
+        console.log(
+          `[ReactAgentEngine] Using model: ${effectiveModel}, speculative: ${isSpeculative}`,
+        );
+      }
 
-            // Start Stream
-            let accumulatedResponse = '';
+      // Start Stream
+      let accumulatedResponse = '';
 
-            // Convert tools to format expected by LLM (will be transformed to Vertex AI format by adapter)
-            const toolsForLLM = tools.map(t => ({
-                name: t.name,
-                description: t.description,
-                parameters: t.parameters
-            }));
+      // Convert tools to format expected by LLM (will be transformed to Vertex AI format by adapter)
+      const toolsForLLM = tools.map((t) => ({
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        name: t.name,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        description: t.description,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        parameters: t.parameters,
+      }));
 
-            console.log('[ReactAgentEngine] Calling LLM with', toolsForLLM.length, 'tools');
-            const llmStream = this.llm.streamChat(currentHistory, effectiveModel, toolsForLLM);
+      console.log(
+        '[ReactAgentEngine] Calling LLM with',
+        toolsForLLM.length,
+        'tools',
+      );
 
-            // CRITICAL: Always buffer the response first to detect tool calls!
-            // We cannot stream directly to user if there might be a tool call,
-            // because we need to parse the full response before deciding.
-            console.log('[ReactAgentEngine] Buffering LLM response for tool detection...');
-            for await (const chunk of llmStream) {
-                accumulatedResponse += chunk;
-            }
-            console.log('[ReactAgentEngine] Buffer complete, length:', accumulatedResponse.length);
+      // Prepare messages for LLM
+      let messagesForLLM = currentHistory;
+      if (isSpeculative) {
+        // Clone array to avoid mutating currentHistory references where it matters
+        messagesForLLM = [...currentHistory];
 
-            const trimmedResponse = accumulatedResponse.trim();
-            console.log('[ReactAgentEngine] LLM Response:', trimmedResponse.substring(0, 300) + '...');
-            console.log('[ReactAgentEngine] Parsing for tool calls...');
-            const toolCall = this.parseToolCall(trimmedResponse);
-            console.log('[ReactAgentEngine] parseToolCall result:', toolCall ? `Tool: ${toolCall.tool}` : 'null (no tool)');
+        const constraintPrompt =
+          '\n\n[SYSTEM ADVISORY: INTENT DETECTION MODE]\n' +
+          'You are acting specifically as an Intent Classifier. \n' +
+          "1. Analyze the User's latest request.\n" +
+          '2. If it requires a Tool Call, output the standard Tool Call JSON.\n' +
+          "3. If it does NOT require a Tool Call (e.g. general chat, jokes, questions), output ONLY the text 'PASS'.\n" +
+          '4. DO NOT generate a conversational response. DO NOT answer the question.\n' +
+          "5. Your output must be EITHER valid JSON OR the word 'PASS'.";
 
-            // Speculative Fallback: If Flash thought it was just chat (no tool), but maybe Pro would use a tool?
-            // Or if Flash failed to produce valid JSON?
-            // Current logic: If Flash didn't call a tool, assume it's a chat response.
-            // BUT, if user INTENDED a complex task that Flash missed, we might want to fallback?
-            // For now, let's trust Flash for "Intent Detection".
-            // (Optional: If Flash response is very short or ambiguous, we could retry)
-
-            // Refined Speculative Logic from original ChatService:
-            // if (isSpeculative && !toolCall) -> Retry with Pro.
-            if (isSpeculative && !toolCall) {
-                speculativeRetries++;
-
-                if (speculativeRetries >= MAX_SPECULATIVE_RETRIES) {
-                    console.log(`[ReactAgentEngine] Max speculative retries (${MAX_SPECULATIVE_RETRIES}) reached. Treating response as final answer.`);
-                    // Treat as final answer
-                    yield { type: 'answer_chunk', content: trimmedResponse };
-                    break;
-                }
-
-                console.log(`[ReactAgentEngine] ⚠️  Speculative miss - Flash didn't detect tool call, retrying (${speculativeRetries}/${MAX_SPECULATIVE_RETRIES})...`);
-                // Discard Flash response
-                isSpeculative = false;
-                loopCount--; // Retry this loop iteration
-                continue;
-            }
-
-            // If we are here, either:
-            // 1. Speculative success (Tool call found)
-            // 2. Normal execution (Tool call or Answer)
-
-            if (toolCall) {
-                console.log(`[ReactAgentEngine] ✓ Tool call detected: ${toolCall.tool}`);
-                console.log('[ReactAgentEngine] Tool parameters:', JSON.stringify(toolCall.parameters));
-                yield { type: 'thought', content: trimmedResponse };
-                yield { type: 'tool_call', tool: toolCall.tool, args: toolCall.parameters };
-
-                // Execute Tool
-                const toolInstance = tools.find(t => t.name === toolCall.tool);
-                let result: any;
-
-                if (toolInstance) {
-                    console.log(`[ReactAgentEngine] ✓ Tool "${toolCall.tool}" found in registry, executing...`);
-                    try {
-                        result = await toolInstance.execute(toolCall.parameters, context);
-                        console.log('[ReactAgentEngine] ✓ Tool execution successful');
-                        console.log('[ReactAgentEngine] Tool result:', JSON.stringify(result).substring(0, 200));
-                    } catch (e) {
-                        console.log('[ReactAgentEngine] ✗ Tool execution error:', e.message);
-                        result = `Error executing tool: ${e.message}`;
-                    }
-                } else {
-                    console.log(`[ReactAgentEngine] ✗ ERROR: Tool "${toolCall.tool}" not found in registry!`);
-                    console.log('[ReactAgentEngine] Available tools:', tools.map(t => t.name).join(', '));
-                    result = `Error: Tool "${toolCall.tool}" not found.`;
-                }
-
-                const resultStr = JSON.stringify(result);
-                yield { type: 'tool_result', tool: toolCall.tool, result: result };
-
-                // Update History
-                currentHistory.push({ role: 'assistant', content: trimmedResponse });
-                currentHistory.push({ role: 'tool', content: resultStr });
-                console.log('[ReactAgentEngine] History updated, continuing to next iteration...');
-
-                // Loop continues to process observation
-            } else {
-                // Final Answer
-                console.log('[ReactAgentEngine] ✓ No tool call - treating as final answer');
-                console.log('[ReactAgentEngine] Final answer preview:', trimmedResponse.substring(0, 200));
-                if (isSpeculative) {
-                    console.log('[ReactAgentEngine] ⚠️  WARNING: Reached final answer in speculative mode - this should not happen!');
-                }
-
-                // Yield the answer as chunks for streaming UX
-                yield { type: 'answer_chunk', content: trimmedResponse };
-
-                console.log('[ReactAgentEngine] Exiting loop');
-                break;
-            }
+        if (messagesForLLM.length > 0 && messagesForLLM[0].role === 'system') {
+          const originalSystem = messagesForLLM[0];
+          messagesForLLM[0] = {
+            ...originalSystem,
+            content: originalSystem.content + constraintPrompt,
+          };
+        } else {
+          messagesForLLM.unshift({
+            role: 'system',
+            content: constraintPrompt,
+          });
         }
+      }
+
+      const llmStream = this.llm.streamChat(
+        messagesForLLM,
+        effectiveModel,
+        toolsForLLM,
+      );
+
+      // Stream-first approach: Start streaming immediately, detect tool calls on the fly
+      console.log('[ReactAgentEngine] Starting LLM stream...');
+      let isFirstChunk = true;
+      let hasToolCall = false;
+
+      for await (const chunk of llmStream) {
+        accumulatedResponse += chunk;
+
+        // On first chunk, check if it's a native function call (JSON format)
+        if (isFirstChunk) {
+          isFirstChunk = false;
+          // Native function calling returns JSON in first chunk
+          if (chunk.trim().startsWith('{')) {
+            console.log(
+              '[ReactAgentEngine] First chunk looks like JSON tool call, will buffer to parse',
+            );
+            hasToolCall = true;
+            continue; // Continue buffering
+          } else {
+            // It's a normal text response, start streaming immediately
+            console.log(
+              '[ReactAgentEngine] First chunk is text, streaming to user...',
+            );
+            yield { type: 'answer_chunk', content: chunk };
+          }
+        } else if (hasToolCall) {
+          // Continue buffering for tool call parsing
+          continue;
+        } else {
+          // Stream subsequent chunks directly
+          yield { type: 'answer_chunk', content: chunk };
+        }
+      }
+
+      console.log(
+        '[ReactAgentEngine] Stream complete, length:',
+        accumulatedResponse.length,
+        hasToolCall ? '(tool call)' : '(text response)',
+      );
+
+      const trimmedResponse = accumulatedResponse.trim();
+      console.log(
+        '[ReactAgentEngine] LLM Response preview:',
+        trimmedResponse.substring(0, 200) + '...',
+      );
+
+      // Only parse for tool calls if we detected potential JSON
+      let toolCall: { tool: string; parameters: any } | null = null;
+      if (hasToolCall) {
+        console.log(
+          '[ReactAgentEngine] Parsing buffered JSON for tool call...',
+        );
+        toolCall = this.parseToolCall(trimmedResponse);
+        console.log(
+          '[ReactAgentEngine] parseToolCall result:',
+          toolCall ? `Tool: ${toolCall.tool}` : 'null (invalid JSON)',
+        );
+      } else {
+        console.log(
+          '[ReactAgentEngine] Skipping tool call parsing (text response)',
+        );
+      }
+
+      // Speculative Logic Refined:
+      // If Speculative Model (Flash) finds NO tool call, it means the user's intent is likely just "Chat".
+      // In this case, we MUST switch to the "Preferred Model" (GLM/Pro) to generate the actual high-quality response.
+      // We should NOT use Flash's response as the final answer unless they are the same model.
+
+      if (isSpeculative && !toolCall) {
+        if (effectiveModel !== preferredModel) {
+          console.log(
+            `[ReactAgentEngine] ⚠️  Speculative model (${effectiveModel}) detected no tool. Switching to preferred model (${preferredModel}) for response.`,
+          );
+          // Disable speculative execution for the retry (handoff to preferred)
+          speculativeRetries = MAX_SPECULATIVE_RETRIES;
+          loopCount--; // Retry this loop iteration
+          continue;
+        }
+        // If effectiveModel IS preferredModel, then we just proceed to output answer.
+      }
+
+      // If we are here, either:
+      // 1. Speculative success (Tool call found)
+      // 2. Normal execution (Tool call or Answer)
+
+      if (toolCall) {
+        console.log(
+          `[ReactAgentEngine] ✓ Tool call detected: ${toolCall.tool}`,
+        );
+        console.log(
+          '[ReactAgentEngine] Tool parameters:',
+          JSON.stringify(toolCall.parameters),
+        );
+        yield { type: 'thought', content: trimmedResponse };
+        yield {
+          type: 'tool_call',
+          tool: toolCall.tool,
+          args: toolCall.parameters,
+        };
+
+        // Execute Tool
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        const toolInstance = tools.find((t: any) => t.name === toolCall.tool);
+        let result: any;
+
+        if (toolInstance) {
+          console.log(
+            `[ReactAgentEngine] ✓ Tool "${toolCall.tool}" found in registry, executing...`,
+          );
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+            result = await toolInstance.execute(toolCall.parameters, context);
+            console.log('[ReactAgentEngine] ✓ Tool execution successful');
+            console.log(
+              '[ReactAgentEngine] Tool result:',
+              JSON.stringify(result).substring(0, 200),
+            );
+          } catch (e) {
+            console.log(
+              '[ReactAgentEngine] ✗ Tool execution error:',
+              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+              e.message,
+            );
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            result = `Error executing tool: ${e.message}`;
+          }
+        } else {
+          console.log(
+            `[ReactAgentEngine] ✗ ERROR: Tool "${toolCall.tool}" not found in registry!`,
+          );
+          console.log(
+            '[ReactAgentEngine] Available tools:',
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+            tools.map((t: any) => t.name).join(', '),
+          );
+          result = `Error: Tool "${toolCall.tool}" not found.`;
+        }
+
+        const resultStr = JSON.stringify(result);
+
+        yield { type: 'tool_result', tool: toolCall.tool, result: result };
+
+        // Update History
+        currentHistory.push({ role: 'assistant', content: trimmedResponse });
+        currentHistory.push({ role: 'tool', content: resultStr });
+        console.log(
+          '[ReactAgentEngine] History updated, continuing to next iteration...',
+        );
+
+        // Loop continues to process observation
+      } else {
+        // Final Answer
+        console.log(
+          '[ReactAgentEngine] ✓ No tool call - treating as final answer',
+        );
+        console.log(
+          '[ReactAgentEngine] Final answer preview:',
+          trimmedResponse.substring(0, 200),
+        );
+        if (isSpeculative) {
+          console.log(
+            '[ReactAgentEngine] ⚠️  WARNING: Reached final answer in speculative mode - this should not happen!',
+          );
+        }
+
+        // Chunks were already streamed during buffering, so we're done
+        console.log('[ReactAgentEngine] Exiting loop');
+        break;
+      }
+    }
+  }
+
+  private parseToolCall(
+    response: string,
+  ): { tool: string; parameters: any } | null {
+    // 1. Try Code Block
+    const codeBlock = response.match(/```json\n([\s\S]*?)\n```/);
+    if (codeBlock) {
+      try {
+        return JSON.parse(codeBlock[1]);
+      } catch {
+        // Ignore parse error
+      }
     }
 
-    private parseToolCall(response: string): { tool: string; parameters: any } | null {
-        // 1. Try Code Block
-        const codeBlock = response.match(/```json\n([\s\S]*?)\n```/);
-        if (codeBlock) {
-            try {
-                return JSON.parse(codeBlock[1]);
-            } catch { }
+    // 2. Try raw JSON
+    try {
+      // Find first { and last }
+      const start = response.indexOf('{');
+      const end = response.lastIndexOf('}');
+      if (start >= 0 && end > start) {
+        const json = response.substring(start, end + 1);
+        const parsed = JSON.parse(json);
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+        if (parsed.tool && parsed.parameters) {
+          return parsed;
         }
-
-        // 2. Try raw JSON
-        try {
-            // Find first { and last }
-            const start = response.indexOf('{');
-            const end = response.lastIndexOf('}');
-            if (start >= 0 && end > start) {
-                const json = response.substring(start, end + 1);
-                const parsed = JSON.parse(json);
-                if (parsed.tool && parsed.parameters) {
-                    return parsed;
-                }
-            }
-        } catch { }
-
-        return null;
+      }
+    } catch {
+      // Ignore parse error
     }
+
+    return null;
+  }
 }

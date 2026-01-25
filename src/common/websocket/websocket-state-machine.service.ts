@@ -1,3 +1,7 @@
+/**
+ * State machine with dynamic context types
+ */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { createMachine, assign, ActorRefFrom } from 'xstate';
@@ -280,7 +284,7 @@ export class WebSocketStateMachineService {
            * 执行客户端认证
            * 注意：这是一个同步 action，实际的异步认证逻辑在外部处理
            */
-          authenticateClient: ({ context, self }) => {
+          authenticateClient: ({ context }) => {
             // 异步认证逻辑将在外部调用，这里只是标记进入认证状态
             // 外部代码会调用 jwtService.verifyAsync，然后发送 AUTH_SUCCESS 或 AUTH_FAILED 事件
             this.logger.debug(

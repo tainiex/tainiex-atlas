@@ -25,7 +25,11 @@ export interface ILlmAdapter {
   /**
    * 进行流式对话，逐步返回响应内容
    */
-  streamChat(history: ChatMessage[], message: string, tools?: any[]): AsyncGenerator<string>;
+  streamChat(
+    history: ChatMessage[],
+    message: string,
+    tools?: any[],
+  ): AsyncGenerator<string>;
 
   /**
    * 获取文本的向量 Embedding

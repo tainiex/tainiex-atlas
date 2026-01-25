@@ -256,12 +256,16 @@ export class AuthService {
 
       return await this.processGoogleLogin(googlePayload);
     } catch (error) {
-      this.logger.error('[GoogleLogin] Error:', error);
+      const errorMessage =
+        error instanceof Error ? error.message : String(error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error(`[GoogleLogin] Error: ${errorMessage}`, errorStack);
+
       if (error instanceof UnauthorizedException) {
         throw error;
       }
       throw new UnauthorizedException(
-        `Google login process failed: ${error instanceof Error ? error.message : String(error)}`,
+        `Google login process failed: ${errorMessage}`,
       );
     }
   }
@@ -660,7 +664,8 @@ export class AuthService {
 
       return filename;
     } catch (error) {
-      this.logger.error('Failed to upload avatar to GCS:', error);
+      const errorStack = error instanceof Error ? error.stack : undefined;
+      this.logger.error('Failed to upload avatar to GCS:', errorStack);
       return null;
     }
   }

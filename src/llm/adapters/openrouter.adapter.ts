@@ -1,15 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { Mistral } from '@mistralai/mistralai';
+import { OpenRouter } from '@openrouter/sdk';
 import { ILlmAdapter, ChatMessage, LlmRole } from './llm-adapter.interface';
 import { LoggerService } from '../../common/logger/logger.service';
 
 /**
- * Mistral AI 模型适配器
+ * OpenRouter Adapter
+ * Supports accessing various models (OpenAI, Anthropic, Google, etc.) via OpenRouter
  */
 @Injectable()
-export class MistralAiAdapter implements ILlmAdapter {
-  private client: Mistral;
+export class OpenRouterAdapter implements ILlmAdapter {
+  private client: OpenRouter;
   private modelName: string;
 
   constructor(
@@ -21,16 +22,20 @@ export class MistralAiAdapter implements ILlmAdapter {
   }
 
   async initialize(): Promise<void> {
-    const apiKey = this.configService.get<string>('MISTRAL_API_KEY');
+    const apiKey = this.configService.get<string>('OPENROUTER_API_KEY');
     if (!apiKey) {
       throw new Error(
-        'MISTRAL_API_KEY is not defined in environment variables',
+        'OPENROUTER_API_KEY is not defined in environment variables',
       );
     }
 
-    this.client = new Mistral({ apiKey });
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+    this.client = new OpenRouter({
+      apiKey: apiKey,
+    } as any);
+
     this.logger.info(
-      `[MistralAiAdapter] Initialized mistral-client for model: ${this.modelName}`,
+      `[OpenRouterAdapter] Initialized OpenRouter client for model: ${this.modelName}`,
     );
     return Promise.resolve();
   }
@@ -44,10 +49,10 @@ export class MistralAiAdapter implements ILlmAdapter {
 
   async generateContent(prompt: string): Promise<string> {
     this.logger.debug(
-      `[MistralAiAdapter] generateContent request: ${prompt.substring(0, 50)}...`,
+      `[OpenRouterAdapter] generateContent request: ${prompt.substring(0, 50)}...`,
     );
     try {
-      const response = await this.client.chat.complete({
+      const response = await this.client.chat.send({
         model: this.modelName,
         messages: [{ role: 'user', content: prompt }],
       });
@@ -55,13 +60,14 @@ export class MistralAiAdapter implements ILlmAdapter {
         ((response.choices &&
           response.choices[0] &&
           response.choices[0].message.content) as string) || '';
+
       this.logger.debug(
-        `[MistralAiAdapter] generateContent response length: ${content.length}`,
+        `[OpenRouterAdapter] generateContent response length: ${content.length}`,
       );
       return content;
     } catch (error) {
       this.logger.error(
-        '[MistralAiAdapter] generateContent failed:',
+        '[OpenRouterAdapter] generateContent failed:',
         (error as Error).message,
       );
       throw error;
@@ -70,31 +76,32 @@ export class MistralAiAdapter implements ILlmAdapter {
 
   async chat(history: ChatMessage[], message: string): Promise<string> {
     this.logger.debug(
-      `[MistralAiAdapter] chat request. History: ${history.length}, Message: ${message.substring(0, 50)}...`,
+      `[OpenRouterAdapter] chat request. History: ${history.length}, Message: ${message.substring(0, 50)}...`,
     );
-    const mistralMessages = history.map((h) => ({
+    const messages = history.map((h) => ({
       role: this.mapRole(h.role) as 'user' | 'assistant' | 'system',
       content: h.message || h.text || '',
     }));
 
-    mistralMessages.push({ role: 'user', content: message });
+    messages.push({ role: 'user', content: message });
 
     try {
-      const response = await this.client.chat.complete({
+      const response = await this.client.chat.send({
         model: this.modelName,
-        messages: mistralMessages,
+        messages: messages,
       });
       const content =
         ((response.choices &&
           response.choices[0] &&
           response.choices[0].message.content) as string) || '';
+
       this.logger.debug(
-        `[MistralAiAdapter] chat response length: ${content.length}`,
+        `[OpenRouterAdapter] chat response length: ${content.length}`,
       );
       return content;
     } catch (error) {
       this.logger.error(
-        '[MistralAiAdapter] chat failed:',
+        '[OpenRouterAdapter] chat failed:',
         (error as Error).message,
       );
       throw error;
@@ -106,63 +113,55 @@ export class MistralAiAdapter implements ILlmAdapter {
     message: string,
   ): AsyncGenerator<string> {
     this.logger.debug(
-      `[MistralAiAdapter] streamChat request. History: ${history.length}, Message: ${message.substring(0, 50)}...`,
+      `[OpenRouterAdapter] streamChat request. History: ${history.length}, Message: ${message.substring(0, 50)}...`,
     );
-    const mistralMessages = history.map((h) => ({
+    const messages = history.map((h) => ({
       role: this.mapRole(h.role) as 'user' | 'assistant' | 'system',
       content: h.message || h.text || '',
     }));
 
-    mistralMessages.push({ role: 'user', content: message });
+    messages.push({ role: 'user', content: message });
 
     try {
-      const result = await this.client.chat.stream({
+      // Note: 'send' with 'stream: true' returns a stream
+      const result = await this.client.chat.send({
         model: this.modelName,
-        messages: mistralMessages,
+        messages: messages,
+        stream: true,
       });
 
       let chunkCount = 0;
+      // The OpenRouter SDK stream handling
       for await (const chunk of result) {
-        const text = chunk.data.choices[0].delta.content as string;
-        if (text) {
+        // According to usage example: chunk.choices[0].delta.content
+        // We need to access it somewhat dynamically if types are loose or check type guard
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access
+        const delta = (chunk as any).choices?.[0]?.delta?.content;
+        if (delta) {
           chunkCount++;
+          // Log first few chunks for debug, summary for rest
           if (chunkCount <= 3) {
             this.logger.debug(
-              `[MistralAiAdapter] Yielding chunk ${chunkCount}: "${text.substring(0, 20)}..."`,
+              `[OpenRouterAdapter] Yielding chunk ${chunkCount}: "${(delta as string).substring(0, 20)}..."`,
             );
           }
-          yield text;
+          yield delta as string;
         }
       }
       this.logger.debug(
-        `[MistralAiAdapter] Stream finished. Total chunks: ${chunkCount}`,
+        `[OpenRouterAdapter] Stream finished. Total chunks: ${chunkCount}`,
       );
     } catch (error) {
       this.logger.error(
-        '[MistralAiAdapter] streamChat failed:',
+        '[OpenRouterAdapter] streamChat failed:',
         (error as Error).message,
       );
       throw error;
     }
   }
 
-  async getEmbeddings(text: string): Promise<number[]> {
-    try {
-      const response = await this.client.embeddings.create({
-        model: 'mistral-embed',
-        inputs: [text],
-      });
-      const embedding = response.data[0].embedding;
-      if (!embedding) {
-        throw new Error('No embedding returned from Mistral API');
-      }
-      return embedding;
-    } catch (error) {
-      this.logger.error(
-        '[MistralAiAdapter] getEmbeddings failed:',
-        (error as Error).message,
-      );
-      throw error;
-    }
+  async getEmbeddings(_text: string): Promise<number[]> {
+    await Promise.resolve();
+    throw new Error('Embeddings not yet supported for OpenRouter adapter');
   }
 }

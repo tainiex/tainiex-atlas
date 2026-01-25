@@ -68,7 +68,10 @@ export class MemoryService {
       await this.vectorStore.add(userId, [record]);
       this.logger.log(`[MemoryService] Added memory for user ${userId}`);
     } catch (error) {
-      this.logger.error('Failed to add memory', error);
+      this.logger.error(
+        'Failed to add memory',
+        error instanceof Error ? error.stack : String(error),
+      );
       throw error;
     }
   }

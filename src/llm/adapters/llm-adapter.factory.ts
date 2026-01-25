@@ -1,10 +1,11 @@
 import { ConfigService } from '@nestjs/config';
 import { GoogleAuth } from 'google-auth-library';
 import { ILlmAdapter } from './llm-adapter.interface';
-import { ModelClassifier } from './model-classifier';
+import { ModelClassifier, LlmProvider } from './model-classifier';
 import { GoogleVertexGaAdapter } from './google-vertex-ga.adapter';
 import { GoogleVertexPreviewAdapter } from './google-vertex-preview.adapter';
 import { MistralAiAdapter } from './mistral-ai.adapter';
+import { OpenRouterAdapter } from './openrouter.adapter';
 import { LoggerService } from '../../common/logger/logger.service';
 
 /**
@@ -27,8 +28,10 @@ export class LlmAdapterFactory {
 
     let adapter: ILlmAdapter;
 
-    if (category === 'mistral') {
+    if (category === LlmProvider.MISTRAL) {
       adapter = new MistralAiAdapter(configService, logger, modelName);
+    } else if (category === LlmProvider.OPENROUTER) {
+      adapter = new OpenRouterAdapter(configService, logger, modelName);
     } else if (category === 'preview') {
       adapter = new GoogleVertexPreviewAdapter(
         configService,

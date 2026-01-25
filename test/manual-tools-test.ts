@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { ToolsModule } from '../src/tools/tools.module';
 import { ToolsService } from '../src/tools/tools.service';
@@ -79,4 +81,4 @@ async function bootstrap() {
   await module.close();
 }
 
-bootstrap();
+bootstrap().catch((err) => console.error(err));

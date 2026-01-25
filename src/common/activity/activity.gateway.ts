@@ -1,3 +1,9 @@
+/**
+ * WebSocket gateway with dynamic client handling
+ */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import {
   WebSocketGateway,
   WebSocketServer,
@@ -7,7 +13,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { OnEvent } from '@nestjs/event-emitter';
-import { Logger, UnauthorizedException } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ActivityEvent } from './activity.events';
 
@@ -31,26 +37,35 @@ import { ActivityEvent } from './activity.events';
   namespace: 'activity',
 })
 export class ActivityGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
   private readonly logger = new Logger(ActivityGateway.name);
 
-  constructor(private readonly jwtService: JwtService) { }
+  constructor(private readonly jwtService: JwtService) {}
 
   afterInit(server: Server) {
-    server.use(async (socket: Socket, next) => {
+    server.use((socket: Socket, next) => {
       try {
         const token = this.extractToken(socket);
         if (!token) {
-          return next(new Error('Authentication error: No token provided'));
+          next(new Error('Authentication error: No token provided'));
+          return;
         }
 
-        const payload = await this.jwtService.verifyAsync(token);
-        socket.data.user = payload;
-        next();
-      } catch (error) {
+        this.jwtService
+          .verifyAsync(token)
+
+          .then((payload: any) => {
+            socket.data.user = payload;
+            next();
+          })
+          .catch(() => {
+            next(new Error('Authentication error: Invalid token'));
+          });
+      } catch {
         next(new Error('Authentication error: Invalid token'));
       }
     });
@@ -67,7 +82,9 @@ export class ActivityGateway
         `Client ${client.id} (User: ${user?.sub}) joined activity session: ${sessionId}`,
       );
     } else {
-      this.logger.log(`Client ${client.id} (User: ${user?.sub}) connected without sessionId`);
+      this.logger.log(
+        `Client ${client.id} (User: ${user?.sub}) connected without sessionId`,
+      );
     }
   }
 
@@ -94,15 +111,22 @@ export class ActivityGateway
     }
 
     if (!token && client.handshake.headers.cookie) {
-      const cookies = client.handshake.headers.cookie.split(';').reduce((acc, curr) => {
-        const [name, value] = curr.trim().split('=');
-        acc[name] = value;
-        return acc;
-      }, {} as Record<string, string>);
+      const cookies = client.handshake.headers.cookie.split(';').reduce(
+        (acc, curr) => {
+          const [name, value] = curr.trim().split('=');
+          acc[name] = value;
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
       token = cookies['access_token'];
     }
 
-    if (token && typeof token === 'string' && token.toLowerCase().startsWith('bearer ')) {
+    if (
+      token &&
+      typeof token === 'string' &&
+      token.toLowerCase().startsWith('bearer ')
+    ) {
       token = token.slice(7).trim();
     }
 

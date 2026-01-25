@@ -1,15 +1,18 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+
+/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
 import { createActor } from 'xstate';
 
-import { WebSocketStateMachineService } from '../websocket-state-machine.service';
-import { LoggerService } from '../../logger/logger.service';
-import { JwtPayload } from '../../../auth/interfaces/jwt-payload.interface';
+import { WebSocketStateMachineService } from './websocket-state-machine.service';
+import { LoggerService } from '../logger/logger.service';
+import { JwtPayload } from '../../auth/interfaces/jwt-payload.interface';
 
 describe('WebSocketStateMachineService', () => {
   let service: WebSocketStateMachineService;
-  let jwtService: JwtService;
-  let logger: LoggerService;
+  let _jwtService: JwtService;
+  let _logger: LoggerService;
 
   const mockLogger = {
     setContext: jest.fn(),
@@ -35,8 +38,8 @@ describe('WebSocketStateMachineService', () => {
     service = module.get<WebSocketStateMachineService>(
       WebSocketStateMachineService,
     );
-    jwtService = module.get<JwtService>(JwtService);
-    logger = module.get<LoggerService>(LoggerService);
+    _jwtService = module.get<JwtService>(JwtService);
+    _logger = module.get<LoggerService>(LoggerService);
   });
 
   afterEach(() => {

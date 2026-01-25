@@ -1,13 +1,35 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Inject, Logger } from '@nestjs/common';
 import { IToolProvider } from '../../agent/interfaces/tool-provider.interface';
 import { AgentTool } from '../../agent/decorators/agent-tool.decorator';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
+interface StockArgs {
+  symbol: string;
+}
+
+interface AlphaVantageResponse {
+  'Error Message'?: string;
+  Note?: string;
+  'Global Quote'?: {
+    '01. symbol': string;
+    '05. price': string;
+    '10. change percent': string;
+    '07. latest trading day': string;
+  };
+}
+
+interface StockResult {
+  symbol: string;
+  price: number;
+  change_percent: string;
+  latest_trading_day: string;
+}
+
 @AgentTool({
   name: 'get_stock_price',
   description: 'Get current stock price and change for a given symbol.',
-  scope: 'global'
+  scope: 'global',
 })
 export class StockTool implements IToolProvider {
   name = 'get_stock_price';
@@ -18,12 +40,12 @@ export class StockTool implements IToolProvider {
   parameters = {
     type: 'object',
     properties: {
-      symbol: { type: 'string', description: 'Stock symbol, e.g. MSFT, AAPL' }
+      symbol: { type: 'string', description: 'Stock symbol, e.g. MSFT, AAPL' },
     },
-    required: ['symbol']
+    required: ['symbol'],
   };
 
-  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) { }
+  constructor(@Inject(CACHE_MANAGER) private cacheManager: Cache) {}
 
   /**
    * Check if API Key is configured
@@ -37,12 +59,12 @@ export class StockTool implements IToolProvider {
     return true;
   }
 
-  async execute(args: any): Promise<any> {
-    const { symbol } = args;
+  async execute(args: any): Promise<StockResult> {
+    const { symbol } = args as StockArgs;
     const cacheKey = `stock:${symbol.toUpperCase()}`;
 
     // Check Cache
-    const cached = await this.cacheManager.get(cacheKey);
+    const cached = await this.cacheManager.get<StockResult>(cacheKey);
     if (cached) {
       this.logger.log(`Returning cached stock for ${symbol}`);
       return cached;
@@ -61,7 +83,7 @@ export class StockTool implements IToolProvider {
       throw new Error(`Alpha Vantage API Error: ${res.status}`);
     }
 
-    const data = await res.json();
+    const data = (await res.json()) as unknown as AlphaVantageResponse;
 
     if (data['Error Message']) {
       throw new Error(`Stock API Error: ${data['Error Message']}`);
@@ -75,7 +97,7 @@ export class StockTool implements IToolProvider {
       throw new Error(`Symbol '${symbol}' not found.`);
     }
 
-    const result = {
+    const result: StockResult = {
       symbol: quote['01. symbol'],
       price: parseFloat(quote['05. price']),
       change_percent: quote['10. change percent'],

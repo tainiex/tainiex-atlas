@@ -111,7 +111,7 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
     } catch (error) {
       this.logger.error(
         '[GoogleVertexPreviewAdapter] generateContent failed:',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
         error,
       );
       throw error;
@@ -194,7 +194,6 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
       return (text as string) || '';
     } catch (error) {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       this.logger.error('[GoogleVertexPreviewAdapter] chat failed:', error);
       throw error;
     }
@@ -344,7 +343,7 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
     } catch (error) {
       this.logger.error(
         '[GoogleVertexPreviewAdapter] streamChat failed:',
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+
         error,
       );
       throw error;
