@@ -6,6 +6,7 @@ import { GoogleVertexGaAdapter } from './google-vertex-ga.adapter';
 import { GoogleVertexPreviewAdapter } from './google-vertex-preview.adapter';
 import { MistralAiAdapter } from './mistral-ai.adapter';
 import { OpenRouterAdapter } from './openrouter.adapter';
+import { ZaiAdapter } from './zai.adapter';
 import { LoggerService } from '../../common/logger/logger.service';
 
 /**
@@ -32,6 +33,8 @@ export class LlmAdapterFactory {
       adapter = new MistralAiAdapter(configService, logger, modelName);
     } else if (category === LlmProvider.OPENROUTER) {
       adapter = new OpenRouterAdapter(configService, logger, modelName);
+    } else if (category === LlmProvider.ZAI) {
+      adapter = new ZaiAdapter(configService, logger, modelName);
     } else if (category === 'preview') {
       adapter = new GoogleVertexPreviewAdapter(
         configService,

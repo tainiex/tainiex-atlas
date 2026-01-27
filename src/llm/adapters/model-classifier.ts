@@ -5,6 +5,7 @@ export enum LlmProvider {
   GOOGLE = 'Google',
   MISTRAL = 'Mistral',
   OPENROUTER = 'OpenRouter',
+  ZAI = 'Zai',
 }
 
 /**
@@ -59,6 +60,11 @@ export const MODEL_CONFIG = {
     maxOutputTokens: 128000,
     provider: LlmProvider.OPENROUTER,
     description: 'OpenRouter Model',
+  },
+  'glm-4.7-flash': {
+    maxOutputTokens: 128000,
+    provider: LlmProvider.ZAI,
+    description: 'Z.ai GLM-4.7 Flash',
   },
 } as const satisfies Record<string, ModelMetadata>;
 
@@ -165,6 +171,7 @@ export class ModelClassifier {
       if (config.provider === LlmProvider.OPENROUTER)
         return LlmProvider.OPENROUTER;
       if (config.provider === LlmProvider.MISTRAL) return LlmProvider.MISTRAL;
+      if (config.provider === LlmProvider.ZAI) return LlmProvider.ZAI;
     }
 
     // Fallback logic
@@ -192,6 +199,9 @@ export class ModelClassifier {
     }
     if (category === LlmProvider.MISTRAL) {
       return 'Mistral AI Model';
+    }
+    if (category === LlmProvider.ZAI) {
+      return 'Z.ai Model';
     }
     return category === 'preview'
       ? 'Preview model (v1beta1 API)'

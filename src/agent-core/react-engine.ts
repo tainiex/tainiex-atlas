@@ -119,12 +119,17 @@ export class ReactAgentEngine implements IAgentEngine {
 
         const constraintPrompt =
           '\n\n[SYSTEM ADVISORY: INTENT DETECTION MODE]\n' +
-          'You are acting specifically as an Intent Classifier. \n' +
-          "1. Analyze the User's latest request.\n" +
-          '2. If it requires a Tool Call, output the standard Tool Call JSON.\n' +
-          "3. If it does NOT require a Tool Call (e.g. general chat, jokes, questions), output ONLY the text 'PASS'.\n" +
-          '4. DO NOT generate a conversational response. DO NOT answer the question.\n' +
-          "5. Your output must be EITHER valid JSON OR the word 'PASS'.";
+          'You are a high-speed Intent Classifier. You are NOT a chatbot. \n' +
+          "TASK: Determine if the user's last message requires using a tool.\n" +
+          'OUTPUT FORMAT RULES:\n' +
+          '- If YES (needs tool): Output ONLY the JSON for the tool call.\n' +
+          "- If NO (no tool needed, e.g. general chat, questions): Output EXACTLY and ONLY the word 'PASS'.\n" +
+          '\n' +
+          'CRITICAL CONSTRAINTS:\n' +
+          '- DO NOT answer the question.\n' +
+          '- DO NOT provide explanations.\n' +
+          "- DO NOT output anything else after 'PASS'.\n" +
+          "- If you output 'PASS', the response must end immediately. STOP GENERATING.";
 
         if (messagesForLLM.length > 0 && messagesForLLM[0].role === 'system') {
           const originalSystem = messagesForLLM[0];
@@ -165,18 +170,26 @@ export class ReactAgentEngine implements IAgentEngine {
             hasToolCall = true;
             continue; // Continue buffering
           } else {
-            // It's a normal text response, start streaming immediately
-            console.log(
-              '[ReactAgentEngine] First chunk is text, streaming to user...',
-            );
-            yield { type: 'answer_chunk', content: chunk };
+            // It's a normal text response
+            if (!isSpeculative) {
+              console.log(
+                '[ReactAgentEngine] First chunk is text, streaming to user...',
+              );
+              yield { type: 'answer_chunk', content: chunk };
+            } else {
+              console.log(
+                '[ReactAgentEngine] First chunk is text (speculative), buffering only...',
+              );
+            }
           }
         } else if (hasToolCall) {
           // Continue buffering for tool call parsing
           continue;
         } else {
           // Stream subsequent chunks directly
-          yield { type: 'answer_chunk', content: chunk };
+          if (!isSpeculative) {
+            yield { type: 'answer_chunk', content: chunk };
+          }
         }
       }
 
