@@ -8,7 +8,7 @@ import {
   OnGatewayDisconnect,
   OnGatewayInit,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { Server, Socket, Namespace } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 import { ChatService } from './chat.service';
 import { ChatRole } from '@tainiex/shared-atlas';
@@ -118,7 +118,7 @@ export class ChatGateway
   >();
 
   @WebSocketServer()
-  server: Server;
+  server: Namespace;
 
   constructor(
     private readonly jwtService: JwtService,
@@ -234,6 +234,17 @@ export class ChatGateway
           this.logger.log(
             `Client connected: ${client.id}, User: ${user.sub} (Via ${client.handshake.auth.token ? 'socket.auth' : client.handshake.headers.authorization ? 'header' : 'cookie'})`,
           );
+
+          // Re-attach active streams to this new client (handle reconnection/refresh)
+          for (const [sessionId, streamInfo] of this.activeStreams.entries()) {
+            if (streamInfo.userId === user.sub) {
+              const oldClientId = streamInfo.lastClientId;
+              streamInfo.lastClientId = client.id;
+              this.logger.log(
+                `[Reconnection] Re-attached active stream for session ${sessionId} to new client ${client.id} (was ${oldClientId})`,
+              );
+            }
+          }
 
           // Schedule token refresh notification
           this.tokenLifecycleService.scheduleRefreshNotification(client, token);
@@ -416,6 +427,9 @@ export class ChatGateway
     // Actually DTO ensures they are present and valid if ValidationPipe works.
 
     this.logger.log(`Processing message for session ${sessionId}`);
+    this.logger.debug(
+      `[Stream Start] ClientId: ${client.id}, UserId: ${user.sub}, SessionId: ${sessionId}`,
+    );
 
     // Stream the response
     const stream = this.chatService.streamMessage(
@@ -440,14 +454,34 @@ export class ChatGateway
           break;
         }
 
+        // Debug: Check server availability
+        if (!this.server) {
+          this.logger.error(`[CRITICAL] this.server is undefined!`);
+          break;
+        }
+
         // Find the connected client (might be different from original)
-        const targetClient = this.server?.sockets?.sockets?.get(
-          currentStreamInfo.lastClientId,
-        );
+        // Namespace.sockets is a Map<SocketId, Socket>
+        const socketsMap = this.server.sockets as Map<
+          string,
+          AuthenticatedSocket
+        >;
+
+        if (!socketsMap) {
+          this.logger.error(`[CRITICAL] this.server.sockets is undefined!`);
+          break;
+        }
+
+        const targetClient = socketsMap.get(currentStreamInfo.lastClientId);
 
         if (!targetClient || !targetClient.connected) {
+          // Debug: Log all connected clients to diagnose the issue
+          const allClients = Array.from(socketsMap.keys());
           this.logger.warn(
-            `No connected client for session ${sessionId}, buffering would go here`,
+            `No connected client for session ${sessionId}. ` +
+              `Looking for clientId: ${currentStreamInfo.lastClientId}, ` +
+              `Connected clients: [${allClients.join(', ')}], ` +
+              `Total connected: ${allClients.length}`,
           );
           // In future: buffer chunks for reconnection
           continue;
@@ -472,9 +506,12 @@ export class ChatGateway
 
       // Find current client for done event
       const finalStreamInfo = this.activeStreams.get(sessionId);
+      const socketsMap = this.server?.sockets as
+        | Map<string, AuthenticatedSocket>
+        | undefined;
       const finalClient =
-        finalStreamInfo && this.server?.sockets?.sockets
-          ? this.server?.sockets?.sockets?.get(finalStreamInfo.lastClientId)
+        finalStreamInfo && socketsMap
+          ? socketsMap.get(finalStreamInfo.lastClientId)
           : client;
 
       if (finalClient && finalClient.connected) {
@@ -493,9 +530,12 @@ export class ChatGateway
 
       // Try to send error to current client
       const errorStreamInfo = this.activeStreams.get(sessionId);
+      const errorSocketsMap = this.server?.sockets as
+        | Map<string, AuthenticatedSocket>
+        | undefined;
       const errorClient =
-        errorStreamInfo && this.server?.sockets?.sockets
-          ? this.server?.sockets?.sockets?.get(errorStreamInfo.lastClientId)
+        errorStreamInfo && errorSocketsMap
+          ? errorSocketsMap.get(errorStreamInfo.lastClientId)
           : client;
 
       if (errorClient && errorClient.connected) {

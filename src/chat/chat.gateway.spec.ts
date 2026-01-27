@@ -156,11 +156,10 @@ describe('ChatGateway', () => {
 
     gateway = module.get<ChatGateway>(ChatGateway);
 
-    // Mock the server.sockets.sockets for session-based stream tracking
+    // Mock the server.sockets for session-based stream tracking
+    // In Socket.IO with namespaces, server is a Namespace and sockets is a Map
     gateway.server = {
-      sockets: {
-        sockets: new Map(),
-      },
+      sockets: new Map(),
     } as any;
   });
 
@@ -317,11 +316,8 @@ describe('ChatGateway', () => {
         off: jest.fn(),
       } as unknown as AuthenticatedSocket;
 
-      // Register client in server.sockets.sockets Map
-      (gateway.server.sockets.sockets as Map<string, any>).set(
-        client.id,
-        client,
-      );
+      // Register client in server.sockets Map
+      (gateway.server.sockets as Map<string, any>).set(client.id, client);
 
       const payload = {
         sessionId: 'session_1',
