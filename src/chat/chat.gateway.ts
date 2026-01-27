@@ -105,7 +105,8 @@ export interface AuthenticatedSocket extends Socket {
 })
 @UseFilters(new WebSocketExceptionFilter())
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+{
   // Track active streams by sessionId to allow token refresh reconnection
   private activeStreams = new Map<
     string,
@@ -440,8 +441,9 @@ export class ChatGateway
         }
 
         // Find the connected client (might be different from original)
-        const targetClient =
-          this.server?.sockets?.sockets?.get(currentStreamInfo.lastClientId);
+        const targetClient = this.server?.sockets?.sockets?.get(
+          currentStreamInfo.lastClientId,
+        );
 
         if (!targetClient || !targetClient.connected) {
           this.logger.warn(
@@ -470,9 +472,10 @@ export class ChatGateway
 
       // Find current client for done event
       const finalStreamInfo = this.activeStreams.get(sessionId);
-      const finalClient = finalStreamInfo && this.server?.sockets?.sockets
-        ? this.server?.sockets?.sockets?.get(finalStreamInfo.lastClientId)
-        : client;
+      const finalClient =
+        finalStreamInfo && this.server?.sockets?.sockets
+          ? this.server?.sockets?.sockets?.get(finalStreamInfo.lastClientId)
+          : client;
 
       if (finalClient && finalClient.connected) {
         finalClient.emit(ClientEventTypes.CHAT_STREAM, {
@@ -490,9 +493,10 @@ export class ChatGateway
 
       // Try to send error to current client
       const errorStreamInfo = this.activeStreams.get(sessionId);
-      const errorClient = errorStreamInfo && this.server?.sockets?.sockets
-        ? this.server?.sockets?.sockets?.get(errorStreamInfo.lastClientId)
-        : client;
+      const errorClient =
+        errorStreamInfo && this.server?.sockets?.sockets
+          ? this.server?.sockets?.sockets?.get(errorStreamInfo.lastClientId)
+          : client;
 
       if (errorClient && errorClient.connected) {
         errorClient.emit(ClientEventTypes.CHAT_STREAM, {
