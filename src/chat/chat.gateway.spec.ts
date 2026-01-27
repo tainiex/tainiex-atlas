@@ -155,6 +155,13 @@ describe('ChatGateway', () => {
     }).compile();
 
     gateway = module.get<ChatGateway>(ChatGateway);
+
+    // Mock the server.sockets.sockets for session-based stream tracking
+    gateway.server = {
+      sockets: {
+        sockets: new Map(),
+      },
+    } as any;
   });
 
   it('should be defined', () => {
@@ -302,10 +309,20 @@ describe('ChatGateway', () => {
   describe('handleChatMessage', () => {
     it('should emit done event with title', async () => {
       const client = {
-        data: { user: { id: 'user_1' } },
+        id: 'test-client-id',
+        data: { user: { id: 'user_1', sub: 'user_1' } },
         emit: jest.fn(),
         connected: true,
+        once: jest.fn(),
+        off: jest.fn(),
       } as unknown as AuthenticatedSocket;
+
+      // Register client in server.sockets.sockets Map
+      (gateway.server.sockets.sockets as Map<string, any>).set(
+        client.id,
+        client,
+      );
+
       const payload = {
         sessionId: 'session_1',
         content: 'hello',

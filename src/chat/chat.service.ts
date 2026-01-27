@@ -229,6 +229,7 @@ export class ChatService {
     role: ChatRole,
     model?: string,
     parentId?: string,
+    signal?: AbortSignal,
   ): AsyncGenerator<string> {
     this.logger.debug(
       `[ChatService] streamMessage called: ${JSON.stringify({
@@ -460,6 +461,7 @@ ${memoryContext}
       enableSpeculative: true, // Enable Speculative execution
       tools: this.agentFactory.getTools('global'), // Get tools for this scope
       context: { userId, sessionId },
+      signal: signal, // Pass abort signal to agent
     });
 
     let finalAnswer = '';

@@ -31,6 +31,7 @@ export interface AgentRunConfig {
   speculativeModel?: string; // Model to use for fast intent detection (e.g., 'gemini-2.5-flash')
   enableSpeculative?: boolean;
   context?: any;
+  signal?: AbortSignal; // Signal to abort ongoing streaming
 }
 
 /**

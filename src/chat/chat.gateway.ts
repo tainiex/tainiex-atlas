@@ -105,8 +105,17 @@ export interface AuthenticatedSocket extends Socket {
 })
 @UseFilters(new WebSocketExceptionFilter())
 export class ChatGateway
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
-{
+  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  // Track active streams by sessionId to allow token refresh reconnection
+  private activeStreams = new Map<
+    string,
+    {
+      abortController: AbortController;
+      userId: string;
+      lastClientId: string;
+    }
+  >();
+
   @WebSocketServer()
   server: Server;
 
@@ -341,46 +350,113 @@ export class ChatGateway
     @ConnectedSocket() client: AuthenticatedSocket,
     @MessageBody() payload: ChatSendDto,
   ) {
-    try {
-      const user = client.data.user;
-      if (!user) {
-        client.emit(ClientEventTypes.CHAT_ERROR, { error: 'Unauthorized' });
+    const user = client.data.user;
+    if (!user) {
+      client.emit(ClientEventTypes.CHAT_ERROR, { error: 'Unauthorized' });
+      return;
+    }
+
+    const { sessionId, content, role, model } = payload;
+
+    // Check if there's already an active stream for this session
+    let streamInfo = this.activeStreams.get(sessionId);
+
+    if (streamInfo) {
+      // Stream already exists - check if it's from a different user (security)
+      if (streamInfo.userId !== user.sub) {
+        this.logger.warn(
+          `User ${user.sub} attempted to hijack stream for session ${sessionId} owned by ${streamInfo.userId}`,
+        );
+        client.emit(ClientEventTypes.CHAT_ERROR, {
+          error: 'Unauthorized access to session',
+        });
         return;
       }
 
-      const { sessionId, content, role, model } = payload;
-
-      // DTO validation handles content/sessionId checks now, but double check doesn't hurt logic flow
-      // Actually DTO ensures they are present and valid if ValidationPipe works.
-
-      this.logger.log(`Processing message for session ${sessionId}`);
-
-      // Stream the response
-      const stream = this.chatService.streamMessage(
-        sessionId,
-        user.sub,
-        content,
-        role || ChatRole.USER,
-        model,
-        payload.parentId,
+      // Same user, different client (token refresh) - update client reference
+      this.logger.log(
+        `Updating stream client for session ${sessionId}: ${streamInfo.lastClientId} -> ${client.id}`,
       );
+      streamInfo.lastClientId = client.id;
+      // Don't create new stream - this request is duplicate/retry
+      return;
+    }
 
-      let chunkCount = 0;
+    // Create new AbortController for this stream
+    const abortController = new AbortController();
+
+    // Register this stream
+    streamInfo = {
+      abortController,
+      userId: user.sub,
+      lastClientId: client.id,
+    };
+    this.activeStreams.set(sessionId, streamInfo);
+
+    // Cleanup function - only abort if this is the final disconnect (not a refresh)
+    const disconnectHandler = () => {
+      // Give client 2 seconds to reconnect (for token refresh)
+      setTimeout(() => {
+        const currentStreamInfo = this.activeStreams.get(sessionId);
+        if (currentStreamInfo && currentStreamInfo.lastClientId === client.id) {
+          // Client didn't reconnect within grace period - abort stream
+          // Note: Don't delete activeStreams here, let the finally block handle cleanup
+          this.logger.info(
+            `[ChatGateway] Client ${client.id} did not reconnect for session ${sessionId}, aborting stream`,
+          );
+          currentStreamInfo.abortController.abort();
+        }
+      }, 2000);
+    };
+
+    client.once('disconnect', disconnectHandler);
+
+    // DTO validation handles content/sessionId checks now, but double check doesn't hurt logic flow
+    // Actually DTO ensures they are present and valid if ValidationPipe works.
+
+    this.logger.log(`Processing message for session ${sessionId}`);
+
+    // Stream the response
+    const stream = this.chatService.streamMessage(
+      sessionId,
+      user.sub,
+      content,
+      role || ChatRole.USER,
+      model,
+      payload.parentId,
+      streamInfo.abortController.signal, // Use session-tracked abort signal
+    );
+
+    let chunkCount = 0;
+    try {
       for await (const chunk of stream) {
-        // If client disconnected, stop streaming to save resources
-        if (!client.connected) {
+        // Find current client for this session (may have changed due to reconnect)
+        const currentStreamInfo = this.activeStreams.get(sessionId);
+        if (!currentStreamInfo) {
           this.logger.warn(
-            `Client ${client.id} disconnected during stream, aborting.`,
+            `Stream info lost for session ${sessionId}, aborting`,
           );
           break;
         }
+
+        // Find the connected client (might be different from original)
+        const targetClient =
+          this.server?.sockets?.sockets?.get(currentStreamInfo.lastClientId);
+
+        if (!targetClient || !targetClient.connected) {
+          this.logger.warn(
+            `No connected client for session ${sessionId}, buffering would go here`,
+          );
+          // In future: buffer chunks for reconnection
+          continue;
+        }
+
         chunkCount++;
-        client.emit(ClientEventTypes.CHAT_STREAM, {
+        targetClient.emit(ClientEventTypes.CHAT_STREAM, {
           type: 'chunk',
           data: chunk,
         });
-        // Force immediate flush by yielding control to event loop
-        // This ensures chunks are sent immediately without batching
+        // Force immediate flush
         await new Promise((resolve) => setImmediate(resolve));
       }
 
@@ -391,10 +467,19 @@ export class ChatGateway
         sessionId,
         user.sub,
       );
-      client.emit(ClientEventTypes.CHAT_STREAM, {
-        type: 'done',
-        title: updatedSession.title,
-      });
+
+      // Find current client for done event
+      const finalStreamInfo = this.activeStreams.get(sessionId);
+      const finalClient = finalStreamInfo && this.server?.sockets?.sockets
+        ? this.server?.sockets?.sockets?.get(finalStreamInfo.lastClientId)
+        : client;
+
+      if (finalClient && finalClient.connected) {
+        finalClient.emit(ClientEventTypes.CHAT_STREAM, {
+          type: 'done',
+          title: updatedSession.title,
+        });
+      }
     } catch (error) {
       this.logger.error(
         'Chat stream error:',
@@ -402,10 +487,23 @@ export class ChatGateway
       );
       const errorMessage =
         error instanceof Error ? error.message : 'Stream failed';
-      client.emit(ClientEventTypes.CHAT_STREAM, {
-        type: 'error',
-        error: errorMessage,
-      });
+
+      // Try to send error to current client
+      const errorStreamInfo = this.activeStreams.get(sessionId);
+      const errorClient = errorStreamInfo && this.server?.sockets?.sockets
+        ? this.server?.sockets?.sockets?.get(errorStreamInfo.lastClientId)
+        : client;
+
+      if (errorClient && errorClient.connected) {
+        errorClient.emit(ClientEventTypes.CHAT_STREAM, {
+          type: 'error',
+          error: errorMessage,
+        });
+      }
+    } finally {
+      // Cleanup: remove disconnect handler and stream tracking
+      client.off('disconnect', disconnectHandler);
+      this.activeStreams.delete(sessionId);
     }
   }
 }

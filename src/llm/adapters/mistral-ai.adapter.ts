@@ -104,6 +104,8 @@ export class MistralAiAdapter implements ILlmAdapter {
   async *streamChat(
     history: ChatMessage[],
     message: string,
+    _tools?: any[],
+    _options?: { signal?: AbortSignal },
   ): AsyncGenerator<string> {
     this.logger.debug(
       `[MistralAiAdapter] streamChat request. History: ${history.length}, Message: ${message.substring(0, 50)}...`,

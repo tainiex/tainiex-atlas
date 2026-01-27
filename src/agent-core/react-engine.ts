@@ -34,6 +34,7 @@ export class ReactAgentEngine implements IAgentEngine {
       maxLoops = 5,
       enableSpeculative = true,
       context = {},
+      signal,
     } = config;
 
     // System Prompt - NO longer includes tool definitions (using native tools parameter instead)
@@ -121,15 +122,31 @@ export class ReactAgentEngine implements IAgentEngine {
           '\n\n[SYSTEM ADVISORY: INTENT DETECTION MODE]\n' +
           'You are a high-speed Intent Classifier. You are NOT a chatbot. \n' +
           "TASK: Determine if the user's last message requires using a tool.\n" +
-          'OUTPUT FORMAT RULES:\n' +
-          '- If YES (needs tool): Output ONLY the JSON for the tool call.\n' +
-          "- If NO (no tool needed, e.g. general chat, questions): Output EXACTLY and ONLY the word 'PASS'.\n" +
           '\n' +
-          'CRITICAL CONSTRAINTS:\n' +
-          '- DO NOT answer the question.\n' +
-          '- DO NOT provide explanations.\n' +
-          "- DO NOT output anything else after 'PASS'.\n" +
-          "- If you output 'PASS', the response must end immediately. STOP GENERATING.";
+          'STRICT OUTPUT FORMAT:\n' +
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+          '│ If tool needed: Output tool call JSON │\n' +
+          '│ If no tool:     Output "PASS"         │\n' +
+          '━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+          '\n' +
+          'MANDATORY CONSTRAINTS:\n' +
+          '1. Output MUST be EXACTLY one of these formats:\n' +
+          '   Format A: {"name": "tool_name", "parameters": {...}}\n' +
+          '   Format B: PASS\n' +
+          '\n' +
+          '2. If you choose Format B (PASS):\n' +
+          '   - Output the 4 characters: P-A-S-S\n' +
+          '   - IMMEDIATELY stop generation\n' +
+          '   - Do NOT add punctuation\n' +
+          '   - Do NOT add explanations\n' +
+          '   - Do NOT answer the question\n' +
+          '\n' +
+          '3. FORBIDDEN OUTPUTS:\n' +
+          '   ✗ "PASS, the user is asking..."\n' +
+          '   ✗ "PASS\nThe answer is..."\n' +
+          '   ✗ Any text after PASS\n' +
+          '\n' +
+          'Remember: Your ONLY role is classification. Not conversation.';
 
         if (messagesForLLM.length > 0 && messagesForLLM[0].role === 'system') {
           const originalSystem = messagesForLLM[0];
@@ -149,6 +166,7 @@ export class ReactAgentEngine implements IAgentEngine {
         messagesForLLM,
         effectiveModel,
         toolsForLLM,
+        { signal },
       );
 
       // Stream-first approach: Start streaming immediately, detect tool calls on the fly
@@ -223,21 +241,30 @@ export class ReactAgentEngine implements IAgentEngine {
       }
 
       // Speculative Logic Refined:
-      // If Speculative Model (Flash) finds NO tool call, it means the user's intent is likely just "Chat".
-      // In this case, we MUST switch to the "Preferred Model" (GLM/Pro) to generate the actual high-quality response.
-      // We should NOT use Flash's response as the final answer unless they are the same model.
+      // Check if Flash correctly returned "PASS" (prefix match, ignore any trailing content)
+      const normalizedResponse = trimmedResponse.trimStart();
+      const isPurePass = normalizedResponse.startsWith('PASS');
 
       if (isSpeculative && !toolCall) {
-        if (effectiveModel !== preferredModel) {
+        // Flash detected no tool call
+        if (isPurePass && effectiveModel !== preferredModel) {
+          // Flash correctly indicated PASS, switch to preferred model for actual response
           console.log(
-            `[ReactAgentEngine] ⚠️  Speculative model (${effectiveModel}) detected no tool. Switching to preferred model (${preferredModel}) for response.`,
+            `[ReactAgentEngine] ✓ Speculative model returned PASS (clean). Switching to preferred model (${preferredModel}) for response.`,
           );
-          // Disable speculative execution for the retry (handoff to preferred)
           speculativeRetries = MAX_SPECULATIVE_RETRIES;
-          loopCount--; // Retry this loop iteration
+          loopCount--;
+          continue;
+        } else if (!isPurePass && effectiveModel !== preferredModel) {
+          // Flash generated answer instead of PASS (protocol violation)
+          console.warn(
+            `[ReactAgentEngine] ⚠️  Speculative model violated protocol (expected PASS, got answer). Switching to preferred model (${preferredModel}).`,
+          );
+          speculativeRetries = MAX_SPECULATIVE_RETRIES;
+          loopCount--;
           continue;
         }
-        // If effectiveModel IS preferredModel, then we just proceed to output answer.
+        // If effectiveModel IS preferredModel, proceed with whatever it returned
       }
 
       // If we are here, either:

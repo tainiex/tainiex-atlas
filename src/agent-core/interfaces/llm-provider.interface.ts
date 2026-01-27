@@ -15,6 +15,7 @@ export interface ILlmProvider {
     history: AgentMessage[],
     model?: string,
     tools?: any[],
+    options?: { signal?: AbortSignal },
   ): AsyncGenerator<string>;
 
   /**

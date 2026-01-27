@@ -149,6 +149,7 @@ export class LlmService implements OnModuleInit {
     message: string,
     modelName?: string,
     tools?: any[],
+    options?: { signal?: AbortSignal },
   ): AsyncGenerator<string> {
     const adapter = await this.getAdapter(modelName);
     console.log(
@@ -156,7 +157,7 @@ export class LlmService implements OnModuleInit {
     );
     console.log(`[LlmService] Tools count: ${tools?.length || 0}`);
 
-    yield* adapter.streamChat(history, message, tools);
+    yield* adapter.streamChat(history, message, tools, options);
   }
 
   async getEmbeddings(text: string): Promise<number[]> {

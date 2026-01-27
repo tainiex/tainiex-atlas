@@ -205,6 +205,7 @@ export class GoogleVertexGaAdapter implements ILlmAdapter {
     history: ChatMessage[],
     message: string,
     tools?: any[],
+    _options?: { signal?: AbortSignal },
   ): AsyncGenerator<string> {
     // Extract System Prompt
     const systemMessage = history.find((h) => h.role === 'system');

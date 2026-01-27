@@ -111,6 +111,8 @@ export class OpenRouterAdapter implements ILlmAdapter {
   async *streamChat(
     history: ChatMessage[],
     message: string,
+    _tools?: any[],
+    _options?: { signal?: AbortSignal },
   ): AsyncGenerator<string> {
     this.logger.debug(
       `[OpenRouterAdapter] streamChat request. History: ${history.length}, Message: ${message.substring(0, 50)}...`,

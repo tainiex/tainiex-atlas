@@ -52,6 +52,7 @@ export class AgentFactory {
         history: AgentMessage[],
         model?: string,
         tools?: any[],
+        options?: { signal?: AbortSignal },
       ) {
         console.log(
           '[AgentFactory.LLMAdapter] streamChat called with',
@@ -87,6 +88,7 @@ export class AgentFactory {
           lastMessage.content,
           model,
           tools,
+          options, // Pass options (including signal) through
         );
       }.bind(this),
     };

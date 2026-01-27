@@ -29,6 +29,7 @@ export interface ILlmAdapter {
     history: ChatMessage[],
     message: string,
     tools?: any[],
+    options?: { signal?: AbortSignal },
   ): AsyncGenerator<string>;
 
   /**

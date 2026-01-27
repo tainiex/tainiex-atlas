@@ -126,6 +126,8 @@ export class ZaiAdapter implements ILlmAdapter {
   async *streamChat(
     history: ChatMessage[],
     message: string,
+    _tools?: any[],
+    options?: { signal?: AbortSignal },
   ): AsyncGenerator<string> {
     this.logger.debug(
       `[ZaiAdapter] streamChat request. History: ${history.length}, Message: ${message.substring(0, 50)}...`,
@@ -137,6 +139,8 @@ export class ZaiAdapter implements ILlmAdapter {
 
     messages.push({ role: 'user', content: message });
 
+    const signal = options?.signal;
+
     try {
       const response = await this.client.post(
         '/chat/completions',
@@ -147,6 +151,7 @@ export class ZaiAdapter implements ILlmAdapter {
         },
         {
           responseType: 'stream',
+          signal: signal, // Axios accepts AbortSignal
         },
       );
 
@@ -157,6 +162,12 @@ export class ZaiAdapter implements ILlmAdapter {
       let buffer = '';
 
       for await (const chunk of stream) {
+        // Active abort check
+        if (signal?.aborted) {
+          this.logger.info('[ZaiAdapter] Stream aborted by client signal');
+          return;
+        }
+
         const str = decoder.write(chunk);
         buffer += str;
         this.logger.debug(
@@ -199,7 +210,15 @@ export class ZaiAdapter implements ILlmAdapter {
 
         if (aggregatedContent) {
           chunkCount++;
-          yield aggregatedContent;
+          try {
+            yield aggregatedContent;
+          } catch (_e) {
+            // Passive abort detection: yield failed means downstream disconnected
+            this.logger.warn(
+              '[ZaiAdapter] Client disconnected during yield, aborting stream',
+            );
+            return;
+          }
         }
       }
 
@@ -226,6 +245,12 @@ export class ZaiAdapter implements ILlmAdapter {
         `[ZaiAdapter] Stream finished. Total chunks: ${chunkCount}`,
       );
     } catch (error) {
+      // Check if it's an abort error
+      if (axios.isCancel(error) || (error as Error).name === 'CanceledError') {
+        this.logger.info('[ZaiAdapter] Stream cancelled by AbortSignal');
+        return;
+      }
+
       this.logger.error(
         '[ZaiAdapter] streamChat failed:',
         error instanceof Error ? error.message : String(error),

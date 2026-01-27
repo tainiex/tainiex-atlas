@@ -202,6 +202,8 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
   async *streamChat(
     history: ChatMessage[],
     message: string,
+    _tools?: any[],
+    _options?: { signal?: AbortSignal },
   ): AsyncGenerator<string> {
     this.logger.log('[GoogleVertexPreviewAdapter] streamChat called');
     const projectId = this.configService.get<string>('VERTEX_PROJECT_ID');
