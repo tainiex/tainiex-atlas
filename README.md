@@ -16,7 +16,7 @@
 ```
 tainiex-atlas/
 ├── apps/
-│   ├── backend/          # NestJS 后端 API
+│   ├── api/              # NestJS 后端 API
 │   └── web/              # React 前端应用
 ├── packages/
 │   ├── shared-atlas/     # 共享 TypeScript 类型
@@ -76,8 +76,8 @@ pnpm build:shared
 
 ```bash
 # 配置后端环境变量
-cp apps/backend/.env.example apps/backend/.env
-# 编辑 apps/backend/.env 填入你的配置
+cp apps/api/.env.example apps/api/.env
+# 编辑 apps/api/.env 填入你的配置
 
 # 配置前端环境变量
 cp apps/web/.env.example apps/web/.env
@@ -91,7 +91,7 @@ cp apps/web/.env.example apps/web/.env
 pnpm dev
 
 # 或分别启动
-pnpm dev:backend  # 后端运行在 http://localhost:2020
+pnpm dev:api      # 后端 API 运行在 http://localhost:2020
 pnpm dev:web      # 前端运行在 http://localhost:2000
 ```
 
@@ -102,7 +102,7 @@ pnpm dev:web      # 前端运行在 http://localhost:2000
 pnpm build
 
 # 或分别构建
-pnpm build:backend
+pnpm build:api
 pnpm build:web
 ```
 
@@ -130,12 +130,12 @@ pnpm start:prod
 
 | 命令 | 说明 |
 |------|------|
-| `pnpm build:backend` | 仅构建后端 |
+| `pnpm build:api` | 仅构建后端 API |
 | `pnpm build:web` | 仅构建前端 |
 | `pnpm build:shared` | 仅构建共享包 |
-| `pnpm dev:backend` | 仅启动后端开发服务器 |
+| `pnpm dev:api` | 仅启动后端 API 开发服务器 |
 | `pnpm dev:web` | 仅启动前端开发服务器 |
-| `pnpm test:backend` | 仅运行后端测试 |
+| `pnpm test:api` | 仅运行后端 API 测试 |
 | `pnpm test:web` | 仅运行前端测试 |
 
 ## 🛠️ 技术栈

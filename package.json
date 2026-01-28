@@ -12,11 +12,11 @@
   },
   "scripts": {
     "build": "pnpm -r --filter='./packages/*' build && pnpm -r --filter='./apps/*' build",
-    "build:backend": "pnpm --filter @tainiex/backend build",
+    "build:api": "pnpm --filter @tainiex/api build",
     "build:web": "pnpm --filter @tainiex/web build",
     "build:shared": "pnpm --filter @tainiex/shared-atlas build",
-    "dev": "concurrently \"pnpm dev:backend\" \"pnpm dev:web\" --names \"BACKEND,WEB\" --prefix-colors \"blue,magenta\"",
-    "dev:backend": "pnpm --filter @tainiex/backend dev",
+    "dev": "concurrently \"pnpm dev:api\" \"pnpm dev:web\" --names \"API,WEB\" --prefix-colors \"blue,magenta\"",
+    "dev:api": "pnpm --filter @tainiex/api dev",
     "dev:web": "pnpm --filter @tainiex/web dev",
     "dev:shared": "pnpm --filter @tainiex/shared-atlas build:watch",
     "lint": "pnpm -r --parallel lint",
@@ -24,14 +24,14 @@
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,js,jsx,json,md,yml,yaml}\"",
     "typecheck": "pnpm -r --parallel typecheck",
-    "typecheck:backend": "pnpm --filter @tainiex/backend typecheck",
+    "typecheck:api": "pnpm --filter @tainiex/api typecheck",
     "typecheck:web": "pnpm --filter @tainiex/web typecheck",
     "test": "pnpm -r --parallel test",
-    "test:backend": "pnpm --filter @tainiex/backend test",
+    "test:api": "pnpm --filter @tainiex/api test",
     "test:web": "pnpm --filter @tainiex/web test",
     "test:coverage": "pnpm -r --parallel test:coverage",
     "validate": "pnpm typecheck && pnpm lint && pnpm test",
-    "start:prod": "pnpm --filter @tainiex/backend start:prod",
+    "start:prod": "pnpm --filter @tainiex/api start:prod",
     "clean": "pnpm -r --parallel exec rm -rf dist node_modules",
     "clean:dist": "pnpm -r --parallel exec rm -rf dist",
     "prepare": "husky || true",
@@ -56,7 +56,7 @@
     "pnpm": ">=10.0.0"
   },
   "lint-staged": {
-    "apps/backend/**/*.{ts,js}": [
+    "apps/api/**/*.{ts,js}": [
       "eslint --fix",
       "prettier --write"
     ],
