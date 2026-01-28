@@ -91,7 +91,8 @@ describe('ChatService - Title Generation', () => {
     createAgent: jest.fn().mockReturnValue({
       // eslint-disable-next-line @typescript-eslint/require-await
       execute: jest.fn().mockImplementation(async function* () {
-        yield 'Mocked agent response';
+        yield { type: 'answer_chunk', content: 'Mocked agent response' };
+        yield { type: 'final_answer', content: 'Mocked agent response' };
       }),
     }),
     getTools: jest.fn().mockReturnValue([]),

@@ -444,7 +444,7 @@ export class ChatGateway
 
     let chunkCount = 0;
     try {
-      for await (const chunk of stream) {
+      for await (const event of stream) {
         // Find current client for this session (may have changed due to reconnect)
         const currentStreamInfo = this.activeStreams.get(sessionId);
         if (!currentStreamInfo) {
@@ -488,10 +488,8 @@ export class ChatGateway
         }
 
         chunkCount++;
-        targetClient.emit(ClientEventTypes.CHAT_STREAM, {
-          type: 'chunk',
-          data: chunk,
-        });
+        // Forward typed event directly (no wrapping needed)
+        targetClient.emit(ClientEventTypes.CHAT_STREAM, event);
         // Force immediate flush
         await new Promise((resolve) => setImmediate(resolve));
       }
@@ -541,7 +539,7 @@ export class ChatGateway
       if (errorClient && errorClient.connected) {
         errorClient.emit(ClientEventTypes.CHAT_STREAM, {
           type: 'error',
-          error: errorMessage,
+          message: errorMessage,
         });
       }
     } finally {

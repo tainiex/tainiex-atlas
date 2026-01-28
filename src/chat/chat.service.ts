@@ -10,7 +10,11 @@ import { MemoryService } from './memory/memory.service';
 // import { ToolsService } from '../tools/tools.service'; // DEPRECATED
 import { AgentFactory } from '../agent/services/agent-factory.service';
 import type { IJobQueue } from './queue/job-queue.interface';
-import { ChatRole, CHAT_ROOT_PARENT_ID } from '@tainiex/shared-atlas';
+import {
+  ChatRole,
+  CHAT_ROOT_PARENT_ID,
+  ChatStreamEvent,
+} from '@tainiex/shared-atlas';
 import type { IContextManager } from './context/context-manager.interface';
 import { LoggerService } from '../common/logger/logger.service';
 
@@ -230,7 +234,7 @@ export class ChatService {
     model?: string,
     parentId?: string,
     signal?: AbortSignal,
-  ): AsyncGenerator<string> {
+  ): AsyncGenerator<ChatStreamEvent> {
     this.logger.debug(
       `[ChatService] streamMessage called: ${JSON.stringify({
         sessionId,
@@ -468,35 +472,52 @@ ${memoryContext}
 
     try {
       for await (const event of stream) {
-        if (event.type === 'answer_chunk') {
-          yield event.content;
-          finalAnswer += event.content;
-        } else if (event.type === 'thought') {
-          this.logger.debug(`[Agent] Thought: ${event.content}`);
-          // Optional: yield thought events if frontend supports it
-        } else if (event.type === 'tool_call') {
-          this.logger.log(`[Agent] Calling Tool: ${event.tool}`);
-          // Publish Activity
-          // Note: ToolsService.executeTool used to have @TrackActivity.
-          // Now we manually publish or rely on interceptors.
-          // For now, let's just log.
-        } else if (event.type === 'final_answer') {
+        if (event.type === 'final_answer') {
+          // Internal only - save to database, don't forward to client
           finalAnswer = event.content;
-        } else if (event.type === 'error') {
-          this.logger.error(`[Agent] Error: ${event.message}`);
-          yield `\n[System Error: ${event.message}]`;
+          this.logger.debug(`[Agent] Final answer received`);
+        } else {
+          // Forward all other events to client (thought, tool_call, tool_result, answer_chunk, error)
+          // Type assertion safe because all AgentEvent types except final_answer are compatible
+          yield event as ChatStreamEvent;
+
+          // Accumulate answer chunks for database save
+          if (event.type === 'answer_chunk') {
+            finalAnswer += event.content;
+          }
+
+          // Log for monitoring
+          if (event.type === 'thought') {
+            this.logger.debug(`[Agent] Thought: ${event.content}`);
+          } else if (event.type === 'tool_call') {
+            this.logger.log(
+              `[Agent] Calling Tool: ${event.tool} with args:`,
+              JSON.stringify(event.args),
+            );
+          } else if (event.type === 'tool_result') {
+            this.logger.debug(
+              `[Agent] Tool result from ${event.tool}:`,
+              JSON.stringify(event.result),
+            );
+          } else if (event.type === 'error') {
+            this.logger.error(`[Agent] Error: ${event.message}`);
+          }
         }
       }
     } catch (error) {
+      // Forward exception as error event
       if (error instanceof Error) {
         this.logger.error('[Agent] Execution failed', error.stack);
-        yield `\n[System Error: ${error.message}]`;
+        yield { type: 'error', message: error.message } as ChatStreamEvent;
       } else {
         this.logger.error(
           '[Agent] Execution failed (unknown error)',
           String(error),
         );
-        yield `\n[System Error: Unknown error]`;
+        yield {
+          type: 'error',
+          message: 'Unknown error occurred',
+        } as ChatStreamEvent;
       }
     }
 

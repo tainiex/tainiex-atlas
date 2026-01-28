@@ -10,11 +10,11 @@
 -- 1. Create Database
 -- Note: 'CREATE DATABASE' cannot run inside a transaction block.
 -- If the database exists, you might see an error which can be ignored or handled manually.
-SELECT 'CREATE DATABASE tainiex_atlas'
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'tainiex_atlas')\gexec
+SELECT 'CREATE DATABASE tainiex_core'
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'tainiex_core')\gexec
 
 -- 2. Connect to the database
-\c tainiex_atlas
+\c tainiex_core
 
 -- 3. Enable Extensions
 

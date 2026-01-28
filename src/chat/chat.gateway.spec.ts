@@ -328,7 +328,7 @@ describe('ChatGateway', () => {
       // Mock stream
       async function* mockStream() {
         await Promise.resolve();
-        yield 'chunk1';
+        yield { type: 'answer_chunk', content: 'chunk1' };
       }
       mockChatService.streamMessage.mockImplementation(mockStream);
 
@@ -339,8 +339,8 @@ describe('ChatGateway', () => {
       await gateway.handleChatMessage(client, payload);
 
       expect(client.emit).toHaveBeenCalledWith('chat:stream', {
-        type: 'chunk',
-        data: 'chunk1',
+        type: 'answer_chunk',
+        content: 'chunk1',
       });
       expect(client.emit).toHaveBeenLastCalledWith('chat:stream', {
         type: 'done',
