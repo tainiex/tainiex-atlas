@@ -19,10 +19,7 @@
     "noImplicitAny": false,
     "strictBindCallApply": false,
     "noFallthroughCasesInSwitch": false,
-    "paths": {
-      "@tainiex/shared-atlas": ["../../packages/shared-atlas/src"],
-      "@tainiex/shared-atlas/*": ["../../packages/shared-atlas/src/*"]
-    }
+    "paths": {}
   },
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]
