@@ -1,0 +1,68 @@
+name: Deploy Frontend to Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'apps/web/**'
+      - 'packages/shared-atlas/**'
+      - '.github/workflows/deploy-firebase-prod.yml'
+
+concurrency:
+  group: firebase-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      packages: 'read'
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+          registry-url: 'https://npm.pkg.github.com'
+
+      - name: Install Dependencies
+        run: |
+          # Configure npm auth for GitHub packages
+          echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
+
+          # Install all dependencies (monorepo)
+          pnpm install --frozen-lockfile
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Environment Variables
+        run: |
+          # Write ENV_WEB_PRODUCTION to .env file
+          echo "${{ secrets.ENV_WEB_PRODUCTION }}" > apps/web/.env.production
+
+      - name: Build Shared Package
+        run: pnpm --filter @tainiex/shared-atlas build
+
+      - name: Build Web App
+        run: pnpm --filter @tainiex/web build --mode production
+
+      - name: Deploy to Firebase Hosting
+        uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: '${{ secrets.GITHUB_TOKEN }}'
+          firebaseServiceAccount: '${{ secrets.GCP_SA_KEY }}'
+          channelId: live
+          projectId: '${{ secrets.GCP_PROJECT_ID }}'
+          entryPoint: apps/web
+        env:
+          FIREBASE_CLI_EXPERIMENTS: webframeworks
