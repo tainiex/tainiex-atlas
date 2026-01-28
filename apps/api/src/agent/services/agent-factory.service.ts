@@ -48,7 +48,8 @@ export class AgentFactory {
           tools,
         );
       },
-      streamChat: async function* (
+      streamChat: (async function* (
+        this: AgentFactory,
         history: AgentMessage[],
         model?: string,
         tools?: any[],
@@ -90,7 +91,7 @@ export class AgentFactory {
           tools,
           options, // Pass options (including signal) through
         );
-      }.bind(this),
+      }).bind(this),
     };
 
     return new ReactAgentEngine(llmAdapter);

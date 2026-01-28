@@ -89,7 +89,7 @@ export abstract class Tool<T = any> {
     return {
       name: this.name,
       description: this.description,
-      parameters: zodToJsonSchema(this.schema, { name: this.name }) as Record<
+      parameters: zodToJsonSchema(this.schema as any, { name: this.name }) as Record<
         string,
         any
       >,

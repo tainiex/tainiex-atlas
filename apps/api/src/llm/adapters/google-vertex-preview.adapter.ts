@@ -103,11 +103,9 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
         );
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const data = await response.json();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+      const data = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      return (text as string) || '';
+      return text || '';
     } catch (error) {
       this.logger.error(
         '[GoogleVertexPreviewAdapter] generateContent failed:',
@@ -188,11 +186,9 @@ export class GoogleVertexPreviewAdapter implements ILlmAdapter {
         );
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const data = await response.json();
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment
+      const data = await response.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      return (text as string) || '';
+      return text || '';
     } catch (error) {
       this.logger.error('[GoogleVertexPreviewAdapter] chat failed:', error);
       throw error;

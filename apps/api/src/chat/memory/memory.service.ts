@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import type {
   IVectorStore,
   IVectorStoreRecord,
-} from '../../../shared-atlas/src/interfaces/vector-store.interface';
+} from '@tainiex/shared-atlas';
 import { LlmService } from '../../llm/llm.service';
 import { MemoryType, MemorySource } from './entities/memory.entity';
 import { WorkerPoolService } from '../worker/worker-pool.service';

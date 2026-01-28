@@ -207,16 +207,15 @@ export class AuthService {
                 '[GoogleLogin] Retry: Mobile token exchange successful.',
               );
             } catch (mobileError) {
+              const error = mobileError as Error & { response?: { data: unknown } };
               console.error(
                 '[GoogleLogin] Retry failed:',
-                (mobileError as Error).message,
+                error.message,
               );
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-              if (mobileError.response?.data) {
+              if (error.response?.data) {
                 console.error(
                   '[GoogleLogin] Mobile error details:',
-                  // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-                  JSON.stringify(mobileError.response.data),
+                  JSON.stringify(error.response.data),
                 );
               }
               // If retry failed with invalid_grant, it's likely because the code was consumed by the first attempt.

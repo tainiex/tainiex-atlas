@@ -304,13 +304,12 @@ export class ReactAgentEngine implements IAgentEngine {
               JSON.stringify(result).substring(0, 200),
             );
           } catch (e) {
+            const error = e as Error;
             console.log(
               '[ReactAgentEngine] ✗ Tool execution error:',
-              // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-              e.message,
+              error.message,
             );
-            // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-            result = `Error executing tool: ${e.message}`;
+            result = `Error executing tool: ${error.message}`;
           }
         } else {
           console.log(

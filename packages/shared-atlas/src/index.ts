@@ -10,3 +10,4 @@ export * from './dto/chat.dto';
 
 export * from './interfaces/websocket.interface';
 export * from './interfaces/activity.interface';
+export * from './interfaces/vector-store.interface';

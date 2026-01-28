@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import {
   IVectorStore,
   IVectorStoreRecord,
-} from '../../../../shared-atlas/src/interfaces/vector-store.interface';
+} from '@tainiex/shared-atlas';
 import { SemanticMemory } from '../entities/memory.entity';
 
 @Injectable()

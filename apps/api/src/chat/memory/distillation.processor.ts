@@ -26,6 +26,7 @@ export async function processDistillation(
 ): Promise<DistillationResult> {
   let dataSource: DataSource | null = null;
   let memories: any[] = [];
+  const logger = new LoggerService(null as any);
 
   try {
     const { config, prompt, modelName } = task;
@@ -124,13 +125,13 @@ export async function processDistillation(
             }
           }
         } catch (dbError) {
-          this.logger.error('[Processor] Graph Ingestion Failed:', dbError);
+          logger.error('[Processor] Graph Ingestion Failed:', dbError);
         }
       }
 
       return { result: memories };
     } catch (error: any) {
-      this.logger.error('[Processor] Generation Error:', error);
+      logger.error('[Processor] Generation Error:', error);
       return { error: (error as Error).message };
     }
   } catch (err: any) {
