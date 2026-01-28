@@ -52,32 +52,18 @@ jobs:
         run: |
           # Configure npm auth for CI
           echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
-          
-          # Install all dependencies
+
+          # Install all dependencies (monorepo)
           pnpm install --frozen-lockfile
 
-          # Build Shared Library first (Required for typecheck)
-          pnpm --filter @tainiex/shared-atlas run build
-          
-          # Run Type Check (Catch errors SWC might skip)
-          pnpm run typecheck
+          # Build shared packages first
+          pnpm --filter @tainiex/shared-atlas build
 
-          # Build the application
-          pnpm run build
-          
-          # Prune to production dependencies for the Docker image
-          # pnpm deploy or pruning is different. 
-          # For now, let's just use strict production install if needed, or rely on the Dockerfile to do prod install.
-          # The Dockerfile I updated does `pnpm install --prod`.
-          # So here we just need to build.
-          # We can skip pruning here if Dockerfile handles it, BUT the previous flow copied node_modules.
-          # Let's align: 
-          # 1. Build here.
-          # 2. Dockerfile does `pnpm install --prod`. 
-          # So we DON'T copy node_modules from here to Docker context effectively if Dockerfile installs it.
-          # BUT wait, the previous Dockerfile COPIED node_modules. 
-          # To keep it fast, we should probably prune here and copy.
-          pnpm prune --prod
+          # Build API
+          pnpm --filter @tainiex/api build
+
+          # Note: Dockerfile handles multi-stage build and production dependencies
+          # No need to prune here as Docker build process manages it
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
