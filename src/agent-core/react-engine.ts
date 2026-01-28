@@ -351,7 +351,9 @@ export class ReactAgentEngine implements IAgentEngine {
           );
         }
 
-        // Chunks were already streamed during buffering, so we're done
+        // Yield final_answer event for chat.service to save to database
+        yield { type: 'final_answer', content: trimmedResponse };
+
         console.log('[ReactAgentEngine] Exiting loop');
         break;
       }

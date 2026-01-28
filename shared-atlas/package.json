@@ -1,6 +1,6 @@
 {
     "name": "@tainiex/shared-atlas",
-    "version": "0.0.32",
+    "version": "0.0.34",
     "description": "Shared interfaces and contracts for Tainiex Atlas",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
