@@ -15,14 +15,14 @@ import { StorageController } from './storage.controller';
  */
 @Global()
 @Module({
-  controllers: [StorageController],
-  providers: [
-    StorageService,
-    {
-      provide: 'STORAGE_STRATEGY',
-      useClass: GcsStorageStrategy,
-    },
-  ],
-  exports: [StorageService],
+    controllers: [StorageController],
+    providers: [
+        StorageService,
+        {
+            provide: 'STORAGE_STRATEGY',
+            useClass: GcsStorageStrategy,
+        },
+    ],
+    exports: [StorageService],
 })
 export class StorageModule {}

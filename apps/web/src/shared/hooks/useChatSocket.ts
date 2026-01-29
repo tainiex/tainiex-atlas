@@ -10,7 +10,13 @@ interface ConnectionState {
     lastError?: ApiError;
 }
 
-export function useChatSocket() {
+export function useChatSocket(): {
+    socket: Socket | null;
+    isConnected: boolean;
+    connectionState: ConnectionState;
+    error: string | null;
+    reconnect: () => void;
+} {
     // We don't manage the socket instance anymore, the Service does.
     // But we need a local reference to return to consumers who might use it directly.
     const [socket, setSocket] = useState<Socket | null>(null);

@@ -25,7 +25,7 @@ export interface NotificationHandler {
 }
 */
 
-interface MessageState {
+export interface MessageState {
     id: string;
     content: string;
     isStreaming: boolean;

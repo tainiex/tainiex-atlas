@@ -30,6 +30,21 @@ interface UseChatProps {
     pageSize?: number;
 }
 
+interface UseChatReturn {
+    models: (string | { name: string })[];
+    isConnected: boolean;
+    wsError: string | null;
+    handleSend: (message: string, parentId?: string) => Promise<void>;
+    requestPushUp: ((messageId?: string) => void) | undefined;
+    shouldSkipHistoryFetchRef: React.MutableRefObject<boolean>;
+    currentMessage: import('./useSendMessage').MessageState | null;
+    setCurrentMessage: React.Dispatch<React.SetStateAction<import('./useSendMessage').MessageState | null>>;
+    reconnect: () => void;
+    hasMore: boolean;
+    isFetchingMore: boolean;
+    loadMoreMessages: () => Promise<void>;
+}
+
 export function useChat({
     currentSessionId,
     setCurrentSessionId,
@@ -44,7 +59,7 @@ export function useChat({
     requestPushUp,
     initialSkipFetch = false,
     pageSize = 20,
-}: UseChatProps) {
+}: UseChatProps): UseChatReturn {
     const [models, setModels] = useState<(string | { name: string })[]>([]);
 
     // WebSocket hooks

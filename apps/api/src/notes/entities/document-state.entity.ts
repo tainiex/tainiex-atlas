@@ -1,9 +1,4 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  UpdateDateColumn,
-} from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 /**
  * DocumentState entity - persists Y.js CRDT state for collaborative editing.
@@ -22,18 +17,18 @@ import {
  */
 @Entity('document_states')
 export class DocumentState {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
-  @Column({ name: 'note_id', type: 'uuid', unique: true })
-  noteId: string;
+    @Column({ name: 'note_id', type: 'uuid', unique: true })
+    noteId: string;
 
-  @Column({ name: 'state_vector', type: 'bytea', nullable: true })
-  stateVector: Buffer;
+    @Column({ name: 'state_vector', type: 'bytea', nullable: true })
+    stateVector: Buffer;
 
-  @Column({ name: 'document_state', type: 'bytea', nullable: true })
-  documentState: Buffer;
+    @Column({ name: 'document_state', type: 'bytea', nullable: true })
+    documentState: Buffer;
 
-  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
-  updatedAt: Date;
+    @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
+    updatedAt: Date;
 }

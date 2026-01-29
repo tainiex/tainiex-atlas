@@ -11,24 +11,24 @@ import { JwtRefreshStrategy } from './jwt-refresh.strategy';
 import { AuthController } from './auth.controller';
 
 @Module({
-  imports: [
-    UsersModule,
-    InvitationModule,
-    PassportModule,
-    ConfigModule,
-    RateLimitModule,
-    JwtModule.registerAsync({
-      global: true,
-      imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET') || 'secretKey',
-        signOptions: { expiresIn: '60m' },
-      }),
-      inject: [ConfigService],
-    }),
-  ],
-  providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
-  controllers: [AuthController],
-  exports: [AuthService],
+    imports: [
+        UsersModule,
+        InvitationModule,
+        PassportModule,
+        ConfigModule,
+        RateLimitModule,
+        JwtModule.registerAsync({
+            global: true,
+            imports: [ConfigModule],
+            useFactory: (configService: ConfigService) => ({
+                secret: configService.get<string>('JWT_SECRET') || 'secretKey',
+                signOptions: { expiresIn: '60m' },
+            }),
+            inject: [ConfigService],
+        }),
+    ],
+    providers: [AuthService, JwtStrategy, JwtRefreshStrategy],
+    controllers: [AuthController],
+    exports: [AuthService],
 })
 export class AuthModule {}

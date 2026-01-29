@@ -19,27 +19,27 @@ import { JobQueueModule } from './queue/job-queue.module';
 // import { ToolsModule } from '../tools/tools.module';
 
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatMessageHistory]),
-    LlmModule,
-    MemoryModule,
-    JobQueueModule,
-    RateLimitModule,
-    // ToolsModule, // DEPRECATED
-  ],
-  controllers: [ChatController],
-  providers: [
-    ChatService,
-    ChatGateway,
-    TokenLifecycleService,
-    ConnectionHealthService,
-    ReliableMessageService,
-    TokenWindowContextManager,
-    {
-      provide: 'IContextManager',
-      useClass: TokenWindowContextManager,
-    },
-  ],
-  exports: [ChatService],
+    imports: [
+        TypeOrmModule.forFeature([ChatSession, ChatMessage, ChatMessageHistory]),
+        LlmModule,
+        MemoryModule,
+        JobQueueModule,
+        RateLimitModule,
+        // ToolsModule, // DEPRECATED
+    ],
+    controllers: [ChatController],
+    providers: [
+        ChatService,
+        ChatGateway,
+        TokenLifecycleService,
+        ConnectionHealthService,
+        ReliableMessageService,
+        TokenWindowContextManager,
+        {
+            provide: 'IContextManager',
+            useClass: TokenWindowContextManager,
+        },
+    ],
+    exports: [ChatService],
 })
 export class ChatModule {}

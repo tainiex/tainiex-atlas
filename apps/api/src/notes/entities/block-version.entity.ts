@@ -1,9 +1,4 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-} from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
 
 /**
  * BlockVersion entity - stores historical versions of blocks.
@@ -14,30 +9,30 @@ import {
  */
 @Entity('block_versions')
 export class BlockVersion {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
-  @Column({ name: 'block_id', type: 'uuid' })
-  blockId: string;
+    @Column({ name: 'block_id', type: 'uuid' })
+    blockId: string;
 
-  @Column({ name: 'version_number', type: 'int' })
-  versionNumber: number;
+    @Column({ name: 'version_number', type: 'int' })
+    versionNumber: number;
 
-  @Column({ type: 'text', nullable: true })
-  content: string;
+    @Column({ type: 'text', nullable: true })
+    content: string;
 
-  @Column({ type: 'jsonb', nullable: true })
-  metadata: any;
+    @Column({ type: 'jsonb', nullable: true })
+    metadata: any;
 
-  @Column({ name: 'change_type', length: 20 })
-  changeType: 'created' | 'updated' | 'deleted';
+    @Column({ name: 'change_type', length: 20 })
+    changeType: 'created' | 'updated' | 'deleted';
 
-  @Column({ type: 'jsonb', nullable: true })
-  diff: any;
+    @Column({ type: 'jsonb', nullable: true })
+    diff: any;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
-  createdAt: Date;
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+    createdAt: Date;
 
-  @Column({ name: 'created_by', type: 'uuid' })
-  createdBy: string;
+    @Column({ name: 'created_by', type: 'uuid' })
+    createdBy: string;
 }

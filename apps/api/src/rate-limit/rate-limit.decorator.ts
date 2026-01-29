@@ -7,8 +7,8 @@ export const RATE_LIMIT_KEY = 'rate_limit';
  * Interface for Rate Limit Options
  */
 export interface RateLimitOptions {
-  points: number; // Max requests
-  duration: number; // Window in seconds
+    points: number; // Max requests
+    duration: number; // Window in seconds
 }
 
 /**
@@ -17,4 +17,4 @@ export interface RateLimitOptions {
  * @param duration Window duration in seconds
  */
 export const RateLimit = (points: number, duration: number) =>
-  SetMetadata(RATE_LIMIT_KEY, { points, duration } as RateLimitOptions);
+    SetMetadata(RATE_LIMIT_KEY, { points, duration } as RateLimitOptions);

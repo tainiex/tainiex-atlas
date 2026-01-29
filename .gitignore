@@ -91,3 +91,4 @@ mobile_legacy/
 
 # Vite
 .vite/
+apps/web/tsconfig.tsbuildinfo

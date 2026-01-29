@@ -131,8 +131,8 @@
       "<rootDir>/../test/jest-setup.ts"
     ],
     "moduleNameMapper": {
-      "^@tainiex/shared-atlas/(.*)$": "<rootDir>/../../packages/shared-atlas/src/$1",
-      "^@tainiex/shared-atlas$": "<rootDir>/../../packages/shared-atlas/src/index",
+      "^@tainiex/shared-atlas/(.*)$": "<rootDir>/../../../packages/shared-atlas/src/$1",
+      "^@tainiex/shared-atlas$": "<rootDir>/../../../packages/shared-atlas/src/index",
       "^@openrouter/sdk$": "<rootDir>/../test/mocks/openrouter.mock.ts"
     }
   }

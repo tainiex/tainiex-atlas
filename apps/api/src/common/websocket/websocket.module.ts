@@ -9,7 +9,7 @@ import { WebSocketMachineRegistry } from './websocket-machine-registry.service';
  */
 @Global()
 @Module({
-  providers: [WebSocketStateMachineService, WebSocketMachineRegistry],
-  exports: [WebSocketStateMachineService, WebSocketMachineRegistry],
+    providers: [WebSocketStateMachineService, WebSocketMachineRegistry],
+    exports: [WebSocketStateMachineService, WebSocketMachineRegistry],
 })
 export class WebSocketModule {}

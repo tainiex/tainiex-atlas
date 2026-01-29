@@ -7,14 +7,14 @@ import { ContextModule } from '../context/context.module';
 
 @Global()
 @Module({
-  imports: [EventEmitterModule.forRoot(), ContextModule],
-  providers: [
-    ActivityGateway,
-    {
-      provide: ActivityPublisher,
-      useClass: LocalActivityPublisher, // Strategy: Use Local by default
-    },
-  ],
-  exports: [ActivityPublisher], // Export Publisher so other modules can inject it
+    imports: [EventEmitterModule.forRoot(), ContextModule],
+    providers: [
+        ActivityGateway,
+        {
+            provide: ActivityPublisher,
+            useClass: LocalActivityPublisher, // Strategy: Use Local by default
+        },
+    ],
+    exports: [ActivityPublisher], // Export Publisher so other modules can inject it
 })
 export class ActivityModule {}

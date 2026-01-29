@@ -1,9 +1,4 @@
-import {
-  Entity,
-  Column,
-  PrimaryGeneratedColumn,
-  CreateDateColumn,
-} from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn } from 'typeorm';
 
 /**
  * NoteSnapshot entity - stores periodic snapshots of entire notes.
@@ -14,18 +9,18 @@ import {
  */
 @Entity('note_snapshots')
 export class NoteSnapshot {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
+    @PrimaryGeneratedColumn('uuid')
+    id: string;
 
-  @Column({ name: 'note_id', type: 'uuid' })
-  noteId: string;
+    @Column({ name: 'note_id', type: 'uuid' })
+    noteId: string;
 
-  @Column({ name: 'snapshot_data', type: 'jsonb' })
-  snapshotData: any;
+    @Column({ name: 'snapshot_data', type: 'jsonb' })
+    snapshotData: any;
 
-  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
-  createdAt: Date;
+    @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
+    createdAt: Date;
 
-  @Column({ name: 'created_by', type: 'uuid' })
-  createdBy: string;
+    @Column({ name: 'created_by', type: 'uuid' })
+    createdBy: string;
 }

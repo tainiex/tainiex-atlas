@@ -4,9 +4,9 @@ import { LlmController } from './llm.controller';
 import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [ConfigModule],
-  controllers: [LlmController],
-  providers: [LlmService],
-  exports: [LlmService],
+    imports: [ConfigModule],
+    controllers: [LlmController],
+    providers: [LlmService],
+    exports: [LlmService],
 })
 export class LlmModule {}

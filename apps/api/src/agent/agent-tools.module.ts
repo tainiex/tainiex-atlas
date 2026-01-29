@@ -19,8 +19,8 @@ import { StockTool } from '../tools/providers/stock.tool';
  * 4. Stateless Utilities
  */
 @Module({
-  imports: [HttpModule, CacheModule.register()],
-  providers: [WeatherTool, SearchTool, WikipediaTool, StockTool],
-  exports: [WeatherTool, SearchTool, WikipediaTool, StockTool],
+    imports: [HttpModule, CacheModule.register()],
+    providers: [WeatherTool, SearchTool, WikipediaTool, StockTool],
+    exports: [WeatherTool, SearchTool, WikipediaTool, StockTool],
 })
 export class AgentToolsModule {}

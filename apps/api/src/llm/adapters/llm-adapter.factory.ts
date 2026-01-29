@@ -14,44 +14,34 @@ import { LoggerService } from '../../common/logger/logger.service';
  * 根据模型名称自动选择并创建合适的适配器
  */
 export class LlmAdapterFactory {
-  static async createAdapter(
-    modelName: string,
-    configService: ConfigService,
-    auth: GoogleAuth,
-    logger: LoggerService,
-  ): Promise<ILlmAdapter> {
-    const category = ModelClassifier.getModelCategory(modelName);
-    const description = ModelClassifier.getModelDescription(modelName);
+    static async createAdapter(
+        modelName: string,
+        configService: ConfigService,
+        auth: GoogleAuth,
+        logger: LoggerService
+    ): Promise<ILlmAdapter> {
+        const category = ModelClassifier.getModelCategory(modelName);
+        const description = ModelClassifier.getModelDescription(modelName);
 
-    logger.info(
-      `[LlmAdapterFactory] Creating adapter for model: ${modelName} (${description})`,
-    );
+        logger.info(
+            `[LlmAdapterFactory] Creating adapter for model: ${modelName} (${description})`
+        );
 
-    let adapter: ILlmAdapter;
+        let adapter: ILlmAdapter;
 
-    if (category === LlmProvider.MISTRAL) {
-      adapter = new MistralAiAdapter(configService, logger, modelName);
-    } else if (category === LlmProvider.OPENROUTER) {
-      adapter = new OpenRouterAdapter(configService, logger, modelName);
-    } else if (category === LlmProvider.ZAI) {
-      adapter = new ZaiAdapter(configService, logger, modelName);
-    } else if (category === 'preview') {
-      adapter = new GoogleVertexPreviewAdapter(
-        configService,
-        auth,
-        logger,
-        modelName,
-      );
-    } else {
-      adapter = new GoogleVertexGaAdapter(
-        configService,
-        auth,
-        logger,
-        modelName,
-      );
+        if (category === LlmProvider.MISTRAL) {
+            adapter = new MistralAiAdapter(configService, logger, modelName);
+        } else if (category === LlmProvider.OPENROUTER) {
+            adapter = new OpenRouterAdapter(configService, logger, modelName);
+        } else if (category === LlmProvider.ZAI) {
+            adapter = new ZaiAdapter(configService, logger, modelName);
+        } else if (category === 'preview') {
+            adapter = new GoogleVertexPreviewAdapter(configService, auth, logger, modelName);
+        } else {
+            adapter = new GoogleVertexGaAdapter(configService, auth, logger, modelName);
+        }
+
+        await adapter.initialize();
+        return adapter;
     }
-
-    await adapter.initialize();
-    return adapter;
-  }
 }

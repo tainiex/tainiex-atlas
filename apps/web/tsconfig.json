@@ -15,10 +15,9 @@
     "noFallthroughCasesInSwitch": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@tainiex/shared-atlas": ["../../packages/shared-atlas/src"],
-      "@tainiex/shared-atlas/*": ["../../packages/shared-atlas/src/*"]
-    }
+      "@/*": ["src/*"]
+    },
+    "strictPropertyInitialization": false
   },
   "include": ["src", "test"],
   "references": [

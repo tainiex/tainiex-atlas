@@ -2,14 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 // Entities
-import {
-  Note,
-  Block,
-  BlockVersion,
-  NoteSnapshot,
-  NoteTemplate,
-  DocumentState,
-} from './entities';
+import { Note, Block, BlockVersion, NoteSnapshot, NoteTemplate, DocumentState } from './entities';
 
 import { NotesService } from './notes.service';
 import { BlocksService } from './blocks.service';
@@ -54,48 +47,48 @@ import { ExportController } from './export.controller';
  * TODO: Add ScheduleModule.forRoot() for scheduled snapshot tasks when @nestjs/schedule is installed
  */
 @Module({
-  imports: [
-    TypeOrmModule.forFeature([
-      Note,
-      Block,
-      BlockVersion,
-      NoteSnapshot,
-      NoteTemplate,
-      DocumentState,
-    ]),
-  ],
-  controllers: [
-    NotesController,
-    BlocksController,
-    UploadController,
-    VersionsController,
-    SearchController,
-    ExportController,
-  ],
-  providers: [
-    NotesService,
-    BlocksService,
-    PresenceService,
-    YjsService,
-    VersionsService,
-    SearchService,
-    SearchService,
-    ExportService,
-    YjsTransformerService,
-    CollaborationGateway,
-    TokenLifecycleService,
-    ConnectionHealthService,
-    ReliableMessageService,
-  ],
-  exports: [
-    NotesService,
-    BlocksService,
-    PresenceService,
-    YjsService,
-    VersionsService,
-    SearchService,
-    ExportService,
-    YjsTransformerService,
-  ],
+    imports: [
+        TypeOrmModule.forFeature([
+            Note,
+            Block,
+            BlockVersion,
+            NoteSnapshot,
+            NoteTemplate,
+            DocumentState,
+        ]),
+    ],
+    controllers: [
+        NotesController,
+        BlocksController,
+        UploadController,
+        VersionsController,
+        SearchController,
+        ExportController,
+    ],
+    providers: [
+        NotesService,
+        BlocksService,
+        PresenceService,
+        YjsService,
+        VersionsService,
+        SearchService,
+        SearchService,
+        ExportService,
+        YjsTransformerService,
+        CollaborationGateway,
+        TokenLifecycleService,
+        ConnectionHealthService,
+        ReliableMessageService,
+    ],
+    exports: [
+        NotesService,
+        BlocksService,
+        PresenceService,
+        YjsService,
+        VersionsService,
+        SearchService,
+        ExportService,
+        YjsTransformerService,
+    ],
 })
 export class NotesModule {}

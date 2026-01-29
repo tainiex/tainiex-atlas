@@ -8,159 +8,159 @@ import { BlockType } from '@tainiex/shared-atlas';
 import { LoggerService } from '../common/logger/logger.service';
 
 describe('YjsTransformerService', () => {
-  let service: YjsTransformerService;
-  let blockRepositoryMock: Record<string, jest.Mock>;
-  let noteRepositoryMock: Record<string, jest.Mock>;
+    let service: YjsTransformerService;
+    let blockRepositoryMock: Record<string, jest.Mock>;
+    let noteRepositoryMock: Record<string, jest.Mock>;
 
-  beforeEach(async () => {
-    blockRepositoryMock = {
-      find: jest.fn(),
-      save: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    };
-    noteRepositoryMock = {
-      findOne: jest.fn(),
-    };
+    beforeEach(async () => {
+        blockRepositoryMock = {
+            find: jest.fn(),
+            save: jest.fn(),
+            update: jest.fn(),
+            delete: jest.fn(),
+        };
+        noteRepositoryMock = {
+            findOne: jest.fn(),
+        };
 
-    const mockLoggerService = {
-      log: jest.fn(),
-      error: jest.fn(),
-      warn: jest.fn(),
-      debug: jest.fn(),
-      setContext: jest.fn(),
-    };
+        const mockLoggerService = {
+            log: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn(),
+            debug: jest.fn(),
+            setContext: jest.fn(),
+        };
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [
-        YjsTransformerService,
-        { provide: getRepositoryToken(Block), useValue: blockRepositoryMock },
-        { provide: getRepositoryToken(Note), useValue: noteRepositoryMock },
-        { provide: LoggerService, useValue: mockLoggerService },
-      ],
-    }).compile();
+        const module: TestingModule = await Test.createTestingModule({
+            providers: [
+                YjsTransformerService,
+                { provide: getRepositoryToken(Block), useValue: blockRepositoryMock },
+                { provide: getRepositoryToken(Note), useValue: noteRepositoryMock },
+                { provide: LoggerService, useValue: mockLoggerService },
+            ],
+        }).compile();
 
-    service = module.get<YjsTransformerService>(YjsTransformerService);
-  });
-
-  it('should soft delete missing blocks', async () => {
-    const noteId = 'note-1';
-    const doc = new Y.Doc();
-    // Add one block so we don't hit the "empty doc" safety return
-    const yFragment = doc.getXmlFragment('blocks');
-
-    const xmlElem = new Y.XmlElement('paragraph');
-    xmlElem.setAttribute('id', 'block-2');
-    xmlElem.setAttribute('type', BlockType.TEXT);
-    const text = new Y.XmlText();
-    text.insert(0, 'Kept');
-    xmlElem.insert(0, [text]);
-
-    yFragment.insert(0, [xmlElem]);
-
-    // Existing blocks in DB
-    const existingBlocks = [
-      { id: 'block-1', noteId, content: 'To be deleted', isDeleted: false },
-      { id: 'block-2', noteId, content: 'Kept', isDeleted: false },
-    ];
-
-    blockRepositoryMock.find.mockResolvedValue(existingBlocks);
-    noteRepositoryMock.findOne.mockResolvedValue({
-      id: noteId,
-      userId: 'user-1',
+        service = module.get<YjsTransformerService>(YjsTransformerService);
     });
 
-    await service.syncToBlocks(noteId, doc);
+    it('should soft delete missing blocks', async () => {
+        const noteId = 'note-1';
+        const doc = new Y.Doc();
+        // Add one block so we don't hit the "empty doc" safety return
+        const yFragment = doc.getXmlFragment('blocks');
 
-    expect(blockRepositoryMock.update).toHaveBeenCalledWith(['block-1'], {
-      isDeleted: true,
-    });
-    expect(blockRepositoryMock.delete).not.toHaveBeenCalled();
-  });
+        const xmlElem = new Y.XmlElement('paragraph');
+        xmlElem.setAttribute('id', 'block-2');
+        xmlElem.setAttribute('type', BlockType.TEXT);
+        const text = new Y.XmlText();
+        text.insert(0, 'Kept');
+        xmlElem.insert(0, [text]);
 
-  it('should skip update for clean blocks', async () => {
-    const noteId = 'note-1';
-    const doc = new Y.Doc();
-    const yFragment = doc.getXmlFragment('blocks');
+        yFragment.insert(0, [xmlElem]);
 
-    const xmlElem = new Y.XmlElement('paragraph');
-    xmlElem.setAttribute('id', 'block-1');
-    xmlElem.setAttribute('type', BlockType.TEXT);
-    const text = new Y.XmlText();
-    text.insert(0, 'Hello');
-    xmlElem.insert(0, [text]);
+        // Existing blocks in DB
+        const existingBlocks = [
+            { id: 'block-1', noteId, content: 'To be deleted', isDeleted: false },
+            { id: 'block-2', noteId, content: 'Kept', isDeleted: false },
+        ];
 
-    yFragment.insert(0, [xmlElem]);
+        blockRepositoryMock.find.mockResolvedValue(existingBlocks);
+        noteRepositoryMock.findOne.mockResolvedValue({
+            id: noteId,
+            userId: 'user-1',
+        });
 
-    // Existing match
-    const existingBlocks = [
-      {
-        id: 'block-1',
-        noteId,
-        type: BlockType.TEXT,
-        content: 'Hello',
-        metadata: { id: 'block-1', type: BlockType.TEXT },
-        position: 0,
-        isDeleted: false,
-        createdBy: 'user-1',
-        lastEditedBy: 'user-1',
-      },
-    ];
+        await service.syncToBlocks(noteId, doc);
 
-    blockRepositoryMock.find.mockResolvedValue(existingBlocks);
-    noteRepositoryMock.findOne.mockResolvedValue({
-      id: noteId,
-      userId: 'user-1',
+        expect(blockRepositoryMock.update).toHaveBeenCalledWith(['block-1'], {
+            isDeleted: true,
+        });
+        expect(blockRepositoryMock.delete).not.toHaveBeenCalled();
     });
 
-    await service.syncToBlocks(noteId, doc);
+    it('should skip update for clean blocks', async () => {
+        const noteId = 'note-1';
+        const doc = new Y.Doc();
+        const yFragment = doc.getXmlFragment('blocks');
 
-    expect(blockRepositoryMock.save).not.toHaveBeenCalled();
-  });
+        const xmlElem = new Y.XmlElement('paragraph');
+        xmlElem.setAttribute('id', 'block-1');
+        xmlElem.setAttribute('type', BlockType.TEXT);
+        const text = new Y.XmlText();
+        text.insert(0, 'Hello');
+        xmlElem.insert(0, [text]);
 
-  it('should resurrect deleted blocks if they reappear', async () => {
-    const noteId = 'note-1';
-    const doc = new Y.Doc();
-    const yFragment = doc.getXmlFragment('blocks');
+        yFragment.insert(0, [xmlElem]);
 
-    const xmlElem = new Y.XmlElement('paragraph');
-    xmlElem.setAttribute('id', 'block-1');
-    xmlElem.setAttribute('type', BlockType.TEXT);
-    const text = new Y.XmlText();
-    text.insert(0, 'Hello');
-    xmlElem.insert(0, [text]);
+        // Existing match
+        const existingBlocks = [
+            {
+                id: 'block-1',
+                noteId,
+                type: BlockType.TEXT,
+                content: 'Hello',
+                metadata: { id: 'block-1', type: BlockType.TEXT },
+                position: 0,
+                isDeleted: false,
+                createdBy: 'user-1',
+                lastEditedBy: 'user-1',
+            },
+        ];
 
-    yFragment.insert(0, [xmlElem]);
+        blockRepositoryMock.find.mockResolvedValue(existingBlocks);
+        noteRepositoryMock.findOne.mockResolvedValue({
+            id: noteId,
+            userId: 'user-1',
+        });
 
-    // Existing match but DELETED
-    const existingBlocks = [
-      {
-        id: 'block-1',
-        noteId,
-        type: BlockType.TEXT,
-        content: 'Hello',
-        metadata: {},
-        position: 0,
-        isDeleted: true, // DELETED
-        createdBy: 'user-1',
-        lastEditedBy: 'user-1',
-      },
-    ];
+        await service.syncToBlocks(noteId, doc);
 
-    blockRepositoryMock.find.mockResolvedValue(existingBlocks);
-    noteRepositoryMock.findOne.mockResolvedValue({
-      id: noteId,
-      userId: 'user-1',
+        expect(blockRepositoryMock.save).not.toHaveBeenCalled();
     });
 
-    await service.syncToBlocks(noteId, doc);
+    it('should resurrect deleted blocks if they reappear', async () => {
+        const noteId = 'note-1';
+        const doc = new Y.Doc();
+        const yFragment = doc.getXmlFragment('blocks');
 
-    // Should save with isDeleted: false
-    expect(blockRepositoryMock.save).toHaveBeenCalledWith(
-      expect.objectContaining({
-        id: 'block-1',
-        isDeleted: false,
-      }),
-    );
-  });
+        const xmlElem = new Y.XmlElement('paragraph');
+        xmlElem.setAttribute('id', 'block-1');
+        xmlElem.setAttribute('type', BlockType.TEXT);
+        const text = new Y.XmlText();
+        text.insert(0, 'Hello');
+        xmlElem.insert(0, [text]);
+
+        yFragment.insert(0, [xmlElem]);
+
+        // Existing match but DELETED
+        const existingBlocks = [
+            {
+                id: 'block-1',
+                noteId,
+                type: BlockType.TEXT,
+                content: 'Hello',
+                metadata: {},
+                position: 0,
+                isDeleted: true, // DELETED
+                createdBy: 'user-1',
+                lastEditedBy: 'user-1',
+            },
+        ];
+
+        blockRepositoryMock.find.mockResolvedValue(existingBlocks);
+        noteRepositoryMock.findOne.mockResolvedValue({
+            id: noteId,
+            userId: 'user-1',
+        });
+
+        await service.syncToBlocks(noteId, doc);
+
+        // Should save with isDeleted: false
+        expect(blockRepositoryMock.save).toHaveBeenCalledWith(
+            expect.objectContaining({
+                id: 'block-1',
+                isDeleted: false,
+            })
+        );
+    });
 });
